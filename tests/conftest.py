@@ -10,6 +10,7 @@ os.environ.setdefault("REDIS_URL", "redis://172.30.0.3:6379/0")
 os.environ.setdefault("JWT_SIGNING_KEY", "test-secret")
 os.environ.setdefault("WEBHOOK_SECRET_PATH", "test-secret-path")
 os.environ.setdefault("BOT_TOKEN", "123:test")
+os.environ.setdefault("BOT_TOKEN_ENC_KEY", "wWyNAOxSSib9kfo4PeMJ6CX-ugqbCPhAp6kLVqHQL_0=")
 
 
 @pytest_asyncio.fixture(autouse=True)
