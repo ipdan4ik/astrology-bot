@@ -1,0 +1,36 @@
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: quantuum
+      POSTGRES_PASSWORD: quantuum
+      POSTGRES_DB: quantuum_test
+    ports:
+      - "5433:5432"
+    networks:
+      quantuum-test-net:
+        ipv4_address: 172.30.0.2
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantuum"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis-test:
+    image: redis:7
+    ports:
+      - "6380:6379"
+    networks:
+      quantuum-test-net:
+        ipv4_address: 172.30.0.3
+
+# NOTE: On this host, Docker published-port loopback (localhost:5433/6380) does not
+# forward real TCP traffic, but container IPs on a user-defined bridge are routable
+# from the host. Static IPs give the test suite a stable address. Tests connect to
+# 172.30.0.2:5432 (postgres) and 172.30.0.3:6379 (redis) directly.
+networks:
+  quantuum-test-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
