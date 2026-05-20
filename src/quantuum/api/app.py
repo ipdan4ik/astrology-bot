@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import FastAPI, Request
 
-from quantuum.api.routes import health
+from quantuum.api.routes import auth, health
 from quantuum.logging_setup import bind_request_id, configure_logging
 
 
@@ -19,4 +19,5 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(health.router)
+    app.include_router(auth.router)
     return app
