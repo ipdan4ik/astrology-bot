@@ -1,9 +1,16 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
+from sqlalchemy import DateTime
 from sqlmodel import Field, SQLModel
 
 from quantuum.common.datetime import utcnow
+
+
+def _dt_field(**kwargs):
+    """Return a SQLModel Field backed by TIMESTAMPTZ (timezone-aware)."""
+    sa_type = DateTime(timezone=True)
+    return Field(sa_type=sa_type, **kwargs)
 
 
 class Tenant(SQLModel, table=True):
@@ -13,7 +20,7 @@ class Tenant(SQLModel, table=True):
     slug: str = Field(unique=True, index=True)
     display_name: str
     status: str = "active"  # active|suspended|archived
-    created_at: datetime = Field(default_factory=utcnow)
+    created_at: datetime = _dt_field(default_factory=utcnow)
 
 
 class Account(SQLModel, table=True):
@@ -23,8 +30,8 @@ class Account(SQLModel, table=True):
     tenant_id: int = Field(foreign_key="tenants.id", index=True)
     status: str = "active"  # active|disabled
     preferred_lang: str | None = None
-    last_seen_at: datetime | None = None
-    created_at: datetime = Field(default_factory=utcnow)
+    last_seen_at: datetime | None = _dt_field(default=None)
+    created_at: datetime = _dt_field(default_factory=utcnow)
 
 
 class AccountIdentity(SQLModel, table=True):
@@ -35,8 +42,8 @@ class AccountIdentity(SQLModel, table=True):
     provider: str  # tg_chat|magic_link
     provider_user_id: str | None = Field(default=None, index=True)
     email: str | None = Field(default=None, index=True)
-    verified_at: datetime = Field(default_factory=utcnow)
-    created_at: datetime = Field(default_factory=utcnow)
+    verified_at: datetime = _dt_field(default_factory=utcnow)
+    created_at: datetime = _dt_field(default_factory=utcnow)
 
 
 class AccountRefreshToken(SQLModel, table=True):
@@ -45,9 +52,9 @@ class AccountRefreshToken(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     account_id: int = Field(foreign_key="accounts.id", index=True)
     token_hash: str = Field(index=True)
-    expires_at: datetime
-    revoked_at: datetime | None = None
-    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime = _dt_field()
+    revoked_at: datetime | None = _dt_field(default=None)
+    created_at: datetime = _dt_field(default_factory=utcnow)
 
 
 class NatalProfile(SQLModel, table=True):
@@ -64,8 +71,8 @@ class NatalProfile(SQLModel, table=True):
     longitude: Decimal
     timezone: str
     for_year: int | None = None
-    created_at: datetime = Field(default_factory=utcnow)
-    updated_at: datetime = Field(default_factory=utcnow)
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    updated_at: datetime = _dt_field(default_factory=utcnow)
 
 
 class Blueprint(SQLModel, table=True):
@@ -83,8 +90,8 @@ class Blueprint(SQLModel, table=True):
     llm_tokens_in: int | None = None
     llm_tokens_out: int | None = None
     error: str | None = None
-    created_at: datetime = Field(default_factory=utcnow)
-    completed_at: datetime | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    completed_at: datetime | None = _dt_field(default=None)
 
 
 class Request(SQLModel, table=True):
@@ -99,8 +106,8 @@ class Request(SQLModel, table=True):
     status: str = "pending"  # pending|done|failed|refunded
     cost_units: int = 1
     charged_against: str | None = None  # trial|subscription|package|none
-    created_at: datetime = Field(default_factory=utcnow)
-    completed_at: datetime | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    completed_at: datetime | None = _dt_field(default=None)
 
 
 class AccountBalance(SQLModel, table=True):
@@ -108,6 +115,6 @@ class AccountBalance(SQLModel, table=True):
 
     account_id: int = Field(foreign_key="accounts.id", primary_key=True)
     free_trial_used: bool = False
-    subscription_active_until: datetime | None = None
+    subscription_active_until: datetime | None = _dt_field(default=None)
     package_credits: int = 0
-    updated_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = _dt_field(default_factory=utcnow)

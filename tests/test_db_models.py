@@ -19,3 +19,8 @@ def test_blueprint_defaults():
     bp = models.Blueprint(tenant_id=1, account_id=1, natal_profile_id=1)
     assert bp.status == "pending"
     assert bp.calc_md is None
+
+
+async def test_default_tenant_fixture(default_tenant):
+    assert default_tenant.id is not None
+    assert default_tenant.slug == "default"
