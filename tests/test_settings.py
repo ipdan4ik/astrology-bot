@@ -1,4 +1,3 @@
-import os
 
 from quantuum.settings import Settings
 
