@@ -1,19 +1,19 @@
 """initial schema
 
-Revision ID: 2f4e7fe14886
+Revision ID: 09815c38a9b7
 Revises: 
-Create Date: 2026-05-20 12:24:24.289550
+Create Date: 2026-05-20 13:40:46.578806
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import sqlmodel.sql.sqltypes
+import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '2f4e7fe14886'
+revision: str = '09815c38a9b7'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('slug', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('display_name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('status', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_tenants_slug'), 'tenants', ['slug'], unique=True)
@@ -36,8 +36,8 @@ def upgrade() -> None:
     sa.Column('tenant_id', sa.Integer(), nullable=False),
     sa.Column('status', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('preferred_lang', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('last_seen_at', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('last_seen_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -45,9 +45,9 @@ def upgrade() -> None:
     op.create_table('account_balance',
     sa.Column('account_id', sa.Integer(), nullable=False),
     sa.Column('free_trial_used', sa.Boolean(), nullable=False),
-    sa.Column('subscription_active_until', sa.DateTime(), nullable=True),
+    sa.Column('subscription_active_until', sa.DateTime(timezone=True), nullable=True),
     sa.Column('package_credits', sa.Integer(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ),
     sa.PrimaryKeyConstraint('account_id')
     )
@@ -57,8 +57,8 @@ def upgrade() -> None:
     sa.Column('provider', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('provider_user_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('verified_at', sa.DateTime(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('verified_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -69,9 +69,9 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('account_id', sa.Integer(), nullable=False),
     sa.Column('token_hash', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('expires_at', sa.DateTime(), nullable=False),
-    sa.Column('revoked_at', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -89,8 +89,8 @@ def upgrade() -> None:
     sa.Column('longitude', sa.Numeric(), nullable=False),
     sa.Column('timezone', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('for_year', sa.Integer(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ),
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -107,8 +107,8 @@ def upgrade() -> None:
     sa.Column('status', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('cost_units', sa.Integer(), nullable=False),
     sa.Column('charged_against', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ),
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -128,8 +128,8 @@ def upgrade() -> None:
     sa.Column('llm_tokens_in', sa.Integer(), nullable=True),
     sa.Column('llm_tokens_out', sa.Integer(), nullable=True),
     sa.Column('error', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ),
     sa.ForeignKeyConstraint(['natal_profile_id'], ['natal_profiles.id'], ),
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
