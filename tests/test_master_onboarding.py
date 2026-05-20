@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 from quantuum.bot.handlers.master_onboarding import slug_is_available
 
 
@@ -11,3 +14,80 @@ def test_owner_onboard_callback_roundtrip():
 
     packed = OwnerOnboardCb(action="confirm").pack()
     assert OwnerOnboardCb.unpack(packed).action == "confirm"
+
+
+class _FakeState:
+    def __init__(self, data):
+        self._data = dict(data)
+        self.state = None
+
+    async def get_data(self):
+        return dict(self._data)
+
+    async def update_data(self, **kw):
+        self._data.update(kw)
+
+    async def set_state(self, state):
+        self.state = state
+
+    async def clear(self):
+        self._data = {}
+        self.state = None
+
+
+def _patch_sessionmaker(monkeypatch, module, session):
+    class _Maker:
+        def __call__(self):
+            return _Ctx()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(module, "get_sessionmaker", lambda: _Maker())
+
+
+async def test_confirm_creates_tenant_and_enqueues(session, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+    from quantuum.db.models import Tenant
+    from quantuum.domain.invites import create_invite
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    enqueued = {}
+
+    async def fake_enqueue(tenant_id):
+        enqueued["tenant_id"] = tenant_id
+
+    monkeypatch.setattr(mo, "enqueue_provision_tenant", fake_enqueue)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    state = _FakeState({"invite_id": invite.id, "slug": "acme", "display_name": "Acme", "default_lang": "ru"})
+    query = AsyncMock()
+    query.from_user = SimpleNamespace(id=555)
+    query.message = SimpleNamespace(chat=SimpleNamespace(id=555), answer=AsyncMock())
+
+    await mo.on_confirm(query, OwnerOnboardCb(action="confirm"), state, chat_id=555)
+
+    from sqlmodel import select
+    result = await session.execute(select(Tenant).where(Tenant.slug == "acme"))
+    tenant = result.scalar_one()
+    assert tenant.status == "provisioning"
+    assert enqueued["tenant_id"] == tenant.id
+    assert state.state == mo.ManualToken.awaiting
+    assert (await state.get_data())["tenant_id"] == tenant.id
+
+
+async def test_cancel_clears_state(monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    state = _FakeState({"slug": "x"})
+    query = AsyncMock()
+    query.message = SimpleNamespace(answer=AsyncMock())
+    await mo.on_cancel(query, OwnerOnboardCb(action="cancel"), state)
+    assert state.state is None
+    assert await state.get_data() == {}
