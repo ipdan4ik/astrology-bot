@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr
@@ -51,3 +51,32 @@ class BlueprintOut(BaseModel):
 class BlueprintCreatedOut(BaseModel):
     id: int
     status: str
+
+
+class InviteCreateIn(BaseModel):
+    tier: str = "basic"
+    max_uses: int = 1
+    expires_at: datetime | None = None
+    preset_slug: str | None = None
+    preset_display_name: str | None = None
+    preset_username: str | None = None
+    preset_default_lang: str | None = None
+
+
+class InviteOut(BaseModel):
+    id: int
+    code: str
+    tier: str
+    max_uses: int
+    used_count: int
+    status: str
+    deeplink: str
+
+
+class TenantOut(BaseModel):
+    id: int
+    slug: str
+    display_name: str
+    tier: str
+    status: str
+    is_platform: bool
