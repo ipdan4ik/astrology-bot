@@ -13,9 +13,9 @@ async def redis():
 
 
 async def test_push_and_pop_update(redis):
-    await redis_client.push_update({"update_id": 1, "text": "hi"})
+    await redis_client.push_update(555, {"update_id": 1, "text": "hi"})
     item = await redis_client.pop_update(timeout=1)
-    assert item == {"update_id": 1, "text": "hi"}
+    assert item == {"bot_id": 555, "update": {"update_id": 1, "text": "hi"}}
 
 
 async def test_pop_returns_none_on_timeout(redis):

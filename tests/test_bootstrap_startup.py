@@ -19,3 +19,12 @@ async def client(engine):
 async def test_startup_seeds_default_tenant(client, session):
     result = await session.execute(select(Tenant).where(Tenant.slug == "default"))
     assert result.scalar_one_or_none() is not None
+
+
+async def test_startup_seeds_default_tenant_bot(client, session):
+    from sqlmodel import select
+
+    from quantuum.db.models import TenantBot
+
+    result = await session.execute(select(TenantBot))
+    assert any(tb.bot_telegram_id == 123 for tb in result.scalars().all())

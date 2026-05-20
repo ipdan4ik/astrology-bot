@@ -15,8 +15,8 @@ def get_redis() -> aioredis.Redis:
     return _redis
 
 
-async def push_update(update: dict) -> None:
-    await get_redis().rpush(UPDATE_QUEUE_KEY, json.dumps(update))
+async def push_update(bot_id: int, update: dict) -> None:
+    await get_redis().rpush(UPDATE_QUEUE_KEY, json.dumps({"bot_id": bot_id, "update": update}))
 
 
 async def pop_update(timeout: int = 5) -> dict | None:

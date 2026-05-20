@@ -22,11 +22,6 @@ async def test_account_middleware_injects_account(session, default_tenant, monke
 
     monkeypatch.setattr(account_mod, "get_sessionmaker", lambda: _Maker())
 
-    async def fake_default_tenant_id(_s):
-        return default_tenant.id
-
-    monkeypatch.setattr(account_mod, "get_default_tenant_id", fake_default_tenant_id)
-
     captured = {}
 
     async def handler(event, data):
@@ -39,7 +34,36 @@ async def test_account_middleware_injects_account(session, default_tenant, monke
         from_user=SimpleNamespace(id=12345),
         chat=SimpleNamespace(id=999),
     )
-    result = await mw(handler, event, {})
+    result = await mw(handler, event, {"tenant_id": default_tenant.id})
     assert result == "ok"
     assert captured["account"].tenant_id == default_tenant.id
     assert captured["chat_id"] == 999
+
+
+async def test_account_middleware_passthrough_when_tenant_none(session, monkeypatch):
+    from types import SimpleNamespace
+
+    from quantuum.bot.middleware import account as account_mod
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return session
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(account_mod, "get_sessionmaker", lambda: _Maker())
+    captured = {}
+
+    async def handler(event, data):
+        captured["data"] = dict(data)
+        return "ok"
+
+    mw = AccountMiddleware()
+    event = SimpleNamespace(from_user=SimpleNamespace(id=1), chat=SimpleNamespace(id=9))
+    result = await mw(handler, event, {"tenant_id": None})
+    assert result == "ok"
+    assert "account" not in captured["data"]  # no account created for unknown bot

@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     jwt_refresh_ttl_seconds: int = 2_592_000
     bot_token: str = ""
     webhook_secret_path: str = ""
+    bot_token_enc_key: str = ""
+    default_bot_transport: str = "polling"
     api_host: str = "http://localhost:8000"
     smtp_host: str | None = None
     smtp_port: int = 587
