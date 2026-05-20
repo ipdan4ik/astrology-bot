@@ -1,0 +1,19 @@
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: quantuum
+      POSTGRES_PASSWORD: quantuum
+      POSTGRES_DB: quantuum_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantuum"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis-test:
+    image: redis:7
+    ports:
+      - "6380:6379"
