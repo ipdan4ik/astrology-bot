@@ -29,7 +29,11 @@ async def test_request_blueprint_trial(session, default_tenant):
         session, account=acc, chat_id=10, enqueue=enqueue
     )
     assert status == "queued"
-    enqueue.assert_awaited_once_with(blueprint_id, 10)
+    enqueue.assert_awaited_once()
+    call_args = enqueue.await_args.args
+    assert call_args[0] == blueprint_id
+    assert call_args[1] == 10
+    assert isinstance(call_args[2], int)  # request_id threaded through
 
 
 async def test_request_blueprint_no_quota(session, default_tenant):

@@ -21,7 +21,7 @@ async def request_blueprint_for_account(
     *,
     account: Account,
     chat_id: int,
-    enqueue: Callable[[int, int | None], Awaitable[None]],
+    enqueue: Callable[[int, int | None, int | None], Awaitable[None]],
 ) -> tuple[str, int | None]:
     profile = await get_natal_profile(session, account.id)
     if profile is None:
@@ -34,14 +34,14 @@ async def request_blueprint_for_account(
     blueprint = await create_blueprint(
         session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id
     )
-    await create_request(
+    request = await create_request(
         session,
         tenant_id=account.tenant_id,
         account_id=account.id,
         kind="blueprint",
         charged_against=charged,
     )
-    await enqueue(blueprint.id, chat_id)
+    await enqueue(blueprint.id, chat_id, request.id)
     return "queued", blueprint.id
 
 

@@ -8,7 +8,7 @@ from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account, Blueprint
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
-from quantuum.domain.quota import consume_quota
+from quantuum.domain.quota import consume_quota, refund_quota
 from quantuum.domain.requests import create_request
 from quantuum.tasks import enqueue
 
@@ -89,14 +89,18 @@ async def create_blueprint_route(
     blueprint = await create_blueprint(
         session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id
     )
-    await create_request(
+    request = await create_request(
         session,
         tenant_id=account.tenant_id,
         account_id=account.id,
         kind="blueprint",
         charged_against=charged,
     )
-    await enqueue.enqueue_blueprint(blueprint.id, None)
+    try:
+        await enqueue.enqueue_blueprint(blueprint.id, None, request.id)
+    except Exception as exc:
+        await refund_quota(session, request.id)
+        raise HTTPException(status_code=503, detail="could not enqueue; refunded") from exc
     return BlueprintCreatedOut(id=blueprint.id, status=blueprint.status)
 
 

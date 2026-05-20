@@ -10,7 +10,7 @@ from quantuum.auth.identity import find_or_create_account_by_tg
 async def auth_client(engine, session, default_tenant, monkeypatch):
     enqueued = []
 
-    async def fake_enqueue(blueprint_id, chat_id=None):
+    async def fake_enqueue(blueprint_id, chat_id=None, request_id=None):
         enqueued.append((blueprint_id, chat_id))
 
     from quantuum.tasks import enqueue as enqueue_mod

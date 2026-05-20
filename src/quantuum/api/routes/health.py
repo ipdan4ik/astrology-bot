@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.api.deps import get_session
+from quantuum.redis_client import get_redis
 
 router = APIRouter()
 
@@ -15,4 +16,5 @@ async def healthz() -> dict:
 @router.get("/readyz")
 async def readyz(session: AsyncSession = Depends(get_session)) -> dict:
     await session.execute(text("SELECT 1"))
-    return {"db": "ok"}
+    await get_redis().ping()
+    return {"db": "ok", "redis": "ok"}

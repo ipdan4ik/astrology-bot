@@ -17,6 +17,7 @@ async def consume_quota(session, account_id: int, kind: str) -> str:
         return "trial"
 
     if balance.subscription_active_until and balance.subscription_active_until > utcnow():
+        await session.commit()
         return "subscription"
 
     if balance.package_credits >= 1:

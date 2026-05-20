@@ -24,7 +24,10 @@ def create_app() -> FastAPI:
     async def request_id_middleware(request: Request, call_next):
         request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
         bind_request_id(request_id)
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        finally:
+            bind_request_id(None)
         response.headers["x-request-id"] = request_id
         return response
 
