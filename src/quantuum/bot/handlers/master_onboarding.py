@@ -11,7 +11,11 @@ from quantuum.bot.ui.keyboards import cancel_kb
 from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.invites import get_invite_by_code, invite_is_usable
-from quantuum.domain.provisioning import create_tenant_from_onboarding
+from quantuum.domain.provisioning import (
+    create_tenant_from_onboarding,
+    finalize_provisioning,
+    validate_bot_token,
+)
 from quantuum.tasks.enqueue import enqueue_provision_tenant
 
 router = Router()
@@ -145,3 +149,28 @@ async def on_cancel(query: CallbackQuery, callback_data: OwnerOnboardCb, state: 
     await state.clear()
     await query.message.answer("Онбординг отменён.")
     await query.answer()
+
+
+@router.message(ManualToken.awaiting)
+async def on_manual_token(message: Message, state: FSMContext) -> None:
+    token = (message.text or "").strip()
+    result = await validate_bot_token(token)
+    if result is None:
+        await message.answer("Это не похоже на валидный токен бота. Пришли токен от @BotFather ещё раз:")
+        return
+    bot_id, username = result
+    data = await state.get_data()
+    async with get_sessionmaker()() as session:
+        tenant_bot = await finalize_provisioning(
+            session,
+            tenant_id=data["tenant_id"],
+            token=token,
+            bot_telegram_id=bot_id,
+            bot_username=username,
+            default_lang=data.get("default_lang", "ru"),
+        )
+    await state.clear()
+    await message.answer(
+        f"Готово! Бот @{tenant_bot.bot_username} активирован. "
+        "Он станет доступен после перезапуска воркера."
+    )

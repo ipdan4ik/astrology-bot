@@ -91,3 +91,58 @@ async def test_cancel_clears_state(monkeypatch):
     await mo.on_cancel(query, OwnerOnboardCb(action="cancel"), state)
     assert state.state is None
     assert await state.get_data() == {}
+
+
+async def test_manual_token_finalizes(session, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+
+    async def fake_validate(token):
+        return (900, "zen_bot")
+
+    monkeypatch.setattr(mo, "validate_bot_token", fake_validate)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="zen", display_name="Zen",
+        default_lang="ru", owner_tg_id=777, owner_chat_id=777,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+    message = SimpleNamespace(text="900:newtoken", answer=AsyncMock())
+
+    await mo.on_manual_token(message, state)
+
+    await session.refresh(tenant)
+    assert tenant.status == "active"
+    assert state.state is None  # cleared
+
+
+async def test_manual_token_rejects_invalid(session, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+
+    async def fake_validate(token):
+        return None
+
+    monkeypatch.setattr(mo, "validate_bot_token", fake_validate)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="bad", display_name="Bad",
+        default_lang="ru", owner_tg_id=1, owner_chat_id=1,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+    message = SimpleNamespace(text="garbage", answer=AsyncMock())
+
+    await mo.on_manual_token(message, state)
+
+    await session.refresh(tenant)
+    assert tenant.status != "active"  # still awaiting
+    assert state.state is None or state.state == mo.ManualToken.awaiting
+    message.answer.assert_awaited()
