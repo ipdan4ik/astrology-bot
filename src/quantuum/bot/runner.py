@@ -15,6 +15,12 @@ async def process_one_update(dp: Dispatcher, bot: Bot, update: dict) -> None:
 
 async def run() -> None:
     configure_logging()
+    from quantuum.db.bootstrap import ensure_default_tenant
+    from quantuum.db.session import get_sessionmaker
+
+    async with get_sessionmaker()() as session:
+        await ensure_default_tenant(session)
+
     bot = create_bot()
     dp = create_dispatcher()
     logger.info("bot_runner_started")
