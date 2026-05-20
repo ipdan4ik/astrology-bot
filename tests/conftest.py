@@ -12,6 +12,19 @@ os.environ.setdefault("JWT_SIGNING_KEY", "test-secret")
 os.environ.setdefault("WEBHOOK_SECRET_PATH", "test-secret-path")
 os.environ.setdefault("BOT_TOKEN", "123:test")
 
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_redis():
+    """Reset the global Redis singleton before each test so each test gets a fresh client
+    bound to its own event loop."""
+    import quantuum.redis_client as rc
+
+    rc._redis = None
+    yield
+    if rc._redis is not None:
+        await rc._redis.aclose()
+        rc._redis = None
+
 from quantuum.db.models import SQLModel  # noqa: E402
 
 
