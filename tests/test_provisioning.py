@@ -45,3 +45,44 @@ async def test_create_tenant_multiuse_invite_stays_active(session):
     await session.refresh(invite)
     assert invite.used_count == 1
     assert invite.status == "active"
+
+
+async def test_finalize_provisioning_activates_tenant(session):
+    from quantuum.common.crypto import decrypt_token
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding, finalize_provisioning
+    from quantuum.domain.tenants import account_has_role
+    from quantuum.db.models import Account
+
+    invite = await create_invite(session, created_by_account_id=None)
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="zen", display_name="Zen",
+        default_lang="ru", owner_tg_id=777, owner_chat_id=777,
+    )
+
+    tb = await finalize_provisioning(
+        session,
+        tenant_id=tenant.id,
+        token="900:newbottoken",
+        bot_telegram_id=900,
+        bot_username="zen_bot",
+        default_lang="ru",
+    )
+    assert tb.status == "active"
+    assert tb.bot_telegram_id == 900
+    assert tb.bot_username == "zen_bot"
+    assert decrypt_token(tb.bot_token_enc) == "900:newbottoken"
+
+    await session.refresh(tenant)
+    assert tenant.status == "active"
+    assert tenant.primary_owner_account_id is not None
+
+    owner = await session.get(Account, tenant.primary_owner_account_id)
+    assert owner.tenant_id == tenant.id
+    assert await account_has_role(session, tenant_id=tenant.id, account_id=owner.id, role="owner")
+
+
+async def test_validate_bot_token_rejects_garbage(monkeypatch):
+    from quantuum.domain import provisioning
+
+    assert await provisioning.validate_bot_token("not-a-token") is None
