@@ -65,11 +65,31 @@ class TenantRole(SQLModel, table=True):
     granted_at: datetime = _dt_field(default_factory=utcnow)
 
 
+class TenantInvite(SQLModel, table=True):
+    __tablename__ = "tenant_invites"
+
+    id: int | None = Field(default=None, primary_key=True)
+    code: str = Field(unique=True, index=True)
+    created_by_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+    tier: str = "basic"  # basic|vip
+    max_uses: int = 1
+    used_count: int = 0
+    expires_at: datetime | None = _dt_field(default=None)
+    status: str = "active"  # active|used|expired|revoked
+    preset_slug: str | None = None
+    preset_display_name: str | None = None
+    preset_username: str | None = None
+    preset_default_lang: str | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    used_at: datetime | None = _dt_field(default=None)
+
+
 class Account(SQLModel, table=True):
     __tablename__ = "accounts"
 
     id: int | None = Field(default=None, primary_key=True)
-    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    tenant_id: int | None = Field(default=None, foreign_key="tenants.id", index=True)
+    is_superadmin: bool = False
     status: str = "active"  # active|disabled
     preferred_lang: str | None = None
     last_seen_at: datetime | None = _dt_field(default=None)
