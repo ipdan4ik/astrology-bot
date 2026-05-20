@@ -21,4 +21,12 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(me.router)
+
+    from quantuum.common.exceptions import NotFoundError
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(NotFoundError)
+    async def _not_found(_request, _exc):
+        return JSONResponse(status_code=404, content={"detail": "not found"})
+
     return app
