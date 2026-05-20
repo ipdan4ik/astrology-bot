@@ -2,12 +2,13 @@ from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from aiogram import Router
-from aiogram.filters import Command
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
+from quantuum.bot.ui.callbacks import OnboardCb
+from quantuum.bot.ui.keyboards import cancel_kb
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.natal_profiles import upsert_natal_profile
@@ -90,10 +91,13 @@ async def save_collected_profile(session, *, account: Account, data: dict):
     )
 
 
-@router.message(Command("profile"))
-async def start_onboarding(message: Message, state: FSMContext) -> None:
+@router.callback_query(OnboardCb.filter(F.action == "start"))
+async def start_onboarding(query: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(Onboarding.full_name)
-    await message.answer("Введи полное имя (как в свидетельстве о рождении):")
+    await query.message.answer(
+        "Введи полное имя (как в свидетельстве о рождении):", reply_markup=cancel_kb()
+    )
+    await query.answer()
 
 
 @router.message(Onboarding.full_name)

@@ -1,5 +1,5 @@
 from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
 
 from quantuum.bot.middleware.account import AccountMiddleware
 from quantuum.settings import get_settings
@@ -10,11 +10,15 @@ def create_bot() -> Bot:
 
 
 def create_dispatcher() -> Dispatcher:
-    dp = Dispatcher(storage=MemoryStorage())
+    dp = Dispatcher(storage=RedisStorage.from_url(get_settings().redis_url))
     dp.message.middleware(AccountMiddleware())
-    from quantuum.bot.handlers import blueprint, onboarding, start
+    dp.callback_query.middleware(AccountMiddleware())
+    from quantuum.bot.handlers import generate, history, menu, onboarding, profile, start
 
     dp.include_router(start.router)
+    dp.include_router(generate.router)
+    dp.include_router(profile.router)
+    dp.include_router(history.router)
     dp.include_router(onboarding.router)
-    dp.include_router(blueprint.router)
+    dp.include_router(menu.router)
     return dp

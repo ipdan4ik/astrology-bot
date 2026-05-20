@@ -4,6 +4,7 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
@@ -45,14 +46,13 @@ async def request_blueprint_for_account(
     return "queued", blueprint.id
 
 
-@router.message(Command("blueprint"))
-async def on_blueprint(message: Message, account: Account, chat_id: int) -> None:
+async def run_generate(message: Message, account: Account, chat_id: int) -> None:
     async with get_sessionmaker()() as session:
         status, _ = await request_blueprint_for_account(
             session, account=account, chat_id=chat_id, enqueue=enqueue_blueprint
         )
     if status == "no_profile":
-        await message.answer("Сначала заполни профиль командой /profile.")
+        await message.answer("Сначала заполни профиль:", reply_markup=profile_kb(has_profile=False))
     elif status == "no_quota":
         await message.answer(
             "Бесплатная генерация уже использована. Подписка и пакеты появятся в "
@@ -60,3 +60,8 @@ async def on_blueprint(message: Message, account: Account, chat_id: int) -> None
         )
     else:
         await message.answer("Генерирую твой разбор, это займёт около минуты…")
+
+
+@router.message(Command("blueprint"))
+async def on_blueprint(message: Message, account: Account, chat_id: int) -> None:
+    await run_generate(message, account, chat_id)

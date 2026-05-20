@@ -3,7 +3,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock
 
 from quantuum.auth.identity import find_or_create_account_by_tg
-from quantuum.bot.handlers.blueprint import request_blueprint_for_account
+from quantuum.bot.handlers.generate import request_blueprint_for_account
 from quantuum.domain.natal_profiles import upsert_natal_profile
 
 
