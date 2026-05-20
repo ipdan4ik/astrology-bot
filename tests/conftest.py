@@ -1,6 +1,7 @@
 import os
 
 import pytest_asyncio
+import sqlalchemy
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 os.environ.setdefault(
@@ -47,7 +48,15 @@ from quantuum.db.models import SQLModel  # noqa: E402
 async def engine():
     eng = create_async_engine(os.environ["DATABASE_URL"])
     async with eng.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.drop_all)
+        # Use raw SQL to drop/create cleanly, handling ALTER constraints that may not exist
+        await conn.execute(
+            sqlalchemy.text(
+                "DO $$ DECLARE r RECORD; BEGIN "
+                "FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP "
+                "EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE'; "
+                "END LOOP; END $$"
+            )
+        )
         await conn.run_sync(SQLModel.metadata.create_all)
     yield eng
     await eng.dispose()

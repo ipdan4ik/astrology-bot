@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from quantuum.common.datetime import utcnow
@@ -20,7 +20,46 @@ class Tenant(SQLModel, table=True):
     slug: str = Field(unique=True, index=True)
     display_name: str
     status: str = "active"  # active|suspended|archived
+    tier: str = "basic"  # basic|vip
+    is_platform: bool = False
+    primary_owner_account_id: int | None = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("accounts.id", use_alter=True, name="fk_tenants_primary_owner_account_id"),
+            nullable=True,
+        ),
+    )
+    owner_tg_id: str | None = None
+    owner_chat_id: str | None = None
     created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class TenantBot(SQLModel, table=True):
+    __tablename__ = "tenant_bots"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    bot_telegram_id: int | None = Field(default=None, unique=True, index=True)
+    bot_username: str | None = None
+    bot_token_enc: bytes
+    transport: str = "polling"  # polling|webhook
+    webhook_secret_path: str = Field(unique=True, index=True)
+    status: str = "active"  # active|paused|error
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    updated_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class TenantRole(SQLModel, table=True):
+    __tablename__ = "tenant_roles"
+    __table_args__ = (UniqueConstraint("tenant_id", "account_id", "role"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    role: str  # owner|admin|...
+    granted_by_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+    granted_at: datetime = _dt_field(default_factory=utcnow)
 
 
 class Account(SQLModel, table=True):
