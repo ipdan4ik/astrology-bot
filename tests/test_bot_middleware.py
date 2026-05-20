@@ -22,11 +22,6 @@ async def test_account_middleware_injects_account(session, default_tenant, monke
 
     monkeypatch.setattr(account_mod, "get_sessionmaker", lambda: _Maker())
 
-    async def fake_default_tenant_id(_s):
-        return default_tenant.id
-
-    monkeypatch.setattr(account_mod, "get_default_tenant_id", fake_default_tenant_id)
-
     captured = {}
 
     async def handler(event, data):
@@ -39,7 +34,7 @@ async def test_account_middleware_injects_account(session, default_tenant, monke
         from_user=SimpleNamespace(id=12345),
         chat=SimpleNamespace(id=999),
     )
-    result = await mw(handler, event, {})
+    result = await mw(handler, event, {"tenant_id": default_tenant.id})
     assert result == "ok"
     assert captured["account"].tenant_id == default_tenant.id
     assert captured["chat_id"] == 999
