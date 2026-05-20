@@ -12,9 +12,10 @@ def create_bot() -> Bot:
 def create_dispatcher() -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage())
     dp.message.middleware(AccountMiddleware())
-    from quantuum.bot.handlers import generate, onboarding, start
+    from quantuum.bot.handlers import generate, onboarding, profile, start
 
     dp.include_router(start.router)
-    dp.include_router(onboarding.router)
     dp.include_router(generate.router)
+    dp.include_router(profile.router)
+    dp.include_router(onboarding.router)
     return dp
