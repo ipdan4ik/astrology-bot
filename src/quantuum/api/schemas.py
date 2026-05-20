@@ -23,7 +23,7 @@ class RefreshIn(BaseModel):
 
 class MeOut(BaseModel):
     account_id: int
-    tenant_id: int
+    tenant_id: int | None
 
 
 class NatalProfileIn(BaseModel):

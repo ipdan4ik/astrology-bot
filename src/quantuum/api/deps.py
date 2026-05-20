@@ -28,3 +28,9 @@ async def current_account(
     if account is None or account.status != "active":
         raise HTTPException(status_code=401, detail="account not found")
     return account
+
+
+async def require_superadmin(account: Account = Depends(current_account)) -> Account:
+    if not account.is_superadmin:
+        raise HTTPException(status_code=403, detail="superadmin required")
+    return account

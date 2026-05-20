@@ -13,12 +13,13 @@ from quantuum.settings import get_settings
 _ALG = "HS256"
 
 
-def issue_access_token(account_id: int, tenant_id: int) -> str:
+def issue_access_token(account_id: int, tenant_id: int | None, is_superadmin: bool = False) -> str:
     settings = get_settings()
     now = utcnow()
     payload = {
         "sub": str(account_id),
         "tid": tenant_id,
+        "sa": is_superadmin,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=settings.jwt_access_ttl_seconds)).timestamp()),
     }

@@ -37,3 +37,17 @@ async def test_refresh_token_revoked(session, default_tenant):
     await jwt_tokens.revoke_refresh_token(session, token)
     with pytest.raises(NotFoundError):
         await jwt_tokens.consume_refresh_token(session, token)
+
+
+def test_access_token_carries_superadmin_claim():
+    from quantuum.auth.jwt_tokens import issue_access_token, verify_access_token
+
+    tok = issue_access_token(1, None, True)
+    claims = verify_access_token(tok)
+    assert claims["sa"] is True
+    assert claims["tid"] is None
+
+    tok2 = issue_access_token(2, 5)
+    claims2 = verify_access_token(tok2)
+    assert claims2["sa"] is False
+    assert claims2["tid"] == 5

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from quantuum.api.deps import get_session
 from quantuum.api.schemas import MagicRequestIn, MagicRequestOut, RefreshIn, TokenOut
 from quantuum.auth import jwt_tokens, magic_link
-from quantuum.auth.identity import find_or_create_account_by_email
+from quantuum.auth.identity import find_or_create_account_by_email, find_superadmin_by_email
 from quantuum.common.exceptions import NotFoundError
 from quantuum.domain.tenants import get_default_tenant_id
 
@@ -22,9 +22,11 @@ async def magic_consume(token: str, session: AsyncSession = Depends(get_session)
     email = await magic_link.consume_magic_token(token)
     if email is None:
         raise HTTPException(status_code=400, detail="invalid or expired token")
-    tenant_id = await get_default_tenant_id(session)
-    account = await find_or_create_account_by_email(session, tenant_id=tenant_id, email=email)
-    access = jwt_tokens.issue_access_token(account.id, tenant_id)
+    account = await find_superadmin_by_email(session, email)
+    if account is None:
+        tenant_id = await get_default_tenant_id(session)
+        account = await find_or_create_account_by_email(session, tenant_id=tenant_id, email=email)
+    access = jwt_tokens.issue_access_token(account.id, account.tenant_id, account.is_superadmin)
     refresh = await jwt_tokens.issue_refresh_token(session, account.id)
     return TokenOut(access_token=access, refresh_token=refresh)
 
@@ -35,7 +37,7 @@ async def refresh(body: RefreshIn, session: AsyncSession = Depends(get_session))
         account = await jwt_tokens.consume_refresh_token(session, body.refresh_token)
     except NotFoundError as exc:
         raise HTTPException(status_code=401, detail="invalid refresh token") from exc
-    access = jwt_tokens.issue_access_token(account.id, account.tenant_id)
+    access = jwt_tokens.issue_access_token(account.id, account.tenant_id, account.is_superadmin)
     return TokenOut(access_token=access, refresh_token=body.refresh_token)
 
 

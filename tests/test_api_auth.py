@@ -38,3 +38,25 @@ async def test_magic_login_flow(client, default_tenant, monkeypatch):
     me = await client.get("/v1/me", headers={"Authorization": f"Bearer {body['access_token']}"})
     assert me.status_code == 200
     assert me.json()["tenant_id"] == default_tenant.id
+
+
+async def test_superadmin_magic_login_issues_sa_token(client, session, monkeypatch):
+    from quantuum.auth import jwt_tokens, magic_link
+    from quantuum.db.models import Account, AccountIdentity
+
+    acc = Account(tenant_id=None, is_superadmin=True)
+    session.add(acc)
+    await session.flush()
+    session.add(AccountIdentity(account_id=acc.id, provider="magic_link", email="root@x.com"))
+    await session.commit()
+
+    async def fake_send(to_email, link):
+        return None
+
+    monkeypatch.setattr(magic_link, "send_magic_email", fake_send)
+    token = await magic_link.create_magic_token("root@x.com")
+    r = await client.get(f"/auth/magic/consume?token={token}")
+    assert r.status_code == 200
+    claims = jwt_tokens.verify_access_token(r.json()["access_token"])
+    assert claims["sa"] is True
+    assert claims["tid"] is None

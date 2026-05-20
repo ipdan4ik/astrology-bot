@@ -23,3 +23,18 @@ async def test_tg_identity_creates_balance(session, default_tenant):
     bal = await session.get(AccountBalance, acc.id)
     assert bal is not None
     assert bal.free_trial_used is False
+
+
+async def test_find_superadmin_by_email(session):
+    from quantuum.auth.identity import find_superadmin_by_email
+    from quantuum.db.models import Account, AccountIdentity
+
+    acc = Account(tenant_id=None, is_superadmin=True)
+    session.add(acc)
+    await session.flush()
+    session.add(AccountIdentity(account_id=acc.id, provider="magic_link", email="sa@x.com"))
+    await session.commit()
+
+    found = await find_superadmin_by_email(session, "sa@x.com")
+    assert found is not None and found.id == acc.id
+    assert await find_superadmin_by_email(session, "nobody@x.com") is None
