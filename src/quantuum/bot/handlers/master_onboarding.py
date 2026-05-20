@@ -7,7 +7,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
 from quantuum.bot.ui.callbacks import OwnerOnboardCb
-from quantuum.bot.ui.keyboards import cancel_kb
 from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.invites import get_invite_by_code, invite_is_usable
@@ -37,7 +36,13 @@ async def slug_is_available(session, slug: str) -> bool:
     return result.scalar_one_or_none() is None
 
 
-async def get_invite_by_code_or_id(session, invite_id: int):
+def master_cancel_kb():
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="Отмена", callback_data=OwnerOnboardCb(action="cancel").pack()))
+    return builder.as_markup()
+
+
+async def get_invite_by_id(session, invite_id: int):
     from quantuum.db.models import TenantInvite
 
     return await session.get(TenantInvite, invite_id)
@@ -63,7 +68,7 @@ async def on_start_with_code(message: Message, command: CommandObject, state: FS
     prefill = f" (предложено: {invite.preset_slug})" if invite.preset_slug else ""
     await message.answer(
         f"Добро пожаловать! Давай создадим бота. Введи slug тенанта (латиница, без пробелов){prefill}:",
-        reply_markup=cancel_kb(),
+        reply_markup=master_cancel_kb(),
     )
 
 
@@ -122,7 +127,7 @@ async def on_confirm(
     owner_tg_id = query.from_user.id
     owner_chat_id = chat_id if chat_id is not None else query.message.chat.id
     async with get_sessionmaker()() as session:
-        invite = await get_invite_by_code_or_id(session, data["invite_id"])
+        invite = await get_invite_by_id(session, data["invite_id"])
         if invite is None or not invite_is_usable(invite):
             await query.message.answer("Приглашение больше недействительно.")
             await state.clear()

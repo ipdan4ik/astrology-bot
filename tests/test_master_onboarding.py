@@ -9,6 +9,15 @@ async def test_slug_is_available(session, default_tenant):
     assert await slug_is_available(session, "default") is False
 
 
+def test_master_cancel_kb_uses_owner_callback():
+    from quantuum.bot.handlers.master_onboarding import master_cancel_kb
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    kb = master_cancel_kb()
+    cb = kb.inline_keyboard[0][0].callback_data
+    assert OwnerOnboardCb.unpack(cb).action == "cancel"
+
+
 def test_owner_onboard_callback_roundtrip():
     from quantuum.bot.ui.callbacks import OwnerOnboardCb
 
