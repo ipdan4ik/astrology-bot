@@ -24,3 +24,13 @@ def test_blueprint_defaults():
 async def test_default_tenant_fixture(default_tenant):
     assert default_tenant.id is not None
     assert default_tenant.slug == "default"
+
+
+async def test_bootstrap_seeds_default_tenant(session):
+    from quantuum.db.bootstrap import ensure_default_tenant
+    from quantuum.domain.tenants import get_default_tenant_id
+
+    t1 = await ensure_default_tenant(session)
+    t2 = await ensure_default_tenant(session)  # idempotent
+    assert t1.id == t2.id
+    assert await get_default_tenant_id(session) == t1.id
