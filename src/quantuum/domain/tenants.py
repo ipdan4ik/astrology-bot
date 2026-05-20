@@ -60,3 +60,8 @@ async def account_has_role(session, *, tenant_id: int, account_id: int, role: st
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def get_platform_tenant_id(session) -> int | None:
+    result = await session.execute(select(Tenant.id).where(Tenant.is_platform == True))  # noqa: E712
+    return result.scalar_one_or_none()

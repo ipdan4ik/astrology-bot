@@ -4,7 +4,12 @@ import asyncio
 
 from quantuum.bot.app import create_dispatcher
 from quantuum.bot.botpool import build_bots
-from quantuum.db.bootstrap import ensure_default_tenant, ensure_default_tenant_bot
+from quantuum.db.bootstrap import (
+    ensure_default_tenant,
+    ensure_default_tenant_bot,
+    ensure_master_bot,
+    ensure_platform_tenant,
+)
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.tenants import list_active_tenant_bots
 from quantuum.logging_setup import configure_logging, get_logger
@@ -17,6 +22,8 @@ async def run() -> None:
     async with get_sessionmaker()() as session:
         await ensure_default_tenant(session)
         await ensure_default_tenant_bot(session)
+        await ensure_platform_tenant(session)
+        await ensure_master_bot(session)
         rows = await list_active_tenant_bots(session, transport="polling")
     pool = build_bots(rows)
     dp = create_dispatcher()
