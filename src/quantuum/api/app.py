@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import FastAPI, Request
 
-from quantuum.api.routes import auth, health, me
+from quantuum.api.routes import auth, health, me, webhook
 from quantuum.logging_setup import bind_request_id, configure_logging
 
 
@@ -21,6 +21,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(me.router)
+    app.include_router(webhook.router)
 
     from quantuum.common.exceptions import NotFoundError
     from fastapi.responses import JSONResponse
