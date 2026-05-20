@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -45,6 +46,33 @@ def parse_coords(text: str) -> tuple[Decimal, Decimal] | None:
         return Decimal(parts[0]), Decimal(parts[1])
     except (InvalidOperation, ValueError):
         return None
+
+
+def is_valid_timezone(text: str) -> bool:
+    try:
+        ZoneInfo(text.strip())
+        return True
+    except (ZoneInfoNotFoundError, ValueError):
+        return False
+
+
+def build_profile_data(raw: dict, timezone: str) -> dict:
+    """Reconstruct typed profile values from the FSM's string-only storage.
+
+    FSM data must be JSON-serializable, so dates/times/decimals are stored as
+    strings (via isoformat / str). Parse them back symmetrically here — using
+    fromisoformat (not the input-validation parse_* helpers, which only accept
+    the user-facing HH:MM / YYYY-MM-DD entry formats).
+    """
+    return {
+        "full_name": raw["full_name"],
+        "birth_date": date.fromisoformat(raw["birth_date"]),
+        "birth_time": time.fromisoformat(raw["birth_time"]),
+        "birth_place": raw["birth_place"],
+        "latitude": Decimal(raw["latitude"]),
+        "longitude": Decimal(raw["longitude"]),
+        "timezone": timezone.strip(),
+    }
 
 
 async def save_collected_profile(session, *, account: Account, data: dict):
@@ -118,16 +146,13 @@ async def on_coords(message: Message, state: FSMContext) -> None:
 
 @router.message(Onboarding.timezone)
 async def on_timezone(message: Message, state: FSMContext, account: Account) -> None:
+    if not is_valid_timezone(message.text):
+        await message.answer(
+            "Не понял таймзону. Нужна IANA-зона, например Europe/Moscow или Asia/Irkutsk:"
+        )
+        return
     raw = await state.get_data()
-    data = {
-        "full_name": raw["full_name"],
-        "birth_date": parse_birth_date(raw["birth_date"]),
-        "birth_time": parse_birth_time(raw["birth_time"]),
-        "birth_place": raw["birth_place"],
-        "latitude": Decimal(raw["latitude"]),
-        "longitude": Decimal(raw["longitude"]),
-        "timezone": message.text.strip(),
-    }
+    data = build_profile_data(raw, message.text)
     async with get_sessionmaker()() as session:
         await save_collected_profile(session, account=account, data=data)
     await state.clear()

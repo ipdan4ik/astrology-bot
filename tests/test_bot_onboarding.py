@@ -44,3 +44,32 @@ async def test_finish_onboarding_saves_profile(session, default_tenant):
     )
     assert profile.id is not None
     assert profile.full_name == "Anna"
+
+
+def test_build_profile_data_roundtrips_isoformat_time():
+    # on_birth_time stores time as isoformat ("HH:MM:SS"); reconstruction must
+    # not drop it to None (regression: parse_birth_time only accepted "HH:MM").
+    from quantuum.bot.handlers.onboarding import build_profile_data
+
+    raw = {
+        "full_name": "Даниил",
+        "birth_date": "2001-03-04",
+        "birth_time": "10:30:00",
+        "birth_place": "Bratsk",
+        "latitude": "55.7558",
+        "longitude": "37.6173",
+    }
+    data = build_profile_data(raw, "Europe/Moscow")
+    assert data["birth_time"] == time(10, 30)
+    assert data["birth_date"] == date(2001, 3, 4)
+    assert data["latitude"] == Decimal("55.7558")
+    assert data["timezone"] == "Europe/Moscow"
+
+
+def test_is_valid_timezone():
+    from quantuum.bot.handlers.onboarding import is_valid_timezone
+
+    assert is_valid_timezone("Europe/Moscow")
+    assert is_valid_timezone("Asia/Irkutsk")
+    assert not is_valid_timezone("/blueprint")
+    assert not is_valid_timezone("Mars/Phobos")

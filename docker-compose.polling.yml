@@ -1,0 +1,6 @@
+# Override: run the bot-worker in long-polling mode instead of the
+# webhook -> Redis queue consumer. Use for local dev without a public URL:
+#   docker compose -f docker-compose.yml -f docker-compose.polling.yml up -d
+services:
+  bot-worker:
+    command: uv run python -m quantuum.bot.polling
