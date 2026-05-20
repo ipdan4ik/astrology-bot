@@ -49,3 +49,9 @@ async def test_roles(session, default_tenant):
     await grant_role(session, tenant_id=default_tenant.id, account_id=acc.id, role="owner")
     assert await account_has_role(session, tenant_id=default_tenant.id, account_id=acc.id, role="owner") is True
     await grant_role(session, tenant_id=default_tenant.id, account_id=acc.id, role="owner")  # idempotent
+
+
+async def test_resolve_large_bot_id_no_int4_overflow(session, default_tenant):
+    big = 7123456789  # exceeds int4 max (2,147,483,647) — must be BigInteger
+    await _bot(session, default_tenant.id, bot_id=big, secret="big-bot")
+    assert await resolve_tenant_id_by_bot(session, big) == default_tenant.id

@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from quantuum.common.datetime import utcnow
@@ -40,7 +40,10 @@ class TenantBot(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: int = Field(foreign_key="tenants.id", index=True)
-    bot_telegram_id: int | None = Field(default=None, unique=True, index=True)
+    bot_telegram_id: int | None = Field(
+        default=None,
+        sa_column=Column(BigInteger, unique=True, index=True, nullable=True),
+    )
     bot_username: str | None = None
     bot_token_enc: bytes
     transport: str = "polling"  # polling|webhook

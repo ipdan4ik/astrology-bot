@@ -25,7 +25,7 @@ def upgrade() -> None:
     op.create_table('tenant_bots',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('tenant_id', sa.Integer(), nullable=False),
-    sa.Column('bot_telegram_id', sa.Integer(), nullable=True),
+    sa.Column('bot_telegram_id', sa.BigInteger(), nullable=True),
     sa.Column('bot_username', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('bot_token_enc', sa.LargeBinary(), nullable=False),
     sa.Column('transport', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
