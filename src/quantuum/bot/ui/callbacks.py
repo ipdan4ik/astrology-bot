@@ -19,3 +19,7 @@ class BlueprintCb(CallbackData, prefix="bp"):
 
 class OnboardCb(CallbackData, prefix="onb"):
     action: str  # start | cancel
+
+
+class OwnerOnboardCb(CallbackData, prefix="own"):
+    action: str  # confirm | cancel
