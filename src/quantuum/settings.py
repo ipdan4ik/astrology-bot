@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     webhook_secret_path: str = ""
     bot_token_enc_key: str = ""
     default_bot_transport: str = "polling"
+    master_bot_token: str = ""
+    master_bot_username: str = ""
+    bootstrap_superadmin_email: str = ""
+    platform_tenant_slug: str = "platform"
+    platform_tenant_name: str = "Quantuum Platform"
     api_host: str = "http://localhost:8000"
     smtp_host: str | None = None
     smtp_port: int = 587
