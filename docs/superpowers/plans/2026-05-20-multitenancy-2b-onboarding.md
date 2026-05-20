@@ -2415,3 +2415,13 @@ git commit -m "chore(2b): compose/.env master bot + superadmin env, flow docs"
 **Placeholder scan:** none — every code step is complete. Migration uses a concrete handwritten revision id.
 
 **Type/name consistency:** `issue_access_token(account_id, tenant_id, is_superadmin=False)` used consistently (Tasks 4, 6 tests). `validate_bot_token`/`finalize_provisioning`/`create_tenant_from_onboarding` signatures match across domain, task, and handlers. `WebhookConsumer.process` and `split_by_platform` referenced consistently in tests.
+
+## 2b runtime flow
+
+1. Superadmin calls `POST /admin/platform/invites` → receives a `t.me/masterbot?start=<code>` deeplink.
+2. Prospective tenant owner opens the deeplink → master bot receives `/start <code>` → FSM validates invite and enters `collecting_info`.
+3. FSM prompts for slug, display name, and language; owner replies → state advances through `collecting_slug` → `collecting_name` → `collecting_lang`.
+4. Owner sends `/confirm` → handler calls `create_tenant_from_onboarding`, which creates a provisioning-status tenant and enqueues the `provision_tenant` arq task.
+5. `provision_tenant` task attempts the BotFather API; on failure (or always in fallback mode) it sets tenant status to `awaiting_manual_token` and the master bot sends the owner a prompt to paste a BotFather token.
+6. Owner pastes the token → `awaiting_manual_token` FSM handler calls `validate_bot_token` (Telegram `getMe`) to verify the token, then `finalize_provisioning`: encrypts and stores the token, creates the owner `Account` + `TenantRole`, and sets tenant status to `active`.
+7. Bot goes live on the next bot-worker restart: `runner.py` queries all active `tenant_bots` rows and starts a polling loop (or registers a webhook) for each, including the newly activated bot.

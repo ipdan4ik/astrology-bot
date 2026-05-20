@@ -35,6 +35,8 @@ services:
     build: .
     command: uv run uvicorn quantuum.api.app:create_app --factory --host 0.0.0.0 --port 8000
     env_file: .env
+    environment:
+      BOOTSTRAP_SUPERADMIN_EMAIL: ${BOOTSTRAP_SUPERADMIN_EMAIL:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -47,6 +49,9 @@ services:
     build: .
     command: uv run python -m quantuum.bot.runner
     env_file: .env
+    environment:
+      MASTER_BOT_TOKEN: ${MASTER_BOT_TOKEN:-}
+      MASTER_BOT_USERNAME: ${MASTER_BOT_USERNAME:-}
     depends_on:
       migration:
         condition: service_completed_successfully
@@ -57,6 +62,9 @@ services:
     build: .
     command: uv run arq quantuum.tasks.worker.WorkerSettings
     env_file: .env
+    environment:
+      MASTER_BOT_TOKEN: ${MASTER_BOT_TOKEN:-}
+      MASTER_BOT_USERNAME: ${MASTER_BOT_USERNAME:-}
     depends_on:
       migration:
         condition: service_completed_successfully
