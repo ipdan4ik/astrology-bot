@@ -28,6 +28,7 @@ def profile_to_kwargs(profile) -> dict:
         "latitude": profile.latitude,
         "longitude": profile.longitude,
         "timezone": profile.timezone,
+        "for_year": profile.for_year,
     }
 
 

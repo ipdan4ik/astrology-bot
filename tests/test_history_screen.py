@@ -38,3 +38,51 @@ async def test_fetch_history_window_orders_desc(session, default_tenant):
     window = await fetch_history_window(session, account_id=acc.id, page=0)
     assert window[0].id == second.id  # newest first
     assert window[1].id == first.id
+
+
+async def test_history_open_rejects_other_account(session, default_tenant):
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers.history import on_open
+    from quantuum.bot.ui.callbacks import HistoryCb
+    from quantuum.domain.blueprints import create_blueprint, set_status
+
+    owner, profile = await _acc(session, default_tenant.id)
+    bp = await create_blueprint(
+        session, tenant_id=default_tenant.id, account_id=owner.id, natal_profile_id=profile.id
+    )
+    await set_status(session, bp.id, "done", llm_md="SECRET-CONTENT")
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+
+    attacker = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="999"
+    )
+    query = AsyncMock()
+    await on_open(query, HistoryCb(action="open", bp_id=bp.id), attacker)
+    query.answer.assert_awaited_with("Не найдено", show_alert=True)
+    query.message.answer.assert_not_called()
+
+
+async def test_history_download_rejects_other_account(session, default_tenant):
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers.history import on_download
+    from quantuum.bot.ui.callbacks import BlueprintCb
+    from quantuum.domain.blueprints import create_blueprint, set_status
+
+    owner, profile = await _acc(session, default_tenant.id)
+    bp = await create_blueprint(
+        session, tenant_id=default_tenant.id, account_id=owner.id, natal_profile_id=profile.id
+    )
+    await set_status(session, bp.id, "done", llm_md="SECRET-CONTENT")
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+
+    attacker = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="998"
+    )
+    query = AsyncMock()
+    await on_download(query, BlueprintCb(action="download", bp_id=bp.id), attacker)
+    query.answer.assert_awaited_with("Недоступно", show_alert=True)
+    query.message.answer_document.assert_not_called()
