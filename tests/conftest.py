@@ -25,6 +25,21 @@ async def reset_redis():
         await rc._redis.aclose()
         rc._redis = None
 
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_db_session():
+    """Reset the global DB engine/sessionmaker singletons before each test so each test
+    gets a fresh engine bound to its own event loop."""
+    import quantuum.db.session as dbs
+
+    dbs._engine = None
+    dbs._sessionmaker = None
+    yield
+    if dbs._engine is not None:
+        await dbs._engine.dispose()
+        dbs._engine = None
+        dbs._sessionmaker = None
+
 from quantuum.db.models import SQLModel  # noqa: E402
 
 
