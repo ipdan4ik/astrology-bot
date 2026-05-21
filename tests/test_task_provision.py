@@ -26,6 +26,7 @@ class _Ctx:
 
 async def test_provision_falls_back_to_manual_token(session):
     invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()  # create_invite now flushes; commit so the provision task sees it
     tenant = await create_tenant_from_onboarding(
         session, invite=invite, slug="fb", display_name="FB",
         default_lang="ru", owner_tg_id=42, owner_chat_id=42,

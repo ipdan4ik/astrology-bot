@@ -208,9 +208,9 @@ async def on_transfer_cmd(
     if resolved is None:
         await message.answer(await i18n("owner.transfer.not_owner"))
         return
-    tenant, actor = resolved
+    tenant, _actor = resolved
     await state.set_state(OwnerTransfer.awaiting_target)
-    await state.update_data(tenant_id=tenant.id, actor_id=actor)
+    await state.update_data(tenant_id=tenant.id)
     await message.answer(await i18n("owner.transfer.prompt"))
 
 

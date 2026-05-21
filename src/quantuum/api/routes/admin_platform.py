@@ -222,6 +222,10 @@ async def put_llm_config_route(
     session: AsyncSession = Depends(get_session),
 ) -> LLMConfigOut:
     provided = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not provided:
+        # No-op PUT: return the current config without writing a spurious audit row.
+        cfg = await get_llm_config(session)
+        return _llm_config_out(cfg)
     cfg = await set_llm_config(session, actor_id=admin.id, **provided)
     await record_audit(
         session,

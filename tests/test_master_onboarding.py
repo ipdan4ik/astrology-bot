@@ -78,6 +78,7 @@ async def test_confirm_creates_tenant_and_enqueues(session, default_tenant, monk
     monkeypatch.setattr(mo, "enqueue_provision_tenant", fake_enqueue)
 
     invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()  # create_invite now flushes; commit so a fresh session would see it
     state = _FakeState({"invite_id": invite.id, "slug": "acme", "display_name": "Acme", "default_lang": "ru"})
     query = AsyncMock()
     query.from_user = SimpleNamespace(id=555)
@@ -122,6 +123,7 @@ async def test_manual_token_finalizes(session, default_tenant, monkeypatch):
     monkeypatch.setattr(mo, "validate_bot_token", fake_validate)
 
     invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()  # create_invite now flushes; commit so a fresh session would see it
     tenant = await create_tenant_from_onboarding(
         session, invite=invite, slug="zen", display_name="Zen",
         default_lang="ru", owner_tg_id=777, owner_chat_id=777,
@@ -150,6 +152,7 @@ async def test_manual_token_rejects_invalid(session, default_tenant, monkeypatch
     monkeypatch.setattr(mo, "validate_bot_token", fake_validate)
 
     invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()  # create_invite now flushes; commit so a fresh session would see it
     tenant = await create_tenant_from_onboarding(
         session, invite=invite, slug="bad", display_name="Bad",
         default_lang="ru", owner_tg_id=1, owner_chat_id=1,

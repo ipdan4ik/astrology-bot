@@ -184,6 +184,27 @@ async def test_put_llm_config_customer_forbidden(client, customer_headers):
     assert r.status_code == 403
 
 
+async def test_put_llm_config_all_none_writes_no_audit(client, sa_headers, session):
+    """An all-None PUT is a no-op: returns 200 with current config, no audit row."""
+    r = await client.put(
+        "/admin/platform/llm",
+        json={},
+        headers=sa_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    # Returns the current (default) config
+    assert "model" in body
+    assert "provider" in body
+    assert "api_key" not in body
+
+    # No spurious audit entry was written
+    result = await session.execute(
+        select(AuditLog).where(AuditLog.action == "platform.llm.update")
+    )
+    assert result.scalars().all() == []
+
+
 async def test_put_llm_config_ignores_none_fields(client, sa_headers):
     """Omitted fields stay at defaults; only provided fields are stored."""
     from quantuum.settings import get_settings

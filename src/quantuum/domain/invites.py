@@ -31,7 +31,7 @@ async def create_invite(
         preset_default_lang=preset_default_lang,
     )
     session.add(invite)
-    await session.commit()
+    await session.flush()
     await session.refresh(invite)
     return invite
 
@@ -52,7 +52,7 @@ async def revoke_invite(session, invite_id: int) -> TenantInvite | None:
         return None
     invite.status = "revoked"
     session.add(invite)
-    await session.commit()
+    await session.flush()
     await session.refresh(invite)
     return invite
 
