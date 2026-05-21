@@ -31,3 +31,8 @@ async def enqueue_transit(report_id: int, chat_id: int | None = None, request_id
 async def enqueue_provision_tenant(tenant_id: int) -> None:
     pool = await _get_pool()
     await pool.enqueue_job("provision_tenant", tenant_id)
+
+
+async def enqueue_daily(account_id: int) -> None:
+    pool = await _get_pool()
+    await pool.enqueue_job("daily_generate", account_id)
