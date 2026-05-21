@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     bootstrap_superadmin_email: str = ""
     platform_tenant_slug: str = "platform"
     platform_tenant_name: str = "Quantuum Platform"
+    platform_fee_pct: int = 30
     api_host: str = "http://localhost:8000"
     smtp_host: str | None = None
     smtp_port: int = 587

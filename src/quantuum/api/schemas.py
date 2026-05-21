@@ -175,3 +175,27 @@ class PackagePlanAdminOut(PackagePlanOut):
 
 class PurchaseIn(BaseModel):
     plan_id: int
+
+
+class PayoutCalculateIn(BaseModel):
+    tenant_id: int
+    period_start: datetime
+    period_end: datetime
+
+
+class PayoutMarkPaidIn(BaseModel):
+    external_ref: str
+
+
+class PayoutOut(BaseModel):
+    id: int
+    tenant_id: int
+    period_start: str
+    period_end: str
+    gross_amount_cents: int
+    platform_fee_cents: int
+    net_amount_cents: int
+    currency: str
+    status: str
+    external_ref: str | None
+    paid_at: str | None
