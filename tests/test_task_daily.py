@@ -71,7 +71,7 @@ async def test_daily_generate_happy(session, default_tenant, monkeypatch):
     assert row.status == "done"
     assert row.horoscope_md == "DAILY BLURB"
     assert row.transit_md and "Active now" in row.transit_md
-    assert row.llm_tokens_in == 5 and row.llm_provider == "anthropic"
+    assert row.llm_tokens_in == 5 and row.llm_provider == "openai"
     settings = await session.get(DailySubscription, acc.id)
     assert settings.last_sent_on is not None
     deliver.assert_awaited_once()

@@ -1,6 +1,6 @@
 import re
 
-import anthropic
+import openai
 
 from quantuum.llm.base import LLMError, LLMResult
 
@@ -14,15 +14,15 @@ def _strip_markdown_fence(text: str) -> str:
     return m.group(1).strip() if m else trimmed
 
 
-class AnthropicClient:
-    """Wraps anthropic.AsyncAnthropic.
+class OpenAIClient:
+    """Wraps openai.AsyncOpenAI.
 
     The underlying SDK object is stored as ``self._client`` so tests can
     monkeypatch it without making network calls.
     """
 
     def __init__(self, *, api_key: str) -> None:
-        self._client = anthropic.AsyncAnthropic(api_key=api_key)
+        self._client = openai.AsyncOpenAI(api_key=api_key)
 
     async def complete(
         self,
@@ -34,27 +34,26 @@ class AnthropicClient:
         max_tokens: int,
     ) -> LLMResult:
         try:
-            resp = await self._client.messages.create(
+            resp = await self._client.chat.completions.create(
                 model=model,
-                system=system,
-                max_tokens=max_tokens,
                 temperature=temperature,
-                messages=[{"role": "user", "content": user}],
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
             )
-        except anthropic.AnthropicError as exc:
+        except openai.OpenAIError as exc:
             raise LLMError(str(exc)) from exc
         except Exception as exc:
             raise LLMError(str(exc)) from exc
 
-        raw_text = "".join(
-            getattr(block, "text", "")
-            for block in resp.content
-            if getattr(block, "type", "text") == "text"
-        )
+        raw_text = resp.choices[0].message.content or ""
         text = _strip_markdown_fence(raw_text)
+        usage = resp.usage
         return LLMResult(
             text=text,
             model=resp.model,
-            tokens_in=resp.usage.input_tokens,
-            tokens_out=resp.usage.output_tokens,
+            tokens_in=getattr(usage, "prompt_tokens", 0) if usage else 0,
+            tokens_out=getattr(usage, "completion_tokens", 0) if usage else 0,
         )
