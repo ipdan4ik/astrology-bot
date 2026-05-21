@@ -7,15 +7,19 @@ from sqlmodel import select
 
 from quantuum.api.deps import get_session, require_tenant_role
 from quantuum.api.schemas import (
+    AccountDetailOut,
     AccountSummaryOut,
     AuditEntryOut,
     BalancePatchIn,
+    BlueprintSummaryOut,
     ConfigPutIn,
     LanguageOut,
     LanguagesPutIn,
     PackagePlanAdminOut,
     PackagePlanCreateIn,
     PackagePlanPatchIn,
+    PaymentSummaryOut,
+    RequestSummaryOut,
     RoleIn,
     RoleOut,
     StringOut,
@@ -34,7 +38,10 @@ from quantuum.common.datetime import utcnow
 from quantuum.db.models import (
     Account,
     AccountBalance,
+    Blueprint,
     PackagePlan,
+    Payment,
+    Request,
     SubscriptionPlan,
     Tenant,
     TenantBot,
@@ -915,6 +922,121 @@ async def patch_account_balance(
     await session.refresh(target)
     await session.refresh(bal)
     return _account_summary_out(target, bal)
+
+
+# ---------------------------------------------------------------------------
+# Plan 5d Task 5 — Per-account / tenant read lists (owner + admin, read-only)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{tenant_id}/accounts/{account_id}",
+    response_model=AccountDetailOut,
+)
+async def get_tenant_account(
+    tenant_id: int,
+    account_id: int,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> AccountDetailOut:
+    target = await session.get(Account, account_id)
+    if target is None or target.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="account not found")
+
+    bal = await session.get(AccountBalance, account_id)
+    return AccountDetailOut(
+        id=target.id,
+        created_at=target.created_at,
+        last_seen_at=target.last_seen_at,
+        package_credits=bal.package_credits if bal is not None else 0,
+        subscription_active_until=(
+            bal.subscription_active_until if bal is not None else None
+        ),
+        free_trial_used=bal.free_trial_used if bal is not None else False,
+    )
+
+
+@router.get("/{tenant_id}/blueprints", response_model=list[BlueprintSummaryOut])
+async def list_tenant_blueprints(
+    tenant_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[BlueprintSummaryOut]:
+    result = await session.execute(
+        select(Blueprint)
+        .where(Blueprint.tenant_id == tenant_id)
+        .order_by(Blueprint.created_at.desc(), Blueprint.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return [
+        BlueprintSummaryOut(
+            id=b.id,
+            account_id=b.account_id,
+            status=b.status,
+            created_at=b.created_at,
+            completed_at=b.completed_at,
+        )
+        for b in result.scalars().all()
+    ]
+
+
+@router.get("/{tenant_id}/requests", response_model=list[RequestSummaryOut])
+async def list_tenant_requests(
+    tenant_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[RequestSummaryOut]:
+    result = await session.execute(
+        select(Request)
+        .where(Request.tenant_id == tenant_id)
+        .order_by(Request.created_at.desc(), Request.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return [
+        RequestSummaryOut(
+            id=r.id,
+            account_id=r.account_id,
+            kind=r.kind,
+            status=r.status,
+            created_at=r.created_at,
+        )
+        for r in result.scalars().all()
+    ]
+
+
+@router.get("/{tenant_id}/payments", response_model=list[PaymentSummaryOut])
+async def list_tenant_payments(
+    tenant_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[PaymentSummaryOut]:
+    result = await session.execute(
+        select(Payment)
+        .where(Payment.tenant_id == tenant_id)
+        .order_by(Payment.created_at.desc(), Payment.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return [
+        PaymentSummaryOut(
+            id=p.id,
+            account_id=p.account_id,
+            amount_cents=p.amount_cents,
+            currency=p.currency,
+            status=p.status,
+            created_at=p.created_at,
+            paid_at=p.paid_at,
+        )
+        for p in result.scalars().all()
+    ]
 
 
 # ---------------------------------------------------------------------------

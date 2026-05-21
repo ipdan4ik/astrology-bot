@@ -344,6 +344,46 @@ class BalancePatchIn(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Per-account / tenant read lists (Plan 5d, Task 5)
+# ---------------------------------------------------------------------------
+
+
+class AccountDetailOut(BaseModel):
+    id: int
+    created_at: datetime
+    last_seen_at: datetime | None
+    package_credits: int
+    subscription_active_until: datetime | None
+    free_trial_used: bool
+
+
+class BlueprintSummaryOut(BaseModel):
+    id: int
+    account_id: int
+    status: str
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class RequestSummaryOut(BaseModel):
+    id: int
+    account_id: int
+    kind: str
+    status: str
+    created_at: datetime
+
+
+class PaymentSummaryOut(BaseModel):
+    id: int
+    account_id: int
+    amount_cents: int
+    currency: str
+    status: str
+    created_at: datetime
+    paid_at: datetime | None
+
+
+# ---------------------------------------------------------------------------
 # Tenant stats schema (Plan 5b, Task 12)
 # ---------------------------------------------------------------------------
 
