@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery, Message
 from quantuum.bot.handlers.generate import run_generate
 from quantuum.bot.handlers.history import show_history
 from quantuum.bot.handlers.profile import show_profile
+from quantuum.bot.handlers.qa import start_ask
 from quantuum.bot.ui import text
 from quantuum.bot.ui.callbacks import OnboardCb
 from quantuum.bot.ui.keyboards import main_menu_kb
@@ -16,6 +17,7 @@ router = Router()
 # Reply-menu button labels across every enabled language, so a button pressed
 # in any language routes to the right handler.
 _GENERATE_LABELS = text.menu_button_labels("btn.generate")
+_ASK_LABELS = text.menu_button_labels("btn.ask")
 _PROFILE_LABELS = text.menu_button_labels("btn.profile")
 _HISTORY_LABELS = text.menu_button_labels("btn.history")
 _HELP_LABELS = text.menu_button_labels("btn.help")
@@ -31,6 +33,11 @@ async def on_generate_btn(
     message: Message, account: Account, chat_id: int, i18n: Translator
 ) -> None:
     await run_generate(message, account, chat_id, i18n)
+
+
+@router.message(F.text.in_(_ASK_LABELS))
+async def on_ask_btn(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await start_ask(message, state, i18n)
 
 
 @router.message(F.text.in_(_PROFILE_LABELS))

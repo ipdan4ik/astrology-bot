@@ -56,6 +56,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "ℹ️ Помощь",
         "en": "ℹ️ Help",
     },
+    "btn.ask": {
+        "ru": "❓ Спросить астролога",
+        "en": "❓ Ask the astrologer",
+    },
     # -------------------------------------------------------------------------
     # Blueprint status words (used in history labels & detail views)
     # -------------------------------------------------------------------------
@@ -277,6 +281,33 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "generate.queued": {
         "ru": "Генерирую твой разбор, это займёт около минуты…",
         "en": "Generating your reading, this will take about a minute…",
+    },
+    # -------------------------------------------------------------------------
+    # Q&A astrologer
+    # -------------------------------------------------------------------------
+    "qa.ask_prompt": {
+        "ru": "Напиши свой вопрос астрологу:",
+        "en": "Send your question to the astrologer:",
+    },
+    "qa.thinking": {
+        "ru": "Думаю над ответом… ⏳",
+        "en": "Thinking about your answer… ⏳",
+    },
+    "qa.no_profile": {
+        "ru": "Сначала заполни натальный профиль (/profile).",
+        "en": "Fill in your natal profile first (/profile).",
+    },
+    "qa.no_quota": {
+        "ru": "Закончились разборы. Купи пакет или подписку, чтобы спрашивать астролога:",
+        "en": "You're out of credits. Buy a pack or subscription to ask the astrologer:",
+    },
+    "qa.too_long": {
+        "ru": "Вопрос слишком длинный (макс 1000 символов).",
+        "en": "Question is too long (max 1000 chars).",
+    },
+    "qa.empty": {
+        "ru": "Вопрос пустой. Напиши вопрос:",
+        "en": "Empty question. Please type your question:",
     },
     # -------------------------------------------------------------------------
     # History

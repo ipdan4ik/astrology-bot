@@ -30,10 +30,11 @@ async def _label(i18n: Translator | None, key: str) -> str:
 async def main_menu_kb(i18n: Translator) -> ReplyKeyboardMarkup:
     b = ReplyKeyboardBuilder()
     b.button(text=await i18n("btn.generate"))
+    b.button(text=await i18n("btn.ask"))
     b.button(text=await i18n("btn.profile"))
     b.button(text=await i18n("btn.history"))
     b.button(text=await i18n("btn.help"))
-    b.adjust(2, 2)
+    b.adjust(2, 2, 1)
     return b.as_markup(resize_keyboard=True, is_persistent=True)
 
 
