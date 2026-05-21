@@ -11,11 +11,13 @@ from quantuum.api.schemas import (
     NatalProfileIn,
     NatalProfileOut,
     PackagePlanOut,
+    PaymentOut,
     PlansOut,
+    SubscriptionOut,
     SubscriptionPlanOut,
 )
 from quantuum.common.exceptions import InsufficientFundsError
-from quantuum.db.models import Account, AccountBalance, Blueprint
+from quantuum.db.models import Account, AccountBalance, AccountSubscription, Blueprint, Payment
 from quantuum.domain.plans import list_package_plans, list_subscription_plans
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
@@ -212,3 +214,40 @@ async def get_plans(
             for p in pkgs
         ],
     )
+
+
+@router.get("/subscriptions", response_model=list[SubscriptionOut])
+async def list_subscriptions(
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> list[SubscriptionOut]:
+    result = await session.execute(
+        select(AccountSubscription)
+        .where(AccountSubscription.account_id == account.id)
+        .order_by(AccountSubscription.id.desc())
+    )
+    return [
+        SubscriptionOut(
+            id=s.id, plan_id=s.plan_id, status=s.status,
+            started_at=s.started_at.isoformat(), ends_at=s.ends_at.isoformat(),
+        )
+        for s in result.scalars().all()
+    ]
+
+
+@router.get("/payments", response_model=list[PaymentOut])
+async def list_payments(
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> list[PaymentOut]:
+    result = await session.execute(
+        select(Payment).where(Payment.account_id == account.id).order_by(Payment.id.desc())
+    )
+    return [
+        PaymentOut(
+            id=p.id, amount_cents=p.amount_cents, currency=p.currency, status=p.status,
+            created_at=p.created_at.isoformat(),
+            paid_at=p.paid_at.isoformat() if p.paid_at else None,
+        )
+        for p in result.scalars().all()
+    ]

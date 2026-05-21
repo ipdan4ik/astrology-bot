@@ -42,3 +42,33 @@ async def test_get_plans(client, auth):
     body = r.json()
     assert {p["slug"] for p in body["subscriptions"]} == {"monthly"}
     assert {p["slug"] for p in body["packages"]} == {"pack_small", "pack_large"}
+
+
+async def test_get_subscriptions_and_payments(client, auth, session, default_tenant):
+    from quantuum.common.datetime import utcnow
+    from quantuum.db.models import AccountSubscription, Payment, SubscriptionPlan
+
+    # find the account id from the token-bound balance row created in the auth fixture
+    from sqlmodel import select
+    acc_id = (await session.execute(select(Account.id))).scalars().first()
+
+    plan = SubscriptionPlan(slug="m", name="M", period_days=30, price_cents=250)
+    session.add(plan)
+    await session.flush()
+    session.add(AccountSubscription(
+        tenant_id=default_tenant.id, account_id=acc_id, plan_id=plan.id,
+        status="active", started_at=utcnow(), ends_at=utcnow(),
+    ))
+    session.add(Payment(
+        tenant_id=default_tenant.id, account_id=acc_id, amount_cents=250,
+        currency="XTR", status="paid",
+    ))
+    await session.commit()
+
+    rs = await client.get("/v1/me/subscriptions", headers=auth)
+    assert rs.status_code == 200
+    assert any(s["status"] == "active" for s in rs.json())
+
+    rp = await client.get("/v1/me/payments", headers=auth)
+    assert rp.status_code == 200
+    assert any(p["amount_cents"] == 250 and p["status"] == "paid" for p in rp.json())

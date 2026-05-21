@@ -110,3 +110,20 @@ class PackagePlanOut(BaseModel):
 class PlansOut(BaseModel):
     subscriptions: list[SubscriptionPlanOut]
     packages: list[PackagePlanOut]
+
+
+class SubscriptionOut(BaseModel):
+    id: int
+    plan_id: int
+    status: str
+    started_at: str
+    ends_at: str
+
+
+class PaymentOut(BaseModel):
+    id: int
+    amount_cents: int
+    currency: str
+    status: str
+    created_at: str
+    paid_at: str | None
