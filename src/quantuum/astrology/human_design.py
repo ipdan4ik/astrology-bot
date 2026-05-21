@@ -143,7 +143,7 @@ HdBody = Literal[
 ]
 
 
-def body_longitude(body: str, date: datetime) -> float:
+def body_longitude(body: HdBody, date: datetime) -> float:
     if body == "Earth":
         return norm360(ecliptic_longitude("Sun", date) + 180)
     if body == "NorthNode":
@@ -166,7 +166,7 @@ CenterName = Literal[
     "Root",
 ]
 
-GATES_BY_CENTER: dict[str, list[int]] = {
+GATES_BY_CENTER: dict[CenterName, list[int]] = {
     "Head": [64, 61, 63],
     "Ajna": [47, 24, 4, 17, 43, 11],
     "Throat": [62, 23, 56, 16, 35, 12, 45, 33, 8, 31, 20],
@@ -253,6 +253,12 @@ HdAuthority = Literal[
 ]
 
 
+@dataclass(frozen=True)
+class Definition:
+    kind: str
+    components: int
+
+
 class OrderedCenterSet:
     """Insertion-ordered set of center names (JS Set semantics).
 
@@ -263,10 +269,10 @@ class OrderedCenterSet:
     def __init__(self) -> None:
         self._d: dict[str, None] = {}
 
-    def add(self, center: str) -> None:
+    def add(self, center: CenterName) -> None:
         self._d.setdefault(center, None)
 
-    def has(self, center: str) -> bool:
+    def has(self, center: CenterName) -> bool:
         return center in self._d
 
     def __contains__(self, center: object) -> bool:
@@ -309,14 +315,14 @@ def path_exists(adj: dict[str, set[str]], frm: str, to: str) -> bool:
     return False
 
 
-def determine_type(defined: OrderedCenterSet, active_channels: list[Channel]) -> str:
+def determine_type(defined: OrderedCenterSet, active_channels: list[Channel]) -> HdType:
     if defined.size == 0:
         return "Reflector"
     adj = center_links(active_channels)
     sacral_defined = defined.has("Sacral")
-    motor_to_throat = any(
-        c in MOTORS and defined.has("Throat") and path_exists(adj, c, "Throat")
-        for c in defined
+    throat_defined = defined.has("Throat")
+    motor_to_throat = throat_defined and any(
+        c in MOTORS and path_exists(adj, c, "Throat") for c in defined
     )
     if sacral_defined and motor_to_throat:
         return "Manifesting Generator"
@@ -327,9 +333,7 @@ def determine_type(defined: OrderedCenterSet, active_channels: list[Channel]) ->
     return "Projector"
 
 
-def determine_authority(
-    type_: str, defined: OrderedCenterSet, active_channels: list[Channel]
-) -> str:
+def determine_authority(type_: HdType, defined: OrderedCenterSet) -> HdAuthority:
     if type_ == "Reflector":
         return "Lunar (Reflector)"
     if defined.has("Solar Plexus"):
@@ -345,7 +349,7 @@ def determine_authority(
     return "Mental (Outer)"
 
 
-def determine_strategy(type_: str) -> str:
+def determine_strategy(type_: HdType) -> str:
     return {
         "Manifestor": "Inform before acting",
         "Generator": "Wait to respond",
@@ -355,7 +359,7 @@ def determine_strategy(type_: str) -> str:
     }[type_]
 
 
-def determine_signature(type_: str) -> str:
+def determine_signature(type_: HdType) -> str:
     if type_ == "Manifestor":
         return "Peace"
     if type_ in ("Generator", "Manifesting Generator"):
@@ -365,7 +369,7 @@ def determine_signature(type_: str) -> str:
     return "Surprise"  # Reflector
 
 
-def determine_not_self(type_: str) -> str:
+def determine_not_self(type_: HdType) -> str:
     if type_ == "Manifestor":
         return "Anger"
     if type_ in ("Generator", "Manifesting Generator"):
@@ -377,10 +381,10 @@ def determine_not_self(type_: str) -> str:
 
 def determine_definition(
     defined: OrderedCenterSet, active_channels: list[Channel]
-) -> dict[str, object]:
+) -> Definition:
     """Count connected components of defined centers reachable via active channels."""
     if defined.size == 0:
-        return {"kind": "None (Reflector)", "components": 0}
+        return Definition(kind="None (Reflector)", components=0)
     adj = center_links(active_channels)
     seen: set[str] = set()
     components = 0
@@ -403,10 +407,10 @@ def determine_definition(
         3: "Triple-Split Definition",
         4: "Quadruple-Split Definition",
     }
-    return {
-        "kind": kind_map.get(components, f"{components} components"),
-        "components": components,
-    }
+    return Definition(
+        kind=kind_map.get(components, f"{components} components"),
+        components=components,
+    )
 
 
 def classify_incarnation_cross(p_sun_line: int, d_sun_line: int) -> str:
@@ -438,17 +442,11 @@ class IncarnationCross:
     design_sun: GateActivation
     design_earth: GateActivation
 
-    def __getitem__(self, key: str) -> object:
-        return getattr(self, key)
-
 
 @dataclass
 class Variables:
     right_left_mind: str
     right_left_body: str
-
-    def __getitem__(self, key: str) -> object:
-        return getattr(self, key)
 
 
 @dataclass
@@ -459,13 +457,13 @@ class HumanDesignChart:
     active_gates: set[int]
     defined_centers: OrderedCenterSet
     active_channels: list[Channel]
-    type: str
+    type: HdType
     strategy: str
-    authority: str
+    authority: HdAuthority
     profile: str
     signature: str
     not_self: str
-    definition: dict[str, object]
+    definition: Definition
     incarnation_cross: IncarnationCross
     variables: Variables
 
@@ -519,7 +517,7 @@ def calculate_human_design(birth: datetime) -> HumanDesignChart:
         defined_centers.add(GATE_TO_CENTER[ch.gates[1]])
 
     type_ = determine_type(defined_centers, active_channels)
-    authority = determine_authority(type_, defined_centers, active_channels)
+    authority = determine_authority(type_, defined_centers)
     definition = determine_definition(defined_centers, active_channels)
     strategy = determine_strategy(type_)
     signature = determine_signature(type_)
