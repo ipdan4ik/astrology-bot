@@ -2,8 +2,10 @@ from collections.abc import Awaitable, Callable
 
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from quantuum.bot.ui.callbacks import BuyCb
 from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
@@ -15,6 +17,14 @@ from quantuum.domain.requests import create_request
 from quantuum.tasks.enqueue import enqueue_blueprint
 
 router = Router()
+
+
+def _buy_offer_kb():
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="💳 Купить разборы", callback_data=BuyCb(action="open").pack())
+    )
+    return builder.as_markup()
 
 
 async def request_blueprint_for_account(
@@ -55,8 +65,8 @@ async def run_generate(message: Message, account: Account, chat_id: int) -> None
         await message.answer("Сначала заполни профиль:", reply_markup=profile_kb(has_profile=False))
     elif status == "no_quota":
         await message.answer(
-            "Бесплатная генерация уже использована. Подписка и пакеты появятся в "
-            "следующем обновлении."
+            "Бесплатная генерация уже использована. Купи пакет разборов или подписку:",
+            reply_markup=_buy_offer_kb(),
         )
     else:
         await message.answer("Генерирую твой разбор, это займёт около минуты…")
