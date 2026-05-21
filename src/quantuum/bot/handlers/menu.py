@@ -7,6 +7,7 @@ from quantuum.bot.handlers.history import show_history
 from quantuum.bot.handlers.profile import show_profile
 from quantuum.bot.handlers.qa import start_ask
 from quantuum.bot.handlers.transits import run_transits
+from quantuum.bot.handlers.daily import run_daily_settings
 from quantuum.bot.ui import text
 from quantuum.bot.ui.callbacks import OnboardCb
 from quantuum.bot.ui.keyboards import main_menu_kb
@@ -20,6 +21,7 @@ router = Router()
 _GENERATE_LABELS = text.menu_button_labels("btn.generate")
 _ASK_LABELS = text.menu_button_labels("btn.ask")
 _TRANSITS_LABELS = text.menu_button_labels("btn.transits")
+_DAILY_LABELS = text.menu_button_labels("btn.daily")
 _PROFILE_LABELS = text.menu_button_labels("btn.profile")
 _HISTORY_LABELS = text.menu_button_labels("btn.history")
 _HELP_LABELS = text.menu_button_labels("btn.help")
@@ -45,6 +47,11 @@ async def on_ask_btn(message: Message, state: FSMContext, i18n: Translator) -> N
 @router.message(F.text.in_(_TRANSITS_LABELS))
 async def on_transits_btn(message: Message, account: Account, i18n: Translator) -> None:
     await run_transits(message, None, account, i18n)
+
+
+@router.message(F.text.in_(_DAILY_LABELS))
+async def on_daily_btn(message: Message, account: Account, i18n: Translator) -> None:
+    await run_daily_settings(message, account, i18n)
 
 
 @router.message(F.text.in_(_PROFILE_LABELS))

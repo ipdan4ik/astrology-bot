@@ -57,6 +57,13 @@ async def list_active_tenant_bots(session, transport: str | None = None) -> list
     return list(result.scalars().all())
 
 
+async def get_active_tenant_bot(session, tenant_id: int) -> TenantBot | None:
+    result = await session.execute(
+        select(TenantBot).where(TenantBot.tenant_id == tenant_id, TenantBot.status == "active")
+    )
+    return result.scalars().first()
+
+
 async def grant_role(
     session, *, tenant_id: int, account_id: int, role: str, granted_by_account_id: int | None = None
 ) -> None:

@@ -203,6 +203,45 @@ class TransitReport(SQLModel, table=True):
     completed_at: datetime | None = _dt_field(default=None)
 
 
+class DailySubscription(SQLModel, table=True):
+    __tablename__ = "daily_subscriptions"
+
+    account_id: int = Field(foreign_key="accounts.id", primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    enabled: bool = False
+    send_hour: int = 9  # user's preferred LOCAL hour, 0-23
+    last_sent_on: date | None = None  # user's local date of last successful send
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    updated_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class DailyHoroscope(SQLModel, table=True):
+    __tablename__ = "daily_horoscopes"
+    __table_args__ = (
+        Index("ix_daily_horoscopes_tenant_created", "tenant_id", "created_at"),
+        UniqueConstraint("account_id", "local_date", name="uq_daily_horoscope_account_date"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    natal_profile_id: int = Field(foreign_key="natal_profiles.id")
+    local_date: date
+    transit_md: str | None = None
+    horoscope_md: str | None = None
+    lang: str | None = None
+    # No "pending" state (unlike QaAnswer/TransitReport): the row is created only
+    # when generation starts, via claim_horoscope (the unique guard claims the day).
+    status: str = "generating"  # generating|done|failed
+    error: str | None = None
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    llm_tokens_in: int | None = None
+    llm_tokens_out: int | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    completed_at: datetime | None = _dt_field(default=None)
+
+
 class Request(SQLModel, table=True):
     __tablename__ = "requests"
 

@@ -19,6 +19,7 @@ def create_dispatcher() -> Dispatcher:
     dp.callback_query.middleware(AccountMiddleware())
     from quantuum.bot.handlers import (
         buy,
+        daily,
         generate,
         history,
         menu,
@@ -33,6 +34,7 @@ def create_dispatcher() -> Dispatcher:
     dp.include_router(buy.router)
     dp.include_router(qa.router)
     dp.include_router(transits.router)
+    dp.include_router(daily.router)
     dp.include_router(generate.router)
     dp.include_router(profile.router)
     dp.include_router(history.router)
