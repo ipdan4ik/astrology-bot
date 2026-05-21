@@ -310,3 +310,54 @@ class TenantLicense(SQLModel, table=True):
     currency: str = "XTR"
     payment_provider_id: int | None = Field(default=None, foreign_key="payment_providers.id")
     created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class PlatformConfig(SQLModel, table=True):
+    __tablename__ = "platform_config"
+    key: str = Field(primary_key=True)
+    value_jsonb: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    updated_at: datetime = _dt_field(default_factory=utcnow)
+    updated_by_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+
+
+class TenantConfig(SQLModel, table=True):
+    __tablename__ = "tenant_config"
+    tenant_id: int = Field(foreign_key="tenants.id", primary_key=True)
+    key: str = Field(primary_key=True)
+    value_jsonb: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    updated_at: datetime = _dt_field(default_factory=utcnow)
+    updated_by_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+
+
+class PlatformString(SQLModel, table=True):
+    __tablename__ = "platform_strings"
+    key: str = Field(primary_key=True)
+    lang: str = Field(primary_key=True)
+    text: str
+
+
+class TenantStringOverride(SQLModel, table=True):
+    __tablename__ = "tenant_string_overrides"
+    tenant_id: int = Field(foreign_key="tenants.id", primary_key=True)
+    key: str = Field(primary_key=True)
+    lang: str = Field(primary_key=True)
+    text: str
+    updated_at: datetime = _dt_field(default_factory=utcnow)
+    updated_by_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+
+
+class TenantLanguage(SQLModel, table=True):
+    __tablename__ = "tenant_languages"
+    __table_args__ = (
+        Index(
+            "uq_tenant_default_language",
+            "tenant_id",
+            unique=True,
+            postgresql_where=text("is_default = true"),
+        ),
+    )
+    tenant_id: int = Field(foreign_key="tenants.id", primary_key=True)
+    lang: str = Field(primary_key=True)
+    enabled: bool = True
+    is_default: bool = False
+    created_at: datetime = _dt_field(default_factory=utcnow)
