@@ -293,7 +293,9 @@ def render_daily_md(report: TransitReport, *, ahead_days: int = 3) -> str:
     """Compact daily grounding: active aspects now + exacts within *ahead_days*.
 
     Distinct from render_transits_md (the full 90-day 3-table report). Used to
-    ground the short daily-horoscope narration.
+    ground the short daily-horoscope narration. Deliberately omits the current-sky
+    table and the retrograde marker to keep the grounding terse — the daily blurb
+    leads with the active-now aspects, so that extra detail is not surfaced here.
     """
     cutoff = report.as_of + timedelta(days=ahead_days)
     lines: list[str] = []
