@@ -162,6 +162,11 @@ _UNDEFINED_CENTER_ORDER = [
 ]
 
 
+def _bump(counts: dict[str, int], key: str) -> None:
+    """Increment a tally counter in-place."""
+    counts[key] = counts.get(key, 0) + 1
+
+
 def personal_year_theme(personal_year: int) -> dict[str, str]:
     return PERSONAL_YEAR_THEMES.get(
         personal_year,
@@ -183,6 +188,9 @@ def build_blueprint(inp: BlueprintInput) -> str:
     yyyy, mm, dd = (int(x) for x in inp.birth_date.split("-"))
     birth_hour, birth_minute = (int(x) for x in inp.birth_time.split(":"))
 
+    # Integer epoch-ms mirrors JS `new Date().getTime()` / `Date.toISOString()` —
+    # keep as int so to_iso_z() produces the exact same millisecond string the TS
+    # implementation does.  Do NOT simplify away the ms intermediate.
     birth_ms = round((birth.astimezone(timezone.utc) - EPOCH).total_seconds() * 1000)
 
     # 1. Tropical western chart ---------------------------------------------
@@ -193,14 +201,13 @@ def build_blueprint(inp: BlueprintInput) -> str:
     mc_lon = midheaven_longitude(birth, inp.longitude)
     asc_sd = to_sign_degree(asc_lon)
     mc_sd = to_sign_degree(mc_lon)
-    ws_houses = [to_sign_degree(x) for x in whole_sign_houses(asc_lon)]
-    porphyry_houses = [
-        to_sign_degree(x) for x in placidus_cusps(birth, inp.latitude, inp.longitude)
-    ]
-    nodes = lunar_nodes(birth)
-
+    # Compute raw cusp lists once; derive the SignDegree lists from them so each
+    # pure function is called exactly once.
     ws_cusps_raw = whole_sign_houses(asc_lon)
     porphyry_cusps_raw = placidus_cusps(birth, inp.latitude, inp.longitude)
+    ws_houses = [to_sign_degree(x) for x in ws_cusps_raw]
+    porphyry_houses = [to_sign_degree(x) for x in porphyry_cusps_raw]
+    nodes = lunar_nodes(birth)
     house_assignments = [
         {
             "planet": p,
@@ -329,16 +336,13 @@ def build_blueprint(inp: BlueprintInput) -> str:
     element_tally: dict[str, int] = {"Fire": 0, "Earth": 0, "Air": 0, "Water": 0}
     modality_tally: dict[str, int] = {"Cardinal": 0, "Fixed": 0, "Mutable": 0}
 
-    def bump(counts: dict[str, int], key: str) -> None:
-        counts[key] = counts.get(key, 0) + 1
-
     for p in ALL_PLANETS:
-        bump(element_tally, ELEMENTS[planets[p].sign])
-        bump(modality_tally, MODALITIES[planets[p].sign])
-    bump(element_tally, ELEMENTS[asc_sd.sign])
-    bump(modality_tally, MODALITIES[asc_sd.sign])
-    bump(element_tally, ELEMENTS[mc_sd.sign])
-    bump(modality_tally, MODALITIES[mc_sd.sign])
+        _bump(element_tally, ELEMENTS[planets[p].sign])
+        _bump(modality_tally, MODALITIES[planets[p].sign])
+    _bump(element_tally, ELEMENTS[asc_sd.sign])
+    _bump(modality_tally, MODALITIES[asc_sd.sign])
+    _bump(element_tally, ELEMENTS[mc_sd.sign])
+    _bump(modality_tally, MODALITIES[mc_sd.sign])
 
     push("### Elemental & Modality Balance")
     push("")
