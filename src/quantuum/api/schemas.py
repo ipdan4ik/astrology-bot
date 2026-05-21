@@ -221,3 +221,20 @@ class TenantDetailOut(BaseModel):
 class TenantPatchIn(BaseModel):
     display_name: str | None = None
     tier: str | None = None
+
+
+class RoleIn(BaseModel):
+    account_id: int
+    role: str
+
+
+class RoleOut(BaseModel):
+    id: int
+    account_id: int
+    role: str
+    granted_at: datetime
+
+
+class TransferIn(BaseModel):
+    new_owner_account_id: int
+    revoke_previous: bool = False

@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlmodel import select
 
 from quantuum.db.models import Tenant, TenantBot, TenantRole
@@ -84,3 +85,94 @@ async def account_has_role(session, *, tenant_id: int, account_id: int, role: st
 async def get_platform_tenant_id(session) -> int | None:
     result = await session.execute(select(Tenant.id).where(Tenant.is_platform == True))  # noqa: E712
     return result.scalar_one_or_none()
+
+
+# ---------------------------------------------------------------------------
+# Role management helpers (Tasks 5 + 6)
+# ---------------------------------------------------------------------------
+
+
+async def list_roles(session, tenant_id: int) -> list[TenantRole]:
+    """Return all TenantRole rows for a tenant."""
+    result = await session.execute(
+        select(TenantRole).where(TenantRole.tenant_id == tenant_id)
+    )
+    return list(result.scalars().all())
+
+
+async def revoke_role(session, role_id: int) -> TenantRole | None:
+    """Delete a TenantRole by id.  Returns the deleted row or None."""
+    role = await session.get(TenantRole, role_id)
+    if role is None:
+        return None
+    await session.delete(role)
+    await session.flush()
+    return role
+
+
+async def count_owners(session, tenant_id: int) -> int:
+    """Return the number of 'owner' roles for a tenant."""
+    result = await session.execute(
+        select(func.count()).where(
+            TenantRole.tenant_id == tenant_id,
+            TenantRole.role == "owner",
+        )
+    )
+    return result.scalar_one()
+
+
+async def transfer_ownership(
+    session,
+    *,
+    tenant_id: int,
+    new_owner_account_id: int,
+    revoke_previous: bool = False,
+    actor_id: int | None = None,
+) -> Tenant:
+    """Grant 'owner' to new_owner, update primary_owner_account_id.
+
+    If *revoke_previous* is True and there was a distinct prior primary owner,
+    that account's 'owner' role is revoked.
+
+    The caller is responsible for validating the target account and committing.
+    """
+    tenant = await session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise ValueError(f"tenant {tenant_id} not found")
+
+    prior_primary = tenant.primary_owner_account_id
+
+    # Grant owner role to new owner (idempotent — skip if already has it).
+    if not await account_has_role(
+        session, tenant_id=tenant_id, account_id=new_owner_account_id, role="owner"
+    ):
+        session.add(
+            TenantRole(
+                tenant_id=tenant_id,
+                account_id=new_owner_account_id,
+                role="owner",
+                granted_by_account_id=actor_id,
+            )
+        )
+        await session.flush()
+
+    # Update primary owner pointer.
+    tenant.primary_owner_account_id = new_owner_account_id
+    session.add(tenant)
+    await session.flush()
+
+    # Optionally revoke previous primary owner's role.
+    if revoke_previous and prior_primary is not None and prior_primary != new_owner_account_id:
+        result = await session.execute(
+            select(TenantRole).where(
+                TenantRole.tenant_id == tenant_id,
+                TenantRole.account_id == prior_primary,
+                TenantRole.role == "owner",
+            )
+        )
+        old_role = result.scalar_one_or_none()
+        if old_role is not None:
+            await session.delete(old_role)
+            await session.flush()
+
+    return tenant
