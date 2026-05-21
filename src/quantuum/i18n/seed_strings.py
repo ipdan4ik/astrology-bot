@@ -64,6 +64,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "🌌 Транзиты",
         "en": "🌌 Transits",
     },
+    "btn.daily": {
+        "ru": "🔔 Ежедневный гороскоп",
+        "en": "🔔 Daily horoscope",
+    },
     # -------------------------------------------------------------------------
     # Blueprint status words (used in history labels & detail views)
     # -------------------------------------------------------------------------
@@ -331,6 +335,49 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "transit.failed": {
         "ru": "Не удалось посчитать транзиты. Попробуй позже.",
         "en": "Couldn't compute your transits. Try again later.",
+    },
+    # -------------------------------------------------------------------------
+    # Daily horoscope
+    # -------------------------------------------------------------------------
+    "daily.header": {
+        "ru": "🌟 Гороскоп на сегодня",
+        "en": "🌟 Today's horoscope",
+    },
+    "daily.status_on": {
+        "ru": "Ежедневный гороскоп включён. Время доставки: {hour}:00 (по твоему часовому поясу).",
+        "en": "Daily horoscope is ON. Delivery time: {hour}:00 (your timezone).",
+    },
+    "daily.status_off": {
+        "ru": "Ежедневный гороскоп выключен.",
+        "en": "Daily horoscope is OFF.",
+    },
+    "daily.not_subscriber": {
+        "ru": "Ежедневный гороскоп доступен по подписке. Оформи подписку, чтобы получать его каждое утро:",
+        "en": "The daily horoscope is a subscriber feature. Subscribe to get it every morning:",
+    },
+    "daily.no_profile": {
+        "ru": "Сначала заполни натальный профиль (/profile).",
+        "en": "Fill in your natal profile first (/profile).",
+    },
+    "daily.enabled": {
+        "ru": "Включил ежедневный гороскоп ✅",
+        "en": "Daily horoscope enabled ✅",
+    },
+    "daily.disabled": {
+        "ru": "Выключил ежедневный гороскоп.",
+        "en": "Daily horoscope disabled.",
+    },
+    "daily.hour_set": {
+        "ru": "Время доставки: {hour}:00 ✅",
+        "en": "Delivery time: {hour}:00 ✅",
+    },
+    "daily.kb.turn_on": {
+        "ru": "🔔 Включить",
+        "en": "🔔 Turn on",
+    },
+    "daily.kb.turn_off": {
+        "ru": "🔕 Выключить",
+        "en": "🔕 Turn off",
     },
     # -------------------------------------------------------------------------
     # History

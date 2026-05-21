@@ -34,3 +34,8 @@ class BuyCb(CallbackData, prefix="buy"):
     action: str  # open | pick
     kind: str = ""  # subscription | package
     plan_id: int = 0
+
+
+class DailyCb(CallbackData, prefix="daily"):
+    action: str  # toggle | set_hour
+    value: int = 0  # hour for set_hour
