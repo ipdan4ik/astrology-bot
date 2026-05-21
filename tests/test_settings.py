@@ -22,3 +22,9 @@ def test_settings_have_2b_defaults():
     assert defaults["bootstrap_superadmin_email"].default == ""
     assert defaults["platform_tenant_slug"].default == "platform"
     assert defaults["platform_tenant_name"].default == "Quantuum Platform"
+
+
+def test_bot_reload_interval_default():
+    from quantuum.settings import Settings
+
+    assert Settings.model_fields["bot_reload_interval_seconds"].default == 10.0
