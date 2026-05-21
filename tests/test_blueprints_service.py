@@ -1,5 +1,4 @@
 from quantuum.domain.blueprints import create_blueprint, get_blueprint, set_status
-from quantuum.domain.mock_blueprint import MOCK_BLUEPRINT_MD
 
 
 async def _profile(session, tenant_id):
@@ -27,11 +26,6 @@ async def _profile(session, tenant_id):
     return acc, profile
 
 
-def test_mock_blueprint_nonempty():
-    assert MOCK_BLUEPRINT_MD.startswith("#")
-    assert len(MOCK_BLUEPRINT_MD) > 200
-
-
 async def test_create_and_transition(session, default_tenant):
     acc, profile = await _profile(session, default_tenant.id)
     bp = await create_blueprint(
@@ -39,10 +33,10 @@ async def test_create_and_transition(session, default_tenant):
     )
     assert bp.status == "pending"
 
-    await set_status(session, bp.id, "done", llm_md=MOCK_BLUEPRINT_MD)
+    await set_status(session, bp.id, "done", llm_md="# done md")
     reloaded = await get_blueprint(session, bp.id)
     assert reloaded.status == "done"
-    assert reloaded.llm_md == MOCK_BLUEPRINT_MD
+    assert reloaded.llm_md == "# done md"
     assert reloaded.completed_at is not None
 
 

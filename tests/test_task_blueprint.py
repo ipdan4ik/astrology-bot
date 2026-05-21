@@ -2,9 +2,14 @@ from unittest.mock import AsyncMock
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
-from quantuum.domain.mock_blueprint import MOCK_BLUEPRINT_MD
 from quantuum.domain.natal_profiles import upsert_natal_profile
+from quantuum.llm.base import LLMResult
 from quantuum.tasks.blueprint import blueprint_generate
+
+
+class FakeLLM:
+    async def complete(self, *, system, user, model, temperature, max_tokens):
+        return LLMResult(text="POLISHED REPORT", tokens_in=11, tokens_out=22, model="claude-test")
 
 
 async def _setup(session, tenant_id):
@@ -56,7 +61,7 @@ async def test_blueprint_generate_failure_refunds(session, default_tenant, monke
 
     monkeypatch.setattr(bp_mod, "set_status", boom)
 
-    ctx = {"sessionmaker": _Maker(), "bot": bot}
+    ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": None}
     await bp_mod.blueprint_generate(ctx, bp.id, chat_id=None, request_id=req.id)
 
     # trial restored
@@ -65,11 +70,10 @@ async def test_blueprint_generate_failure_refunds(session, default_tenant, monke
     assert bal.free_trial_used is False
 
 
-async def test_blueprint_generate_sets_done_and_sends(session, default_tenant):
+async def test_blueprint_generate_real_engine_with_llm(session, default_tenant):
     acc, bp = await _setup(session, default_tenant.id)
     bot = AsyncMock()
 
-    # ctx mimics what arq's startup provides: a sessionmaker and a bot.
     class _Maker:
         def __call__(self):
             return _Ctx(session)
@@ -82,10 +86,40 @@ async def test_blueprint_generate_sets_done_and_sends(session, default_tenant):
         async def __aexit__(self, *a):
             return False
 
-    ctx = {"sessionmaker": _Maker(), "bot": bot}
+    ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": FakeLLM()}
     await blueprint_generate(ctx, bp.id, chat_id=999)
 
     reloaded = await get_blueprint(session, bp.id)
     assert reloaded.status == "done"
-    assert reloaded.llm_md == MOCK_BLUEPRINT_MD
+    assert reloaded.calc_md.startswith("# Quantuum Blueprint —")
+    assert reloaded.llm_md == "POLISHED REPORT"
+    assert reloaded.llm_tokens_in == 11
+    assert reloaded.llm_provider == "anthropic"
+    assert reloaded.llm_model == "claude-test"
+    bot.send_document.assert_awaited()
+
+
+async def test_blueprint_generate_without_llm_falls_back_to_calc_md(session, default_tenant):
+    acc, bp = await _setup(session, default_tenant.id)
+    bot = AsyncMock()
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx(session)
+
+    class _Ctx:
+        def __init__(self, s):
+            self._s = s
+        async def __aenter__(self):
+            return self._s
+        async def __aexit__(self, *a):
+            return False
+
+    ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": None}
+    await blueprint_generate(ctx, bp.id, chat_id=999)
+
+    reloaded = await get_blueprint(session, bp.id)
+    assert reloaded.status == "done"
+    assert reloaded.llm_md == reloaded.calc_md
+    assert reloaded.llm_provider == "none"
     bot.send_document.assert_awaited()
