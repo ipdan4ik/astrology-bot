@@ -66,11 +66,14 @@ async def seeded_platform(session, default_tenant):
     a2 = Account(tenant_id=ta.id, last_seen_at=now - timedelta(days=2))
     # tenant B: 1 account, seen recently
     b1 = Account(tenant_id=tb.id, last_seen_at=now - timedelta(hours=5))
-    session.add_all([a1, a2, b1])
+    # platform tenant: 1 internal account (master-bot onboarding activity) — must NOT be counted
+    p_acc = Account(tenant_id=default_tenant.id, last_seen_at=now - timedelta(hours=1))
+    session.add_all([a1, a2, b1, p_acc])
     await session.flush()
     await session.refresh(a1)
     await session.refresh(a2)
     await session.refresh(b1)
+    await session.refresh(p_acc)
 
     # --- payments (paid within 30-day window) ---
     # tenant A: 2 paid customers, revenue 500 + 700 = 1200
@@ -99,7 +102,16 @@ async def seeded_platform(session, default_tenant):
         status="paid",
         paid_at=now - timedelta(days=2),
     )
-    session.add_all([pa1, pa2, pb1])
+    # platform tenant: 1 internal paid payment — must NOT be counted
+    p_pay = Payment(
+        tenant_id=default_tenant.id,
+        account_id=p_acc.id,
+        amount_cents=9999,
+        currency="XTR",
+        status="paid",
+        paid_at=now - timedelta(days=1),
+    )
+    session.add_all([pa1, pa2, pb1, p_pay])
     await session.flush()
 
     # --- requests in window ---
@@ -128,7 +140,7 @@ async def seeded_platform(session, default_tenant):
     await session.commit()
     await session.refresh(ta)
     await session.refresh(tb)
-    return {"tenant_a": ta, "tenant_b": tb, "default": default_tenant}
+    return {"tenant_a": ta, "tenant_b": tb, "default": default_tenant, "platform_account": p_acc, "platform_payment": p_pay}
 
 
 # ---------------------------------------------------------------------------
@@ -142,15 +154,19 @@ async def test_platform_stats_aggregates(session, seeded_platform):
 
     stats = await platform_stats(session, period_days=30)
 
-    # Global headline metrics (across all tenants)
+    # Global headline metrics must EXCLUDE the platform tenant's internal data.
+    # The platform tenant has 1 account (seen 1h ago) + 1 payment (9999 cents) seeded.
+    # Those must NOT appear in the headline numbers.
     assert stats["period_days"] == 30
-    # active_customers: 2 (tenant A) + 1 (tenant B) = 3
+    # active_customers: 2 (tenant A) + 1 (tenant B) = 3  (platform account excluded)
     assert stats["active_customers"] == 3
-    # paid_customers: distinct accounts that paid in window = a1, a2, b1 = 3
+    # dau: a1 (2h ago) + b1 (5h ago) = 2  (platform account seen 1h ago must be excluded)
+    assert stats["dau"] == 2
+    # paid_customers: distinct accounts that paid in window = a1, a2, b1 = 3  (platform excluded)
     assert stats["paid_customers"] == 3
-    # revenue: 500 + 700 + 900 = 2100
+    # revenue: 500 + 700 + 900 = 2100  (platform payment of 9999 excluded)
     assert stats["revenue_cents"] == 2100
-    # requests_by_kind summed globally
+    # requests_by_kind summed globally (no platform requests seeded)
     assert stats["requests_by_kind"]["blueprint"] == 2
     assert stats["requests_by_kind"]["profile"] == 1
 
@@ -168,6 +184,9 @@ async def test_platform_stats_aggregates(session, seeded_platform):
     assert per_tenant[tb.id]["active_customers"] == 1
     assert per_tenant[tb.id]["paid_customers"] == 1
     assert per_tenant[tb.id]["revenue_cents"] == 900
+
+    # Confirm the platform tenant itself has no entry in per_tenant
+    assert seeded_platform["default"].id not in per_tenant
 
 
 async def test_platform_stats_funnel(session, seeded_platform):
