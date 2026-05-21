@@ -60,6 +60,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "❓ Спросить астролога",
         "en": "❓ Ask the astrologer",
     },
+    "btn.transits": {
+        "ru": "🌌 Транзиты",
+        "en": "🌌 Transits",
+    },
     # -------------------------------------------------------------------------
     # Blueprint status words (used in history labels & detail views)
     # -------------------------------------------------------------------------
@@ -308,6 +312,25 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "qa.empty": {
         "ru": "Вопрос пустой. Напиши вопрос:",
         "en": "Empty question. Please type your question:",
+    },
+    # -------------------------------------------------------------------------
+    # Transits
+    # -------------------------------------------------------------------------
+    "transit.thinking": {
+        "ru": "Считаю транзиты… ⏳",
+        "en": "Calculating your transits… ⏳",
+    },
+    "transit.no_profile": {
+        "ru": "Сначала заполни натальный профиль (/profile).",
+        "en": "Fill in your natal profile first (/profile).",
+    },
+    "transit.no_quota": {
+        "ru": "Закончились разборы. Купи пакет или подписку, чтобы посмотреть транзиты:",
+        "en": "You're out of credits. Buy a pack or subscription to see your transits:",
+    },
+    "transit.failed": {
+        "ru": "Не удалось посчитать транзиты. Попробуй позже.",
+        "en": "Couldn't compute your transits. Try again later.",
     },
     # -------------------------------------------------------------------------
     # History

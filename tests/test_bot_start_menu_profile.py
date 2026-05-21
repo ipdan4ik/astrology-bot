@@ -62,7 +62,8 @@ async def test_on_start_sends_welcome_and_menu(session, default_tenant):
     menu_text, menu_markup = msg.answers[1]
     assert menu_text == "Главное меню:"
     assert set(_reply_texts(menu_markup)) == {
-        "🔮 Разбор", "❓ Спросить астролога", "👤 Профиль", "📜 История", "ℹ️ Помощь"
+        "🔮 Разбор", "❓ Спросить астролога", "🌌 Транзиты",
+        "👤 Профиль", "📜 История", "ℹ️ Помощь"
     }
 
 
@@ -74,7 +75,8 @@ async def test_on_help_btn_sends_help_text(session, default_tenant):
     assert "Quantuum Blueprint" in help_text
     assert "@quantuum_support" in help_text
     assert set(_reply_texts(markup)) == {
-        "🔮 Разбор", "❓ Спросить астролога", "👤 Профиль", "📜 История", "ℹ️ Помощь"
+        "🔮 Разбор", "❓ Спросить астролога", "🌌 Транзиты",
+        "👤 Профиль", "📜 История", "ℹ️ Помощь"
     }
 
 

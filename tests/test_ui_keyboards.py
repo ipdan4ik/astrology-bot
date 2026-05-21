@@ -22,7 +22,8 @@ async def test_main_menu_has_localised_buttons(session, default_tenant):
     i18n = await build_translator(session, default_tenant.id)
     kb = await main_menu_kb(i18n)
     assert set(_reply_texts(kb)) == {
-        "🔮 Разбор", "❓ Спросить астролога", "👤 Профиль", "📜 История", "ℹ️ Помощь"
+        "🔮 Разбор", "❓ Спросить астролога", "🌌 Транзиты",
+        "👤 Профиль", "📜 История", "ℹ️ Помощь",
     }
 
 
@@ -30,7 +31,8 @@ async def test_main_menu_respects_lang(session, default_tenant):
     i18n = await build_translator(session, default_tenant.id, lang="en")
     kb = await main_menu_kb(i18n)
     assert set(_reply_texts(kb)) == {
-        "🔮 Reading", "❓ Ask the astrologer", "👤 Profile", "📜 History", "ℹ️ Help"
+        "🔮 Reading", "❓ Ask the astrologer", "🌌 Transits",
+        "👤 Profile", "📜 History", "ℹ️ Help",
     }
 
 
