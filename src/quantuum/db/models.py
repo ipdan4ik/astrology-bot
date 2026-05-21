@@ -180,3 +180,32 @@ class AccountBalance(SQLModel, table=True):
     subscription_active_until: datetime | None = _dt_field(default=None)
     package_credits: int = 0
     updated_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class SubscriptionPlan(SQLModel, table=True):
+    __tablename__ = "subscription_plans"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int | None = Field(default=None, foreign_key="tenants.id", index=True)
+    slug: str = Field(index=True)
+    name: str
+    period_days: int  # MVP: integer days instead of calendar interval
+    price_cents: int  # for XTR this is the integer Star amount
+    currency: str = "XTR"
+    active: bool = True
+    created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class PackagePlan(SQLModel, table=True):
+    __tablename__ = "package_plans"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int | None = Field(default=None, foreign_key="tenants.id", index=True)
+    slug: str = Field(index=True)
+    name: str
+    request_count: int
+    price_cents: int  # for XTR this is the integer Star amount
+    currency: str = "XTR"
+    expires_after_days: int | None = None  # NULL = never expires
+    active: bool = True
+    created_at: datetime = _dt_field(default_factory=utcnow)
