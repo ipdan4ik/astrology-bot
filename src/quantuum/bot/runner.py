@@ -6,14 +6,16 @@ from quantuum.bot.app import create_dispatcher
 from quantuum.bot.botpool import build_bots
 from quantuum.bot.master_app import create_master_dispatcher
 from quantuum.db.bootstrap import (
+    ensure_base_strings,
     ensure_default_tenant,
     ensure_default_tenant_bot,
     ensure_master_bot,
     ensure_platform_stars_provider,
     ensure_platform_tenant,
+    ensure_tenant_default_language,
 )
 from quantuum.db.session import get_sessionmaker
-from quantuum.domain.tenants import get_platform_tenant_id, list_active_tenant_bots
+from quantuum.domain.tenants import get_default_tenant_id, get_platform_tenant_id, list_active_tenant_bots
 from quantuum.logging_setup import configure_logging, get_logger
 from quantuum.redis_client import pop_update
 
@@ -54,6 +56,9 @@ async def run() -> None:
         await ensure_platform_tenant(session)
         await ensure_master_bot(session)
         await ensure_platform_stars_provider(session)
+        await ensure_base_strings(session)
+        default_tenant_id = await get_default_tenant_id(session)
+        await ensure_tenant_default_language(session, default_tenant_id)
         rows = await list_active_tenant_bots(session, transport="webhook")
         platform_id = await get_platform_tenant_id(session)
 

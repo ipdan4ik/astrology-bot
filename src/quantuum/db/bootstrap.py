@@ -2,7 +2,7 @@ from sqlmodel import select
 
 from quantuum.common.crypto import encrypt_token
 from quantuum.common.datetime import utcnow
-from quantuum.db.models import Account, AccountIdentity, PackagePlan, SubscriptionPlan, Tenant, TenantBot
+from quantuum.db.models import Account, AccountIdentity, PackagePlan, PlatformString, SubscriptionPlan, Tenant, TenantBot, TenantLanguage
 from quantuum.domain.tenants import get_default_tenant_id
 from quantuum.settings import get_settings
 
@@ -144,3 +144,62 @@ async def ensure_platform_stars_provider(session) -> None:
 
     platform = await ensure_platform_tenant(session)
     await ensure_stars_provider(session, platform.id)
+
+
+async def ensure_base_strings(session) -> None:
+    """Idempotently INSERT missing (key, lang) rows into platform_strings.
+
+    Only inserts rows that do not already exist — existing rows are never
+    updated, so admin edits survive re-seed.  A single commit is issued at
+    the end only when at least one row was inserted.
+    """
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+
+    # Fetch all existing (key, lang) pairs in one query
+    result = await session.execute(select(PlatformString.key, PlatformString.lang))
+    existing: set[tuple[str, str]] = {(row[0], row[1]) for row in result.all()}
+
+    added = False
+    for key, lang_map in BASE_STRINGS.items():
+        for lang, text in lang_map.items():
+            if (key, lang) not in existing:
+                session.add(PlatformString(key=key, lang=lang, text=text))
+                added = True
+
+    if added:
+        await session.commit()
+
+
+async def ensure_tenant_default_language(
+    session,
+    tenant_id: int,
+    default_lang: str = "ru",
+    extra_langs: tuple[str, ...] = ("en",),
+) -> None:
+    """Idempotently ensure TenantLanguage rows for *tenant_id*.
+
+    * default_lang gets is_default=True, enabled=True.
+    * each lang in extra_langs gets is_default=False, enabled=True.
+    * Never creates duplicate rows; never flips an already-set default.
+    """
+    result = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
+    )
+    existing: dict[str, TenantLanguage] = {row.lang: row for row in result.scalars()}
+
+    all_langs = [(default_lang, True)] + [(lang, False) for lang in extra_langs]
+    added = False
+    for lang, is_default in all_langs:
+        if lang not in existing:
+            session.add(
+                TenantLanguage(
+                    tenant_id=tenant_id,
+                    lang=lang,
+                    enabled=True,
+                    is_default=is_default,
+                )
+            )
+            added = True
+
+    if added:
+        await session.commit()
