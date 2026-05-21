@@ -277,3 +277,26 @@ class StringOut(BaseModel):
 class ConfigPutIn(BaseModel):
     key: str
     value: dict
+
+
+# ---------------------------------------------------------------------------
+# Tenant plans + accounts schemas (Plan 5b, Tasks 10-11)
+# ---------------------------------------------------------------------------
+
+
+class TenantPlansOut(BaseModel):
+    subscriptions: list["SubscriptionPlanAdminOut"]
+    packages: list["PackagePlanAdminOut"]
+
+
+class AccountSummaryOut(BaseModel):
+    id: int
+    created_at: datetime
+    last_seen_at: datetime | None
+    package_credits: int
+    subscription_active_until: datetime | None
+
+
+class BalancePatchIn(BaseModel):
+    package_credits: int | None = None
+    subscription_active_until: datetime | None = None

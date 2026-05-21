@@ -1,26 +1,39 @@
 """Tenant admin routes: GET /admin/tenants/{tenant_id}, PATCH, pause, resume,
-roles CRUD, ownership transfer, and i18n/config admin (Plan 5b Tasks 7-9)."""
-from fastapi import APIRouter, Depends, HTTPException
+roles CRUD, ownership transfer, i18n/config admin (Plan 5b Tasks 7-9),
+tenant plans CRUD + accounts list/balance (Tasks 10-11)."""
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from quantuum.api.deps import get_session, require_tenant_role
 from quantuum.api.schemas import (
+    AccountSummaryOut,
+    BalancePatchIn,
     ConfigPutIn,
     LanguageOut,
     LanguagesPutIn,
+    PackagePlanAdminOut,
+    PackagePlanCreateIn,
+    PackagePlanPatchIn,
     RoleIn,
     RoleOut,
     StringOut,
     StringOverrideIn,
+    SubscriptionPlanAdminOut,
+    SubscriptionPlanCreateIn,
+    SubscriptionPlanPatchIn,
     TenantBotBrief,
     TenantDetailOut,
     TenantPatchIn,
+    TenantPlansOut,
     TransferIn,
 )
 from quantuum.common.datetime import utcnow
 from quantuum.db.models import (
     Account,
+    AccountBalance,
+    PackagePlan,
+    SubscriptionPlan,
     Tenant,
     TenantBot,
     TenantConfig,
@@ -615,3 +628,287 @@ async def put_tenant_config(
     await session.commit()
 
     return {"key": body.key, "value": body.value}
+
+
+# ---------------------------------------------------------------------------
+# Task 10 — Tenant plans CRUD (owner + admin)
+# ---------------------------------------------------------------------------
+
+
+def _sub_admin_out(p: SubscriptionPlan) -> SubscriptionPlanAdminOut:
+    return SubscriptionPlanAdminOut(
+        id=p.id, slug=p.slug, name=p.name, period_days=p.period_days,
+        price_cents=p.price_cents, currency=p.currency, active=p.active,
+        tenant_id=p.tenant_id,
+    )
+
+
+def _pkg_admin_out(p: PackagePlan) -> PackagePlanAdminOut:
+    return PackagePlanAdminOut(
+        id=p.id, slug=p.slug, name=p.name, request_count=p.request_count,
+        price_cents=p.price_cents, currency=p.currency,
+        expires_after_days=p.expires_after_days, active=p.active,
+        tenant_id=p.tenant_id,
+    )
+
+
+@router.get("/{tenant_id}/plans", response_model=TenantPlansOut)
+async def get_tenant_plans(
+    tenant_id: int,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> TenantPlansOut:
+    subs_result = await session.execute(
+        select(SubscriptionPlan)
+        .where(SubscriptionPlan.tenant_id == tenant_id)
+        .order_by(SubscriptionPlan.id)
+    )
+    pkgs_result = await session.execute(
+        select(PackagePlan)
+        .where(PackagePlan.tenant_id == tenant_id)
+        .order_by(PackagePlan.id)
+    )
+    return TenantPlansOut(
+        subscriptions=[_sub_admin_out(p) for p in subs_result.scalars().all()],
+        packages=[_pkg_admin_out(p) for p in pkgs_result.scalars().all()],
+    )
+
+
+@router.post(
+    "/{tenant_id}/plans/subscription",
+    response_model=SubscriptionPlanAdminOut,
+    status_code=201,
+)
+async def create_tenant_subscription_plan(
+    tenant_id: int,
+    body: SubscriptionPlanCreateIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> SubscriptionPlanAdminOut:
+    plan = SubscriptionPlan(
+        tenant_id=tenant_id, slug=body.slug, name=body.name,
+        period_days=body.period_days, price_cents=body.price_cents,
+        currency=body.currency,
+    )
+    session.add(plan)
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="plan.create",
+        entity_type="subscription_plan",
+        entity_id=plan.id,
+        payload={"slug": plan.slug},
+    )
+
+    await session.commit()
+    await session.refresh(plan)
+    return _sub_admin_out(plan)
+
+
+@router.post(
+    "/{tenant_id}/plans/package",
+    response_model=PackagePlanAdminOut,
+    status_code=201,
+)
+async def create_tenant_package_plan(
+    tenant_id: int,
+    body: PackagePlanCreateIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> PackagePlanAdminOut:
+    plan = PackagePlan(
+        tenant_id=tenant_id, slug=body.slug, name=body.name,
+        request_count=body.request_count, price_cents=body.price_cents,
+        currency=body.currency, expires_after_days=body.expires_after_days,
+    )
+    session.add(plan)
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="plan.create",
+        entity_type="package_plan",
+        entity_id=plan.id,
+        payload={"slug": plan.slug},
+    )
+
+    await session.commit()
+    await session.refresh(plan)
+    return _pkg_admin_out(plan)
+
+
+@router.patch(
+    "/{tenant_id}/plans/subscription/{plan_id}",
+    response_model=SubscriptionPlanAdminOut,
+)
+async def patch_tenant_subscription_plan(
+    tenant_id: int,
+    plan_id: int,
+    body: SubscriptionPlanPatchIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> SubscriptionPlanAdminOut:
+    plan = await session.get(SubscriptionPlan, plan_id)
+    if plan is None or plan.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="plan not found")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(plan, field, value)
+    session.add(plan)
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="plan.update",
+        entity_type="subscription_plan",
+        entity_id=plan_id,
+        payload=body.model_dump(exclude_unset=True),
+    )
+
+    await session.commit()
+    await session.refresh(plan)
+    return _sub_admin_out(plan)
+
+
+@router.patch(
+    "/{tenant_id}/plans/package/{plan_id}",
+    response_model=PackagePlanAdminOut,
+)
+async def patch_tenant_package_plan(
+    tenant_id: int,
+    plan_id: int,
+    body: PackagePlanPatchIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> PackagePlanAdminOut:
+    plan = await session.get(PackagePlan, plan_id)
+    if plan is None or plan.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="plan not found")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(plan, field, value)
+    session.add(plan)
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="plan.update",
+        entity_type="package_plan",
+        entity_id=plan_id,
+        payload=body.model_dump(exclude_unset=True),
+    )
+
+    await session.commit()
+    await session.refresh(plan)
+    return _pkg_admin_out(plan)
+
+
+# ---------------------------------------------------------------------------
+# Task 11 — Accounts list + balance (owner + admin)
+# ---------------------------------------------------------------------------
+
+
+def _account_summary_out(
+    acc: Account, bal: AccountBalance | None
+) -> AccountSummaryOut:
+    return AccountSummaryOut(
+        id=acc.id,
+        created_at=acc.created_at,
+        last_seen_at=acc.last_seen_at,
+        package_credits=bal.package_credits if bal is not None else 0,
+        subscription_active_until=(
+            bal.subscription_active_until if bal is not None else None
+        ),
+    )
+
+
+@router.get("/{tenant_id}/accounts", response_model=list[AccountSummaryOut])
+async def list_tenant_accounts(
+    tenant_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[AccountSummaryOut]:
+    result = await session.execute(
+        select(Account, AccountBalance)
+        .outerjoin(AccountBalance, AccountBalance.account_id == Account.id)
+        .where(Account.tenant_id == tenant_id)
+        .order_by(Account.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = result.all()
+    return [_account_summary_out(acc, bal) for acc, bal in rows]
+
+
+@router.patch(
+    "/{tenant_id}/accounts/{account_id}/balance",
+    response_model=AccountSummaryOut,
+)
+async def patch_account_balance(
+    tenant_id: int,
+    account_id: int,
+    body: BalancePatchIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> AccountSummaryOut:
+    target = await session.get(Account, account_id)
+    if target is None or target.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="account not found")
+
+    bal = await session.get(AccountBalance, account_id)
+    if bal is None:
+        bal = AccountBalance(account_id=account_id)
+        session.add(bal)
+        await session.flush()
+
+    before = {
+        "package_credits": bal.package_credits,
+        "subscription_active_until": (
+            bal.subscription_active_until.isoformat()
+            if bal.subscription_active_until is not None
+            else None
+        ),
+    }
+
+    if body.package_credits is not None:
+        bal.package_credits = body.package_credits
+    if body.subscription_active_until is not None:
+        bal.subscription_active_until = body.subscription_active_until
+    bal.updated_at = utcnow()
+    session.add(bal)
+    await session.flush()
+
+    after = {
+        "package_credits": bal.package_credits,
+        "subscription_active_until": (
+            bal.subscription_active_until.isoformat()
+            if bal.subscription_active_until is not None
+            else None
+        ),
+    }
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="account.balance_adjust",
+        entity_type="account_balance",
+        entity_id=account_id,
+        payload={"before": before, "after": after},
+    )
+
+    await session.commit()
+    await session.refresh(target)
+    await session.refresh(bal)
+    return _account_summary_out(target, bal)
