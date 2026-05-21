@@ -1,7 +1,8 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Index, Integer, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 from quantuum.common.datetime import utcnow
@@ -208,4 +209,71 @@ class PackagePlan(SQLModel, table=True):
     currency: str = "XTR"
     expires_after_days: int | None = None  # NULL = never expires
     active: bool = True
+    created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class PaymentProvider(SQLModel, table=True):
+    __tablename__ = "payment_providers"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    kind: str  # tg_stars|cloudpayments|cryptobot
+    config_enc: bytes = b""
+    active: bool = True
+    created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class Payment(SQLModel, table=True):
+    __tablename__ = "payments"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    provider_id: int | None = Field(default=None, foreign_key="payment_providers.id")
+    amount_cents: int
+    currency: str = "XTR"
+    external_id: str | None = Field(default=None, index=True)
+    status: str = "pending"  # pending|paid|refunded|failed
+    metadata_json: dict = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}"))
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    paid_at: datetime | None = _dt_field(default=None)
+    refunded_at: datetime | None = _dt_field(default=None)
+
+
+class AccountSubscription(SQLModel, table=True):
+    __tablename__ = "account_subscriptions"
+    __table_args__ = (
+        Index(
+            "uq_active_subscription_per_plan",
+            "account_id",
+            "plan_id",
+            unique=True,
+            postgresql_where=text("status IN ('active','grace')"),
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    plan_id: int = Field(foreign_key="subscription_plans.id")
+    status: str = "active"  # active|grace|expired|cancelled
+    started_at: datetime = _dt_field(default_factory=utcnow)
+    ends_at: datetime = _dt_field(default_factory=utcnow)
+    renewed_at: datetime | None = _dt_field(default=None)
+    cancelled_at: datetime | None = _dt_field(default=None)
+    payment_id: int | None = Field(default=None, foreign_key="payments.id")
+    created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class AccountPackage(SQLModel, table=True):
+    __tablename__ = "account_packages"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    plan_id: int = Field(foreign_key="package_plans.id")
+    requests_remaining: int
+    purchased_at: datetime = _dt_field(default_factory=utcnow)
+    expires_at: datetime | None = _dt_field(default=None)
+    payment_id: int | None = Field(default=None, foreign_key="payments.id")
     created_at: datetime = _dt_field(default_factory=utcnow)
