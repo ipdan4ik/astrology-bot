@@ -81,18 +81,13 @@ def _astro_time(dt: datetime) -> astronomy.Time:
 
 
 @dataclass(frozen=True)
-class Position:
+class Position(SignDegree):
     """A planet position: a SignDegree plus a retrograde flag.
 
-    Carries the same fields as SignDegree (longitude/sign/degree/minute/second)
-    so fmt_deg(position) works directly, plus `retrograde`.
+    Inherits longitude/sign/degree/minute/second from SignDegree so
+    fmt_deg(position) is type-correct (Position is a subtype of SignDegree).
     """
 
-    longitude: float
-    sign: str
-    degree: int
-    minute: int
-    second: int
     retrograde: bool
 
 
@@ -111,7 +106,7 @@ def _position_from(sd: SignDegree, retrograde: bool) -> Position:
 # Body mapping
 # ---------------------------------------------------------------------------
 
-BODY_MAP: dict[str, object] = {
+BODY_MAP: dict[str, "astronomy.Body | str"] = {
     "Sun": "sun",
     "Moon": "moon",
     "Mercury": astronomy.Body.Mercury,
@@ -207,6 +202,7 @@ def midheaven_longitude(dt: datetime, lon_deg: float) -> float:
     eps = mean_obliquity_deg(dt) * DEG
     mc = math.atan2(math.sin(lst), math.cos(lst) * math.cos(eps)) * RAD
     # Bring MC into the same hemisphere as LST.
+    # lst * RAD reconverts the radians value back to degrees for the norm360 comparison.
     if norm360(mc) - norm360(lst * RAD) > 180:
         mc -= 180
     return norm360(mc)
@@ -246,7 +242,11 @@ def porphyry_cusps(asc: float, mc: float) -> list[float]:
 
 
 def placidus_cusps(dt: datetime, lat_deg: float, lon_deg: float) -> list[float]:
-    """Quadrant house cusps (Porphyry division — see astro.ts rationale)."""
+    """Quadrant house cusps mirroring astro.ts's placidusCusps().
+
+    Note: despite the name, the actual algorithm is Porphyry — it delegates
+    to porphyry_cusps(), exactly as the original JS implementation does.
+    """
     asc_lon = ascendant_longitude(dt, lat_deg, lon_deg)
     mc = midheaven_longitude(dt, lon_deg)
     return porphyry_cusps(asc_lon, mc)

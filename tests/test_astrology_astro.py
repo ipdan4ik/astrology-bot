@@ -3,11 +3,13 @@ from datetime import datetime, timezone
 from quantuum.astrology.astro import (
     ascendant_longitude,
     find_aspect,
+    house_of,
     lunar_nodes,
     midheaven_longitude,
     nakshatra,
     planet_position,
     sidereal_longitude,
+    whole_sign_houses,
 )
 from quantuum.astrology.util import fmt_deg, to_sign_degree
 
@@ -66,3 +68,21 @@ def test_anna_first_aspect():
     assert asp is not None
     assert asp["name"] == "Sextile"
     assert round(asp["orb"], 2) == 2.10
+
+
+def test_anna_whole_sign_houses():
+    # Golden "## 1. Identity Layer — House Cusps" — Whole Sign.
+    # ASC is ♍ Virgo 06°53'56" → house-1 cusp starts at Virgo 0° = 150.0°.
+    asc = ascendant_longitude(ANNA, LAT, LON)
+    cusps = whole_sign_houses(asc)
+    assert cusps[0] == 150.0, f"WS house-1 cusp expected 150.0, got {cusps[0]}"
+
+    # Golden: Sun (♋ Cancer) is Whole Sign house 11.
+    # House 11 cusp (index 10) = Cancer 0° = 90.0°.
+    assert cusps[10] == 90.0, f"WS house-11 cusp expected 90.0, got {cusps[10]}"
+
+    # Verify house_of: Sun longitude falls in WS house 11.
+    sun = planet_position("Sun", ANNA)
+    assert house_of(sun.longitude, cusps) == 11, (
+        f"Sun expected WS house 11, got {house_of(sun.longitude, cusps)}"
+    )
