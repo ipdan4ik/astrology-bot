@@ -1,15 +1,6 @@
 from quantuum.i18n import Translator
 from quantuum.i18n.seed_strings import BASE_STRINGS
 
-STATUS_RU = {
-    "pending": "в очереди",
-    "calculating": "считаю",
-    "generating": "генерирую",
-    "done": "готов",
-    "failed": "ошибка",
-    "refunded": "возврат",
-}
-
 # Reply-menu button keys, in display order. Routing matches the rendered label
 # in any enabled language, so callers derive label sets from BASE_STRINGS.
 MENU_BUTTON_KEYS = ("btn.generate", "btn.profile", "btn.history", "btn.help")
@@ -31,8 +22,9 @@ def all_menu_labels() -> set[str]:
     return labels
 
 
-def status_ru(status: str) -> str:
-    return STATUS_RU.get(status, status)
+async def status_label(i18n: Translator, status: str) -> str:
+    """Localised word for a blueprint *status* (falls back to the raw value)."""
+    return await i18n(f"status.{status}", default=status)
 
 
 async def render_profile(i18n: Translator, profile) -> str:
@@ -49,16 +41,24 @@ async def render_profile(i18n: Translator, profile) -> str:
     return "\n".join(lines)
 
 
-def render_history_label(bp) -> str:
-    return f"🔮 {bp.created_at.strftime('%d.%m')} · {status_ru(bp.status)}"
+async def render_history_label(i18n: Translator, bp) -> str:
+    return await i18n(
+        "history.label",
+        date=bp.created_at.strftime("%d.%m"),
+        status=await status_label(i18n, bp.status),
+    )
 
 
-def render_detail(bp) -> str:
+async def render_detail(i18n: Translator, bp) -> str:
     lines = [
-        f"🔮 Разбор #{bp.id}",
-        f"Статус: {status_ru(bp.status)}",
-        f"Создан: {bp.created_at.strftime('%d.%m.%Y %H:%M')}",
+        await i18n("history.detail_header", id=bp.id),
+        await i18n("history.detail_status", status=await status_label(i18n, bp.status)),
+        await i18n("history.detail_created", created_at=bp.created_at.strftime("%d.%m.%Y %H:%M")),
     ]
     if bp.completed_at:
-        lines.append(f"Готов: {bp.completed_at.strftime('%d.%m.%Y %H:%M')}")
+        lines.append(
+            await i18n(
+                "history.detail_ready", completed_at=bp.completed_at.strftime("%d.%m.%Y %H:%M")
+            )
+        )
     return "\n".join(lines)

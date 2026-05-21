@@ -14,15 +14,18 @@ from quantuum.domain.blueprints import create_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.quota import consume_quota
 from quantuum.domain.requests import create_request
+from quantuum.i18n import Translator
 from quantuum.tasks.enqueue import enqueue_blueprint
 
 router = Router()
 
 
-def _buy_offer_kb():
+async def _buy_offer_kb(i18n: Translator):
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="💳 Купить разборы", callback_data=BuyCb(action="open").pack())
+        InlineKeyboardButton(
+            text=await i18n("buy.kb.open"), callback_data=BuyCb(action="open").pack()
+        )
     )
     return builder.as_markup()
 
@@ -56,25 +59,29 @@ async def request_blueprint_for_account(
     return "queued", blueprint.id
 
 
-async def run_generate(message: Message, account: Account, chat_id: int) -> None:
+async def run_generate(
+    message: Message, account: Account, chat_id: int, i18n: Translator
+) -> None:
     async with get_sessionmaker()() as session:
         status, _ = await request_blueprint_for_account(
             session, account=account, chat_id=chat_id, enqueue=enqueue_blueprint
         )
     if status == "no_profile":
         await message.answer(
-            "Сначала заполни профиль:",
-            reply_markup=await profile_kb(has_profile=False),
+            await i18n("generate.no_profile"),
+            reply_markup=await profile_kb(has_profile=False, i18n=i18n),
         )
     elif status == "no_quota":
         await message.answer(
-            "Бесплатная генерация уже использована. Купи пакет разборов или подписку:",
-            reply_markup=_buy_offer_kb(),
+            await i18n("generate.no_quota"),
+            reply_markup=await _buy_offer_kb(i18n),
         )
     else:
-        await message.answer("Генерирую твой разбор, это займёт около минуты…")
+        await message.answer(await i18n("generate.queued"))
 
 
 @router.message(Command("blueprint"))
-async def on_blueprint(message: Message, account: Account, chat_id: int) -> None:
-    await run_generate(message, account, chat_id)
+async def on_blueprint(
+    message: Message, account: Account, chat_id: int, i18n: Translator
+) -> None:
+    await run_generate(message, account, chat_id, i18n)

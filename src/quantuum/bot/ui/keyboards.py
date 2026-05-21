@@ -55,27 +55,46 @@ async def profile_kb(has_profile: bool, i18n: Translator | None = None) -> Inlin
     return b.as_markup()
 
 
-def history_list_kb(entries: list, page: int, has_next: bool) -> InlineKeyboardMarkup:
+async def history_list_kb(
+    entries: list, page: int, has_next: bool, i18n: Translator | None = None
+) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     for bp_id, label in entries:
         b.button(text=label, callback_data=HistoryCb(action="open", bp_id=bp_id))
     b.adjust(1)
     pager = InlineKeyboardBuilder()
     if page > 0:
-        pager.button(text="← Пред", callback_data=HistoryCb(action="page", page=page - 1))
+        pager.button(
+            text=await _label(i18n, "history.kb.prev_page"),
+            callback_data=HistoryCb(action="page", page=page - 1),
+        )
     if has_next:
-        pager.button(text="След →", callback_data=HistoryCb(action="page", page=page + 1))
+        pager.button(
+            text=await _label(i18n, "history.kb.next_page"),
+            callback_data=HistoryCb(action="page", page=page + 1),
+        )
     if page > 0 or has_next:
         b.attach(pager)
     return b.as_markup()
 
 
-def blueprint_detail_kb(bp_id: int, can_download: bool) -> InlineKeyboardMarkup:
+async def blueprint_detail_kb(
+    bp_id: int, can_download: bool, i18n: Translator | None = None
+) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     if can_download:
-        b.button(text="📥 Скачать .md", callback_data=BlueprintCb(action="download", bp_id=bp_id))
-        b.button(text="👁 Превью", callback_data=BlueprintCb(action="preview", bp_id=bp_id))
-    b.button(text="← Назад", callback_data=BlueprintCb(action="back", bp_id=bp_id))
+        b.button(
+            text=await _label(i18n, "history.kb.download"),
+            callback_data=BlueprintCb(action="download", bp_id=bp_id),
+        )
+        b.button(
+            text=await _label(i18n, "history.kb.preview"),
+            callback_data=BlueprintCb(action="preview", bp_id=bp_id),
+        )
+    b.button(
+        text=await _label(i18n, "history.kb.back"),
+        callback_data=BlueprintCb(action="back", bp_id=bp_id),
+    )
     b.adjust(2, 1)
     return b.as_markup()
 

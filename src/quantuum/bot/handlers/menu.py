@@ -27,8 +27,10 @@ async def show_main_menu(message: Message, i18n: Translator) -> None:
 
 
 @router.message(F.text.in_(_GENERATE_LABELS))
-async def on_generate_btn(message: Message, account: Account, chat_id: int) -> None:
-    await run_generate(message, account, chat_id)
+async def on_generate_btn(
+    message: Message, account: Account, chat_id: int, i18n: Translator
+) -> None:
+    await run_generate(message, account, chat_id, i18n)
 
 
 @router.message(F.text.in_(_PROFILE_LABELS))
@@ -37,8 +39,8 @@ async def on_profile_btn(message: Message, account: Account, i18n: Translator) -
 
 
 @router.message(F.text.in_(_HISTORY_LABELS))
-async def on_history_btn(message: Message, account: Account) -> None:
-    await show_history(message, account, page=0)
+async def on_history_btn(message: Message, account: Account, i18n: Translator) -> None:
+    await show_history(message, account, i18n, page=0)
 
 
 @router.message(F.text.in_(_HELP_LABELS))
