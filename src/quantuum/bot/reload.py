@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 
 from aiogram import Bot
@@ -45,7 +45,7 @@ async def load_active_bot_specs(session, transport: str) -> dict[int, BotSpec]:
     return specs
 
 
-async def reload_signals(interval: float) -> AsyncIterator[None]:
+async def reload_signals(interval: float) -> AsyncGenerator[None, None]:
     """Yield once per nudge OR per `interval` seconds, whichever comes first.
 
     Each yield should drive one reconcile, so a missed nudge is still corrected within
@@ -64,7 +64,12 @@ async def reload_signals(interval: float) -> AsyncIterator[None]:
 
 async def poll_one(dp, bot: Bot, allowed_updates: list[str]) -> None:
     """Long-poll a single bot, feeding updates into `dp`. Resilient to transient errors."""
-    await bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("delete_webhook_failed", bot_id=getattr(bot, "id", None))
     offset = None
     while True:
         try:
@@ -78,8 +83,16 @@ async def poll_one(dp, bot: Bot, allowed_updates: list[str]) -> None:
             await asyncio.sleep(3)
             continue
         for u in updates:
-            offset = u.update_id + 1
-            await dp.feed_update(bot, u)
+            try:
+                await dp.feed_update(bot, u)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception(
+                    "feed_error", bot_id=getattr(bot, "id", None), update_id=u.update_id
+                )
+            finally:
+                offset = u.update_id + 1
 
 
 class PollingSupervisor:
@@ -94,7 +107,7 @@ class PollingSupervisor:
         self.customer_dp = customer_dp
         self.master_dp = master_dp
         self.live: dict[int, tuple[Bot, asyncio.Task]] = {}
-        self._spawn = spawn or self._default_spawn
+        self._spawn = spawn if spawn is not None else self._default_spawn
 
     def _default_spawn(self, spec: BotSpec) -> tuple[Bot, asyncio.Task]:
         bot = Bot(token=spec.token)
@@ -106,12 +119,18 @@ class PollingSupervisor:
         async with self.sessionmaker() as session:
             desired = await load_active_bot_specs(session, "polling")
         to_add, to_remove = diff_specs(set(self.live), desired)
-        for bot_id in to_add:
-            self.live[bot_id] = self._spawn(desired[bot_id])
         for bot_id in to_remove:
             bot, task = self.live.pop(bot_id)
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
             await bot.session.close()
+        # A poll task should run forever; if one died, close it and respawn (self-healing).
+        for bot_id, (bot, task) in list(self.live.items()):
+            if task.done():
+                logger.warning("poll_task_died", bot_id=bot_id)
+                await bot.session.close()
+                self.live[bot_id] = self._spawn(desired[bot_id])
+        for bot_id in to_add:
+            self.live[bot_id] = self._spawn(desired[bot_id])
         if to_add or to_remove:
             logger.info("polling_reconciled", added=len(to_add), removed=len(to_remove))

@@ -143,3 +143,115 @@ async def test_polling_supervisor_reconcile_spawns_and_cancels(monkeypatch):
     assert set(sup.live) == {2}
     assert removed_task.cancelled()
     removed_bot.session.close.assert_awaited_once()
+
+
+async def test_poll_one_survives_feed_update_error():
+    u1 = SimpleNamespace(update_id=1)
+    u2 = SimpleNamespace(update_id=2)
+    bot = SimpleNamespace(
+        id=7,
+        delete_webhook=AsyncMock(),
+        get_updates=AsyncMock(side_effect=[[u1, u2], asyncio.CancelledError()]),
+    )
+    dp = SimpleNamespace(feed_update=AsyncMock(side_effect=[RuntimeError("boom"), None]))
+
+    with __import__("pytest").raises(asyncio.CancelledError):
+        await poll_one(dp, bot, allowed_updates=["message"])
+
+    assert dp.feed_update.await_count == 2  # u1 raised but u2 was still processed (loop survived)
+
+
+async def test_polling_supervisor_restarts_dead_task(monkeypatch):
+    import quantuum.bot.reload as reload_mod
+
+    desired = {1: _spec(1)}
+
+    async def fake_load(session, transport):
+        return dict(desired)
+
+    monkeypatch.setattr(reload_mod, "load_active_bot_specs", fake_load)
+
+    spawn_calls: list[int] = []
+
+    def fake_spawn(spec):
+        spawn_calls.append(spec.bot_telegram_id)
+
+        async def _noop():
+            return None
+
+        bot = SimpleNamespace(session=SimpleNamespace(close=AsyncMock()))
+        return bot, asyncio.create_task(_noop())  # completes immediately -> done()
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return None
+        async def __aexit__(self, *a):
+            return False
+
+    sup = PollingSupervisor(_Maker(), customer_dp=None, master_dp=None, spawn=fake_spawn)
+    await sup.reconcile()
+    await asyncio.sleep(0)  # let the spawned task finish so it is done()
+    await sup.reconcile()  # should detect the dead task and respawn it
+
+    assert spawn_calls.count(1) == 2  # spawned initially, then restarted
+    assert set(sup.live) == {1}
+
+
+def test_default_spawn_routes_master_vs_customer(monkeypatch):
+    import quantuum.bot.reload as reload_mod
+
+    class _FakeBot:
+        def __init__(self, token):
+            self.session = SimpleNamespace(close=AsyncMock())
+
+    used_dps: list = []
+
+    def fake_poll_one(dp, bot, allowed):
+        used_dps.append(dp)
+
+        async def _n():
+            return None
+
+        return _n()
+
+    def fake_create_task(coro):
+        coro.close()  # avoid 'coroutine never awaited' warning
+        return "TASK"
+
+    monkeypatch.setattr(reload_mod, "Bot", _FakeBot)
+    monkeypatch.setattr(reload_mod, "poll_one", fake_poll_one)
+    monkeypatch.setattr(reload_mod.asyncio, "create_task", fake_create_task)
+
+    customer_dp = SimpleNamespace(resolve_used_update_types=lambda: ["message"])
+    master_dp = SimpleNamespace(resolve_used_update_types=lambda: ["message"])
+    sup = PollingSupervisor(None, customer_dp=customer_dp, master_dp=master_dp)
+
+    sup._default_spawn(_spec(1, is_master=False))
+    sup._default_spawn(_spec(2, is_master=True))
+
+    assert used_dps == [customer_dp, master_dp]
+
+
+async def test_load_active_bot_specs_skips_null_id_and_empty_token(session, default_tenant):
+    session.add(
+        TenantBot(
+            tenant_id=default_tenant.id, bot_telegram_id=None,
+            bot_token_enc=encrypt_token(_TOKEN), transport="polling",
+            webhook_secret_path="sec-nullid", status="active",
+        )
+    )
+    session.add(
+        TenantBot(
+            tenant_id=default_tenant.id, bot_telegram_id=555,
+            bot_token_enc=b"", transport="polling",
+            webhook_secret_path="sec-emptytok", status="active",
+        )
+    )
+    await session.commit()
+
+    specs = await load_active_bot_specs(session, "polling")
+    assert specs == {}
