@@ -8,14 +8,16 @@ from quantuum.db.models import Tenant, TenantBot, TenantInvite
 from quantuum.domain.tenants import grant_role
 
 
-async def try_programmatic_create(*, slug: str, display_name: str) -> str | None:
-    """MVP: Telegram has no official API to create bots programmatically.
+async def master_can_manage_bots(bot) -> bool:
+    """True if the master bot may create managed bots programmatically (Bot API 9.6).
 
-    Always returns None so provisioning takes the BotFather-fallback path
-    (owner pastes a token into the master bot). This is the seam where a future
-    programmatic-creation integration would return a freshly minted token.
+    Requires "Bot Management Mode" enabled on the master bot via the BotFather
+    mini-app, which sets User.can_manage_bots (returned by getMe). When True,
+    onboarding can mint a bot via the request_managed_bot button + getManagedBotToken
+    instead of asking the owner to paste a BotFather token.
     """
-    return None
+    me = await bot.get_me()
+    return bool(getattr(me, "can_manage_bots", False))
 
 
 async def create_tenant_from_onboarding(

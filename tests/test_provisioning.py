@@ -1,12 +1,20 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 from sqlmodel import select
 
 from quantuum.db.models import TenantBot
 from quantuum.domain.invites import create_invite
-from quantuum.domain.provisioning import create_tenant_from_onboarding, try_programmatic_create
+from quantuum.domain.provisioning import create_tenant_from_onboarding, master_can_manage_bots
 
 
-async def test_try_programmatic_create_returns_none():
-    assert await try_programmatic_create(slug="x", display_name="X") is None
+async def test_master_can_manage_bots_reads_get_me():
+    on = SimpleNamespace(get_me=AsyncMock(return_value=SimpleNamespace(can_manage_bots=True)))
+    off = SimpleNamespace(get_me=AsyncMock(return_value=SimpleNamespace(can_manage_bots=False)))
+    missing = SimpleNamespace(get_me=AsyncMock(return_value=SimpleNamespace()))
+    assert await master_can_manage_bots(on) is True
+    assert await master_can_manage_bots(off) is False
+    assert await master_can_manage_bots(missing) is False
 
 
 async def test_create_tenant_from_onboarding(session):

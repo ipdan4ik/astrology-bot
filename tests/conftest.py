@@ -14,55 +14,69 @@ os.environ.setdefault("BOT_TOKEN", "123:test")
 os.environ.setdefault("BOT_TOKEN_ENC_KEY", "wWyNAOxSSib9kfo4PeMJ6CX-ugqbCPhAp6kLVqHQL_0=")
 
 
+from quantuum.db.models import SQLModel  # noqa: E402
+
+_DROP_ALL = (
+    "DO $$ DECLARE r RECORD; BEGIN "
+    "FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP "
+    "EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE'; "
+    "END LOOP; END $$"
+)
+_TRUNCATE_ALL = (
+    "DO $$ DECLARE stmt TEXT; BEGIN "
+    "SELECT 'TRUNCATE TABLE ' || string_agg(quote_ident(tablename), ', ') "
+    "  || ' RESTART IDENTITY CASCADE' "
+    "INTO stmt FROM pg_tables WHERE schemaname = 'public'; "
+    "IF stmt IS NOT NULL THEN EXECUTE stmt; END IF; END $$"
+)
+
+
+@pytest_asyncio.fixture(scope="session")
+async def engine():
+    """One engine + schema for the whole test session, built once.
+
+    Per-test isolation is data-only — `_reset_state` TRUNCATEs every table before each
+    test (fast DML, no per-test DDL). The whole suite runs on a single session-scoped
+    event loop (see pyproject asyncio_*_loop_scope), so this one connection pool is
+    reused across all tests. This replaced a per-test drop+create schema rebuild that
+    made the suite ~5 min.
+    """
+    eng = create_async_engine(os.environ["DATABASE_URL"])
+    async with eng.begin() as conn:
+        await conn.execute(sqlalchemy.text(_DROP_ALL))
+        await conn.run_sync(SQLModel.metadata.create_all)
+    yield eng
+    await eng.dispose()
+
+
 @pytest_asyncio.fixture(autouse=True)
-async def reset_redis():
-    """Reset the global Redis singleton and flush the test DB before each test so each
-    test gets a fresh client bound to its own event loop with no leftover keys."""
+async def _reset_state(engine):
+    """Reset per-test state cheaply: TRUNCATE all tables (RESTART IDENTITY so ids reset
+    like a fresh schema) and flush the test Redis (cached i18n strings / FSM state)."""
+    async with engine.begin() as conn:
+        await conn.execute(sqlalchemy.text(_TRUNCATE_ALL))
     import quantuum.redis_client as rc
 
-    rc._redis = None
-    # Flush the test Redis DB so cached i18n strings (and any other keys) from a
-    # prior test don't bleed into the current one.
     await rc.get_redis().flushdb()
     yield
-    if rc._redis is not None:
-        await rc._redis.aclose()
-        rc._redis = None
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def reset_db_session():
-    """Reset the global DB engine/sessionmaker singletons before each test so each test
-    gets a fresh engine bound to its own event loop."""
-    import quantuum.db.session as dbs
-
-    dbs._engine = None
-    dbs._sessionmaker = None
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _cleanup_singletons():
+    """Dispose the app's lazily-created DB engine + Redis client at session end. They
+    persist across tests (created once on the shared session loop) for speed; per-test
+    isolation is data-only (handled by _reset_state)."""
     yield
+    import quantuum.db.session as dbs
+    import quantuum.redis_client as rc
+
     if dbs._engine is not None:
         await dbs._engine.dispose()
         dbs._engine = None
         dbs._sessionmaker = None
-
-from quantuum.db.models import SQLModel  # noqa: E402
-
-
-@pytest_asyncio.fixture
-async def engine():
-    eng = create_async_engine(os.environ["DATABASE_URL"])
-    async with eng.begin() as conn:
-        # Use raw SQL to drop/create cleanly, handling ALTER constraints that may not exist
-        await conn.execute(
-            sqlalchemy.text(
-                "DO $$ DECLARE r RECORD; BEGIN "
-                "FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP "
-                "EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE'; "
-                "END LOOP; END $$"
-            )
-        )
-        await conn.run_sync(SQLModel.metadata.create_all)
-    yield eng
-    await eng.dispose()
+    if rc._redis is not None:
+        await rc._redis.aclose()
+        rc._redis = None
 
 
 @pytest_asyncio.fixture
