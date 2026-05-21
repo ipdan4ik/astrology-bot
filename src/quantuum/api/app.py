@@ -7,6 +7,7 @@ from quantuum.api.routes import admin_platform, auth, health, me, webhook
 from quantuum.db.bootstrap import (
     ensure_default_tenant,
     ensure_default_tenant_bot,
+    ensure_global_plans,
     ensure_master_bot,
     ensure_platform_tenant,
     ensure_superadmin,
@@ -23,6 +24,7 @@ async def _lifespan(app: FastAPI):
         await ensure_platform_tenant(session)
         await ensure_master_bot(session)
         await ensure_superadmin(session)
+        await ensure_global_plans(session)
     yield
 
 

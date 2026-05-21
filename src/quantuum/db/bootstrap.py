@@ -2,7 +2,7 @@ from sqlmodel import select
 
 from quantuum.common.crypto import encrypt_token
 from quantuum.common.datetime import utcnow
-from quantuum.db.models import Account, AccountIdentity, Tenant, TenantBot
+from quantuum.db.models import Account, AccountIdentity, PackagePlan, SubscriptionPlan, Tenant, TenantBot
 from quantuum.domain.tenants import get_default_tenant_id
 from quantuum.settings import get_settings
 
@@ -109,4 +109,30 @@ async def ensure_superadmin(session) -> None:
             account_id=account.id, provider="magic_link", email=email, verified_at=utcnow()
         )
     )
+    await session.commit()
+
+
+async def ensure_global_plans(session) -> None:
+    """Seed global (tenant_id NULL) plan structure with placeholder prices (idempotent).
+
+    Prices are placeholders in XTR (Star amount) — adjust later via /admin/platform/plans.
+    """
+    sub_exists = await session.execute(
+        select(SubscriptionPlan).where(
+            SubscriptionPlan.tenant_id.is_(None), SubscriptionPlan.slug == "monthly"
+        )
+    )
+    if sub_exists.scalar_one_or_none() is None:
+        session.add(
+            SubscriptionPlan(slug="monthly", name="Monthly", period_days=30, price_cents=250)
+        )
+    for slug, name, count, price in (
+        ("pack_small", "Small pack", 5, 400),
+        ("pack_large", "Large pack", 20, 1200),
+    ):
+        pkg_exists = await session.execute(
+            select(PackagePlan).where(PackagePlan.tenant_id.is_(None), PackagePlan.slug == slug)
+        )
+        if pkg_exists.scalar_one_or_none() is None:
+            session.add(PackagePlan(slug=slug, name=name, request_count=count, price_cents=price))
     await session.commit()
