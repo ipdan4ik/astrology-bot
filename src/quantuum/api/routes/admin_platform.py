@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from quantuum.api.deps import get_session, require_superadmin
-from quantuum.api.schemas import InviteCreateIn, InviteOut, TenantOut
+from quantuum.api.schemas import (
+    InviteCreateIn,
+    InviteOut,
+    PlatformStatsOut,
+    TenantOut,
+)
 from quantuum.db.models import Account, Tenant, TenantInvite
 from quantuum.domain.invites import create_invite, list_invites, revoke_invite
+from quantuum.domain.stats import platform_stats
 from quantuum.settings import get_settings
 
 router = APIRouter(prefix="/admin/platform", tags=["admin-platform"])
@@ -82,3 +88,13 @@ async def list_tenants_route(
         )
         for t in result.scalars().all()
     ]
+
+
+@router.get("/stats", response_model=PlatformStatsOut)
+async def get_platform_stats(
+    period_days: int = Query(default=30, ge=1, le=365),
+    admin: Account = Depends(require_superadmin),
+    session: AsyncSession = Depends(get_session),
+) -> PlatformStatsOut:
+    stats = await platform_stats(session, period_days=period_days)
+    return PlatformStatsOut(**stats)

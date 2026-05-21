@@ -319,3 +319,39 @@ class TenantStatsOut(BaseModel):
     mrr_cents: int
     llm_tokens_in: int
     llm_tokens_out: int
+
+
+# ---------------------------------------------------------------------------
+# Platform-wide stats schema (Plan 5b, Task 13)
+# ---------------------------------------------------------------------------
+
+
+class TenantBreakdownOut(BaseModel):
+    tenant_id: int
+    slug: str
+    active_customers: int
+    paid_customers: int
+    revenue_cents: int
+    mrr_cents: int
+
+
+class PlatformFunnelOut(BaseModel):
+    invites_issued: int
+    invites_used: int
+    active_tenants: int
+
+
+class PlatformStatsOut(BaseModel):
+    period_days: int
+    active_customers: int
+    paid_customers: int
+    dau: int
+    wau: int
+    mau: int
+    requests_by_kind: dict[str, int]
+    revenue_cents: int
+    mrr_cents: int
+    llm_tokens_in: int
+    llm_tokens_out: int
+    per_tenant: list[TenantBreakdownOut]
+    funnel: PlatformFunnelOut
