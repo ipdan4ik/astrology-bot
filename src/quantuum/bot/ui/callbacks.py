@@ -23,3 +23,9 @@ class OnboardCb(CallbackData, prefix="onb"):
 
 class OwnerOnboardCb(CallbackData, prefix="own"):
     action: str  # confirm | cancel
+
+
+class BuyCb(CallbackData, prefix="buy"):
+    action: str  # open | pick
+    kind: str = ""  # subscription | package
+    plan_id: int = 0
