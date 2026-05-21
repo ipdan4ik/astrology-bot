@@ -70,6 +70,49 @@ async def test_blueprint_generate_failure_refunds(session, default_tenant, monke
     assert bal.free_trial_used is False
 
 
+async def test_blueprint_generate_llm_failure_refunds(session, default_tenant):
+    from quantuum.domain.quota import consume_quota
+    from quantuum.domain.requests import create_request
+    from quantuum.db.models import AccountBalance
+    from quantuum.domain.blueprints import get_blueprint
+    from quantuum.llm.base import LLMError
+
+    acc, bp = await _setup(session, default_tenant.id)
+    charged = await consume_quota(session, acc.id, "blueprint")
+    assert charged == "trial"
+    req = await create_request(
+        session, tenant_id=default_tenant.id, account_id=acc.id, kind="blueprint",
+        charged_against="trial",
+    )
+
+    class _BoomLLM:
+        async def complete(self, *, system, user, model, temperature, max_tokens):
+            raise LLMError("upstream 500")
+
+    bot = AsyncMock()
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx(session)
+
+    class _Ctx:
+        def __init__(self, s):
+            self._s = s
+        async def __aenter__(self):
+            return self._s
+        async def __aexit__(self, *a):
+            return False
+
+    ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": _BoomLLM()}
+    await blueprint_generate(ctx, bp.id, chat_id=None, request_id=req.id)
+
+    reloaded = await get_blueprint(session, bp.id)
+    assert reloaded.status == "failed"
+    bal = await session.get(AccountBalance, acc.id)
+    await session.refresh(bal)
+    assert bal.free_trial_used is False
+
+
 async def test_blueprint_generate_real_engine_with_llm(session, default_tenant):
     acc, bp = await _setup(session, default_tenant.id)
     bot = AsyncMock()

@@ -65,9 +65,13 @@ async def blueprint_generate(
                 delivery_md = calc_md
 
             if request_id is not None:
-                await complete_request(
-                    session, request_id, reference_id=blueprint_id, reference_type="blueprint"
-                )
+                # Generation already succeeded; request bookkeeping failure must not refund.
+                try:
+                    await complete_request(
+                        session, request_id, reference_id=blueprint_id, reference_type="blueprint"
+                    )
+                except Exception:
+                    logger.exception("blueprint_complete_request_failed", blueprint_id=blueprint_id)
         except Exception:
             logger.exception("blueprint_generation_failed", blueprint_id=blueprint_id)
             try:
