@@ -13,12 +13,21 @@ from quantuum.api.schemas import (
     PackagePlanOut,
     PaymentOut,
     PlansOut,
+    PurchaseIn,
     SubscriptionOut,
     SubscriptionPlanOut,
 )
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account, AccountBalance, AccountSubscription, Blueprint, Payment
-from quantuum.domain.plans import list_package_plans, list_subscription_plans
+from quantuum.domain.plans import (
+    get_package_plan,
+    get_subscription_plan,
+    list_package_plans,
+    list_subscription_plans,
+)
+from quantuum.domain.providers import get_active_provider
+from quantuum.payments.base import PaymentNotSupportedInApiError
+from quantuum.payments.registry import provider_for_kind
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
 from quantuum.domain.quota import consume_quota, refund_quota
@@ -251,3 +260,57 @@ async def list_payments(
         )
         for p in result.scalars().all()
     ]
+
+
+async def _create_invoice_via_provider(
+    session: AsyncSession, account: Account, *, plan_kind: str, plan
+) -> None:
+    """Route a purchase through the PaymentProvider abstraction.
+
+    In MVP the only provider is Telegram Stars, which is bot-only and raises
+    PaymentNotSupportedInApiError -> 501. Future HTTP providers will return an invoice URL here.
+    """
+    provider_row = await get_active_provider(session, account.tenant_id)
+    impl = provider_for_kind(provider_row.kind) if provider_row else None
+    if impl is None:
+        raise HTTPException(status_code=501, detail="no payment provider configured")
+    try:
+        await impl.create_invoice(
+            account_id=account.id,
+            tenant_id=account.tenant_id,
+            plan_kind=plan_kind,
+            plan_id=plan.id,
+            amount_cents=plan.price_cents,
+            currency=plan.currency,
+            metadata={"kind": plan_kind, "plan_id": plan.id},
+        )
+    except PaymentNotSupportedInApiError as exc:
+        raise HTTPException(
+            status_code=501, detail="this payment method is available only in the bot"
+        ) from exc
+
+
+@router.post("/subscriptions", status_code=201)
+async def buy_subscription(
+    body: PurchaseIn,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+):
+    plan = await get_subscription_plan(session, body.plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="plan not found")
+    await _create_invoice_via_provider(session, account, plan_kind="subscription", plan=plan)
+    return {"status": "invoice_created"}  # unreachable in MVP (Stars raises 501)
+
+
+@router.post("/packages", status_code=201)
+async def buy_package(
+    body: PurchaseIn,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+):
+    plan = await get_package_plan(session, body.plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="plan not found")
+    await _create_invoice_via_provider(session, account, plan_kind="package", plan=plan)
+    return {"status": "invoice_created"}  # unreachable in MVP (Stars raises 501)

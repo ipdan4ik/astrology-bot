@@ -171,3 +171,7 @@ class SubscriptionPlanAdminOut(SubscriptionPlanOut):
 class PackagePlanAdminOut(PackagePlanOut):
     active: bool
     tenant_id: int | None
+
+
+class PurchaseIn(BaseModel):
+    plan_id: int
