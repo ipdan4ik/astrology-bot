@@ -196,3 +196,42 @@ def test_render_transits_md_tables():
     assert "2026-03-15" in md
     assert "1.23" in md
     assert "applying" in md
+
+
+def test_render_daily_md_active_and_imminent():
+    from quantuum.astrology.transits import (
+        ActiveAspect,
+        SkyPosition,
+        TransitHit,
+        TransitReport,
+        render_daily_md,
+    )
+
+    as_of = datetime(2026, 3, 1, tzinfo=timezone.utc)
+    act = ActiveAspect(body="Saturn", target="Sun", aspect="Square", orb=1.2,
+                       applying=True, exact_at=as_of + timedelta(days=2))
+    near = TransitHit(body="Mars", target="Venus", aspect="Trine",
+                      exact_at=as_of + timedelta(days=2), retrograde=False)
+    far = TransitHit(body="Jupiter", target="Moon", aspect="Sextile",
+                     exact_at=as_of + timedelta(days=10), retrograde=False)
+    report = TransitReport(
+        as_of=as_of, window_days=7,
+        sky=[SkyPosition(body="Sun", longitude=1.0, retrograde=False)],
+        active=[act], upcoming=[near, far],
+    )
+    md = render_daily_md(report, ahead_days=3)
+    assert "## Active now" in md
+    assert "Saturn" in md and "applying" in md and "1.20" in md
+    assert "Mars" in md and "2026-03-03" in md   # imminent (<= 3 days) included
+    assert "Jupiter" not in md                    # 10 days out -> excluded
+    assert "## Exact within 3 days" in md
+
+
+def test_render_daily_md_empty():
+    from quantuum.astrology.transits import TransitReport, render_daily_md
+
+    as_of = datetime(2026, 3, 1, tzinfo=timezone.utc)
+    report = TransitReport(as_of=as_of, window_days=7, sky=[], active=[], upcoming=[])
+    md = render_daily_md(report)
+    assert "_No active transits._" in md
+    assert "_None._" in md

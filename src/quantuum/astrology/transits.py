@@ -287,3 +287,39 @@ def render_transits_md(report: TransitReport) -> str:
     lines.append("")
 
     return "\n".join(lines)
+
+
+def render_daily_md(report: TransitReport, *, ahead_days: int = 3) -> str:
+    """Compact daily grounding: active aspects now + exacts within *ahead_days*.
+
+    Distinct from render_transits_md (the full 90-day 3-table report). Used to
+    ground the short daily-horoscope narration.
+    """
+    cutoff = report.as_of + timedelta(days=ahead_days)
+    lines: list[str] = []
+
+    lines.append("## Active now")
+    lines.append("")
+    if not report.active:
+        lines.append("_No active transits._")
+    else:
+        lines.append("| Transit | Aspect | Natal | Orb | Phase |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        for a in report.active:
+            phase = "applying" if a.applying else "separating"
+            lines.append(f"| {a.body} | {a.aspect} | {a.target} | {to_fixed(a.orb, 2)}° | {phase} |")
+    lines.append("")
+
+    lines.append(f"## Exact within {ahead_days} days")
+    lines.append("")
+    imminent = [h for h in report.upcoming if h.exact_at <= cutoff]
+    if not imminent:
+        lines.append("_None._")
+    else:
+        lines.append("| Date | Transit | Aspect | Natal |")
+        lines.append("| --- | --- | --- | --- |")
+        for h in imminent:
+            lines.append(f"| {h.exact_at.strftime('%Y-%m-%d')} | {h.body} | {h.aspect} | {h.target} |")
+    lines.append("")
+
+    return "\n".join(lines)
