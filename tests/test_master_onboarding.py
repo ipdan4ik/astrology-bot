@@ -255,3 +255,32 @@ async def test_finalize_publishes_bot_reload(session, default_tenant, monkeypatc
     await mo.on_managed_bot_created(message, state, i18n=i18n, bot=bot)
 
     published.assert_awaited_once()
+
+
+async def test_manual_token_publishes_bot_reload(session, default_tenant, monkeypatch):
+    """The pasted-token completion path also nudges the workers to hot-reload."""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    monkeypatch.setattr(mo, "validate_bot_token", AsyncMock(return_value=(901, "manual_bot")))
+    published = AsyncMock()
+    monkeypatch.setattr(mo, "publish_bot_reload", published)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="man", display_name="Man",
+        default_lang="ru", owner_tg_id=778, owner_chat_id=778,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+    message = SimpleNamespace(text="901:manualtoken", answer=AsyncMock())
+
+    await mo.on_manual_token(message, state, i18n=i18n)
+
+    published.assert_awaited_once()

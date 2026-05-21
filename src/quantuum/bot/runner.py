@@ -97,13 +97,23 @@ async def run() -> None:
 
     async def _reload_loop() -> None:
         interval = get_settings().bot_reload_interval_seconds
-        async for _ in reload_signals(interval):
+        while True:
             try:
-                await consumer.reconcile()
+                async for _ in reload_signals(interval):
+                    try:
+                        await consumer.reconcile()
+                    except Exception:
+                        logger.exception("webhook_reconcile_failed")
+            except asyncio.CancelledError:
+                raise
             except Exception:
-                logger.exception("webhook_reconcile_failed")
+                logger.exception("reload_signals_failed_retrying")
+                await asyncio.sleep(interval)
 
-    asyncio.create_task(_reload_loop())
+    reload_task = asyncio.create_task(_reload_loop())
+    reload_task.add_done_callback(
+        lambda t: t.cancelled() or logger.error("reload_loop_stopped", exc=t.exception())
+    )
 
     while True:
         envelope = await pop_update(timeout=5)

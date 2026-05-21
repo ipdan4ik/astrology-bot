@@ -44,11 +44,18 @@ async def run() -> None:
     await supervisor.reconcile()
     logger.info("bot_polling_started", bots=len(supervisor.live))
     interval = get_settings().bot_reload_interval_seconds
-    async for _ in reload_signals(interval):
+    while True:
         try:
-            await supervisor.reconcile()
+            async for _ in reload_signals(interval):
+                try:
+                    await supervisor.reconcile()
+                except Exception:
+                    logger.exception("polling_reconcile_failed")
+        except asyncio.CancelledError:
+            raise
         except Exception:
-            logger.exception("polling_reconcile_failed")
+            logger.exception("reload_signals_failed_retrying")
+            await asyncio.sleep(interval)
 
 
 def main() -> None:
