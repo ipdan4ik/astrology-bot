@@ -344,6 +344,26 @@ class BalancePatchIn(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# LLM config schemas (Plan 5d, Task 6)
+# ---------------------------------------------------------------------------
+
+
+class LLMConfigOut(BaseModel):
+    provider: str
+    model: str
+    temperature: float
+    max_tokens: int
+    api_key_configured: bool
+
+
+class LLMConfigPutIn(BaseModel):
+    provider: str | None = None
+    model: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+
+
+# ---------------------------------------------------------------------------
 # Per-account / tenant read lists (Plan 5d, Task 5)
 # ---------------------------------------------------------------------------
 

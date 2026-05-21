@@ -3,11 +3,11 @@ from aiogram.types import BufferedInputFile
 from quantuum.astrology.blueprint import build_blueprint, from_natal_profile
 from quantuum.db.models import NatalProfile
 from quantuum.domain.blueprints import get_blueprint, set_status
+from quantuum.domain.llm_config import get_llm_config
 from quantuum.domain.quota import refund_quota
 from quantuum.domain.requests import complete_request
 from quantuum.llm.blueprint_polish import polish_blueprint
 from quantuum.logging_setup import get_logger
-from quantuum.settings import get_settings
 
 logger = get_logger("task.blueprint")
 
@@ -30,23 +30,23 @@ async def blueprint_generate(
             await set_status(session, blueprint_id, "calculating", calc_md=calc_md)
             await set_status(session, blueprint_id, "generating")
 
-            settings = get_settings()
+            cfg = await get_llm_config(session)
             llm_client = ctx.get("llm_client")
 
             if llm_client is not None:
                 result = await polish_blueprint(
                     llm_client,
                     calc_md,
-                    model=settings.llm_model,
-                    temperature=settings.llm_temperature,
-                    max_tokens=settings.llm_max_tokens,
+                    model=cfg["model"],
+                    temperature=cfg["temperature"],
+                    max_tokens=cfg["max_tokens"],
                 )
                 await set_status(
                     session,
                     blueprint_id,
                     "done",
                     llm_md=result.text,
-                    llm_provider=settings.llm_provider,
+                    llm_provider=cfg["provider"],
                     llm_model=result.model,
                     llm_tokens_in=result.tokens_in,
                     llm_tokens_out=result.tokens_out,

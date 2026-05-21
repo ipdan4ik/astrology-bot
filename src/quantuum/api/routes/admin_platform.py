@@ -8,6 +8,8 @@ from quantuum.api.schemas import (
     AuditEntryOut,
     InviteCreateIn,
     InviteOut,
+    LLMConfigOut,
+    LLMConfigPutIn,
     PlatformConfigPutIn,
     PlatformStatsOut,
     PlatformStringIn,
@@ -27,6 +29,7 @@ from quantuum.db.models import (
 )
 from quantuum.domain.audit import list_audit, record_audit
 from quantuum.domain.invites import create_invite, list_invites, revoke_invite
+from quantuum.domain.llm_config import get_llm_config, set_llm_config
 from quantuum.domain.stats import platform_stats
 from quantuum.i18n.cache import invalidate_i18n_all
 from quantuum.settings import get_settings
@@ -186,6 +189,50 @@ async def put_platform_config(
 
     await session.commit()
     return {"key": body.key, "value": body.value}
+
+
+# ---------------------------------------------------------------------------
+# Task 6 (Plan 5d) — LLM config (DB-backed, env key stays env-only)
+# ---------------------------------------------------------------------------
+
+
+def _llm_config_out(cfg: dict) -> LLMConfigOut:
+    return LLMConfigOut(
+        provider=cfg["provider"],
+        model=cfg["model"],
+        temperature=cfg["temperature"],
+        max_tokens=cfg["max_tokens"],
+        api_key_configured=bool(get_settings().llm_api_key),
+    )
+
+
+@router.get("/llm", response_model=LLMConfigOut)
+async def get_llm_config_route(
+    admin: Account = Depends(require_superadmin),
+    session: AsyncSession = Depends(get_session),
+) -> LLMConfigOut:
+    cfg = await get_llm_config(session)
+    return _llm_config_out(cfg)
+
+
+@router.put("/llm", response_model=LLMConfigOut)
+async def put_llm_config_route(
+    body: LLMConfigPutIn,
+    admin: Account = Depends(require_superadmin),
+    session: AsyncSession = Depends(get_session),
+) -> LLMConfigOut:
+    provided = {k: v for k, v in body.model_dump().items() if v is not None}
+    cfg = await set_llm_config(session, actor_id=admin.id, **provided)
+    await record_audit(
+        session,
+        tenant_id=None,
+        actor_account_id=admin.id,
+        action="platform.llm.update",
+        entity_type="platform_config",
+        payload=provided,
+    )
+    await session.commit()
+    return _llm_config_out(cfg)
 
 
 # ---------------------------------------------------------------------------

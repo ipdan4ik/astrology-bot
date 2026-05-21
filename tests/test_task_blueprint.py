@@ -8,7 +8,13 @@ from quantuum.tasks.blueprint import blueprint_generate
 
 
 class FakeLLM:
+    def __init__(self):
+        self.last_model = None
+        self.last_temperature = None
+
     async def complete(self, *, system, user, model, temperature, max_tokens):
+        self.last_model = model
+        self.last_temperature = temperature
         return LLMResult(text="POLISHED REPORT", tokens_in=11, tokens_out=22, model="claude-test")
 
 
@@ -166,3 +172,38 @@ async def test_blueprint_generate_without_llm_falls_back_to_calc_md(session, def
     assert reloaded.llm_md == reloaded.calc_md
     assert reloaded.llm_provider == "none"
     bot.send_document.assert_awaited()
+
+
+async def test_blueprint_uses_db_config_model(session, default_tenant):
+    """When a DB override for llm.model is present, the task passes it to the LLM client."""
+    from quantuum.domain.llm_config import set_llm_config
+
+    # Seed a DB override for model and temperature
+    await set_llm_config(session, model="claude-db-model", temperature=0.42)
+    await session.commit()
+
+    acc, bp = await _setup(session, default_tenant.id)
+    bot = AsyncMock()
+    fake_llm = FakeLLM()
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx(session)
+
+    class _Ctx:
+        def __init__(self, s):
+            self._s = s
+        async def __aenter__(self):
+            return self._s
+        async def __aexit__(self, *a):
+            return False
+
+    ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": fake_llm}
+    await blueprint_generate(ctx, bp.id, chat_id=None)
+
+    # The FakeLLM must have been called with the DB-overridden model/temperature
+    assert fake_llm.last_model == "claude-db-model"
+    assert fake_llm.last_temperature == 0.42
+
+    reloaded = await get_blueprint(session, bp.id)
+    assert reloaded.status == "done"
