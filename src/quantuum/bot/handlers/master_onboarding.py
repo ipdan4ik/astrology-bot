@@ -1,8 +1,14 @@
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.methods import GetManagedBotToken
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    Message,
+    ReplyKeyboardRemove,
+)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
@@ -186,6 +192,34 @@ async def on_cancel(
     await state.clear()
     await query.message.answer(await i18n("master.onboard.cancelled"))
     await query.answer()
+
+
+@router.message(ManualToken.awaiting, F.managed_bot_created)
+async def on_managed_bot_created(
+    message: Message, state: FSMContext, i18n: Translator, bot: Bot
+) -> None:
+    """Programmatic path (Bot API 9.6): the owner tapped the request_managed_bot button,
+    Telegram created the bot, and we fetch its token to finalize provisioning."""
+    created = message.managed_bot_created
+    data = await state.get_data()
+    tenant_id = data.get("tenant_id")
+    if tenant_id is None:
+        return
+    token = await bot(GetManagedBotToken(user_id=created.bot_user.id))
+    async with get_sessionmaker()() as session:
+        tenant_bot = await finalize_provisioning(
+            session,
+            tenant_id=tenant_id,
+            token=token,
+            bot_telegram_id=created.bot_user.id,
+            bot_username=created.bot_user.username,
+            default_lang=data.get("default_lang", "ru"),
+        )
+    await state.clear()
+    await message.answer(
+        await i18n("master.onboard.done", username=tenant_bot.bot_username),
+        reply_markup=ReplyKeyboardRemove(),
+    )
 
 
 @router.message(ManualToken.awaiting)

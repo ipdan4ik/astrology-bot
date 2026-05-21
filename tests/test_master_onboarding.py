@@ -165,4 +165,43 @@ async def test_manual_token_rejects_invalid(session, default_tenant, monkeypatch
     await session.refresh(tenant)
     assert tenant.status != "active"  # still awaiting
     assert state.state is None or state.state == mo.ManualToken.awaiting
+
+
+async def test_managed_bot_created_finalizes(session, default_tenant, monkeypatch):
+    from sqlmodel import select
+
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.db.models import TenantBot
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="zen", display_name="Zen",
+        default_lang="ru", owner_tg_id=777, owner_chat_id=777,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+
+    created = SimpleNamespace(bot_user=SimpleNamespace(id=900, username="zen_managed_bot"))
+    message = SimpleNamespace(managed_bot_created=created, answer=AsyncMock())
+    # bot(GetManagedBotToken(...)) -> token string
+    bot = AsyncMock(return_value="900:managedtoken")
+
+    await mo.on_managed_bot_created(message, state, i18n=i18n, bot=bot)
+
+    await session.refresh(tenant)
+    assert tenant.status == "active"
+    assert state.state is None  # cleared
+    bot.assert_awaited_once()  # GetManagedBotToken was called
+
+    tb = (
+        await session.execute(select(TenantBot).where(TenantBot.tenant_id == tenant.id))
+    ).scalar_one()
+    assert tb.bot_telegram_id == 900
+    assert tb.bot_username == "zen_managed_bot"
+    assert tb.status == "active"
     message.answer.assert_awaited()
