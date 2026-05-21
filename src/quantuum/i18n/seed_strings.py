@@ -23,6 +23,17 @@ Placeholder variables per key:
     buy.invoice_subscription — {period_days}
     buy.invoice_package     — {count}
     profile.field_edit_error — {err}
+
+    master.onboard.slug_prompt   — {prefill}
+    master.onboard.slug_prefill  — {slug}
+    master.onboard.confirm       — {slug}, {display_name}, {lang}
+    master.onboard.done          — {username}
+
+    owner.tenants.line   — {display_name}, {slug}, {status}
+    owner.manage.title   — {display_name}, {slug}, {status}
+    owner.stats.text     — {period_days}, {active_customers}, {paid_customers},
+                           {dau}, {wau}, {mau}, {revenue_cents}, {mrr_cents},
+                           {requests_by_kind}
 """
 
 BASE_STRINGS: dict[str, dict[str, str]] = {
@@ -383,5 +394,223 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "kb.cancel": {
         "ru": "✖️ Отмена",
         "en": "✖️ Cancel",
+    },
+    # -------------------------------------------------------------------------
+    # Master bot — owner onboarding (master_onboarding.py)
+    # -------------------------------------------------------------------------
+    "master.onboard.invite_invalid": {
+        "ru": "Приглашение недействительно или истекло.",
+        "en": "The invitation is invalid or has expired.",
+    },
+    # Slug prompt — {prefill} is the optional suggested-slug suffix (may be empty)
+    "master.onboard.slug_prompt": {
+        "ru": "Добро пожаловать! Давай создадим бота. Введи slug тенанта (латиница, без пробелов){prefill}:",
+        "en": "Welcome! Let's create a bot. Enter the tenant slug (latin letters, no spaces){prefill}:",
+    },
+    # Suggested-slug suffix appended to the slug prompt — {slug} is the preset slug
+    "master.onboard.slug_prefill": {
+        "ru": " (предложено: {slug})",
+        "en": " (suggested: {slug})",
+    },
+    "master.onboard.plain_start": {
+        "ru": "Это бот онбординга платформы. Открой ссылку-приглашение, чтобы создать своего бота.",
+        "en": "This is the platform onboarding bot. Open an invitation link to create your own bot.",
+    },
+    "master.onboard.slug_invalid": {
+        "ru": "Slug не должен быть пустым или содержать пробелы. Попробуй ещё раз:",
+        "en": "The slug must not be empty or contain spaces. Please try again:",
+    },
+    "master.onboard.slug_taken": {
+        "ru": "Этот slug уже занят. Введи другой:",
+        "en": "This slug is already taken. Enter another one:",
+    },
+    "master.onboard.display_name_prompt": {
+        "ru": "Отображаемое имя продукта (например «Acme Astro»):",
+        "en": "Product display name (e.g. «Acme Astro»):",
+    },
+    "master.onboard.display_name_empty": {
+        "ru": "Имя не должно быть пустым. Введи ещё раз:",
+        "en": "The name must not be empty. Enter it again:",
+    },
+    "master.onboard.lang_prompt": {
+        "ru": "Язык по умолчанию (двухбуквенный код, например ru или en):",
+        "en": "Default language (two-letter code, e.g. ru or en):",
+    },
+    "master.onboard.lang_invalid": {
+        "ru": "Нужен двухбуквенный код языка, например ru. Введи ещё раз:",
+        "en": "A two-letter language code is required, e.g. ru. Enter it again:",
+    },
+    # Confirmation summary — {slug}, {display_name}, {lang}
+    "master.onboard.confirm": {
+        "ru": (
+            "Проверь данные:\nslug: {slug}\nназвание: {display_name}\nязык: {lang}\n\n"
+            "Создаём бота?"
+        ),
+        "en": (
+            "Check the details:\nslug: {slug}\nname: {display_name}\nlanguage: {lang}\n\n"
+            "Create the bot?"
+        ),
+    },
+    "master.onboard.invite_gone": {
+        "ru": "Приглашение больше недействительно.",
+        "en": "The invitation is no longer valid.",
+    },
+    "master.onboard.creating": {
+        "ru": "Создаю тенанта… Проверяю возможность автосоздания бота.",
+        "en": "Creating the tenant… Checking whether the bot can be created automatically.",
+    },
+    "master.onboard.cancelled": {
+        "ru": "Онбординг отменён.",
+        "en": "Onboarding cancelled.",
+    },
+    "master.onboard.token_invalid": {
+        "ru": "Это не похоже на валидный токен бота. Пришли токен от @BotFather ещё раз:",
+        "en": "This doesn't look like a valid bot token. Send the token from @BotFather again:",
+    },
+    # Done message — {username} is the activated bot username (without @)
+    "master.onboard.done": {
+        "ru": "Готово! Бот @{username} активирован. Он станет доступен после перезапуска воркера.",
+        "en": "Done! Bot @{username} is activated. It will become available after the worker restarts.",
+    },
+    # Master onboarding keyboard labels
+    "master.kb.cancel": {
+        "ru": "Отмена",
+        "en": "Cancel",
+    },
+    "master.kb.create_bot": {
+        "ru": "Создать бота",
+        "en": "Create bot",
+    },
+    # -------------------------------------------------------------------------
+    # Master bot — owner console (owner_console.py)
+    # -------------------------------------------------------------------------
+    # /tenants
+    "owner.tenants.empty": {
+        "ru": "У тебя пока нет тенантов. Создай бота по ссылке-приглашению.",
+        "en": "You don't have any tenants yet. Create a bot via an invitation link.",
+    },
+    "owner.tenants.header": {
+        "ru": "Твои тенанты:",
+        "en": "Your tenants:",
+    },
+    # Per-tenant list line — {display_name}, {slug}, {status}
+    "owner.tenants.line": {
+        "ru": "• {display_name} (/{slug}) — {status}",
+        "en": "• {display_name} (/{slug}) — {status}",
+    },
+    "owner.tenants.hint": {
+        "ru": "\nУправление: /manage <slug>",
+        "en": "\nManage: /manage <slug>",
+    },
+    # /manage
+    "owner.manage.usage": {
+        "ru": "Использование: /manage <slug>",
+        "en": "Usage: /manage <slug>",
+    },
+    "owner.manage.not_found": {
+        "ru": "Тенант не найден или у тебя нет прав.",
+        "en": "Tenant not found or you don't have permission.",
+    },
+    # Manage screen title — {display_name}, {slug}, {status}
+    "owner.manage.title": {
+        "ru": "Управление: {display_name} (/{slug}) — {status}",
+        "en": "Manage: {display_name} (/{slug}) — {status}",
+    },
+    # /manage keyboard labels
+    "owner.manage.kb.stats": {
+        "ru": "📊 Статистика",
+        "en": "📊 Statistics",
+    },
+    "owner.manage.kb.pause": {
+        "ru": "⏸ Пауза",
+        "en": "⏸ Pause",
+    },
+    "owner.manage.kb.resume": {
+        "ru": "▶️ Возобновить",
+        "en": "▶️ Resume",
+    },
+    "owner.manage.kb.transfer": {
+        "ru": "🔁 Передать владение",
+        "en": "🔁 Transfer ownership",
+    },
+    # Stats text — see module docstring for placeholders
+    "owner.stats.text": {
+        "ru": (
+            "📊 Статистика (за {period_days} дн.)\n"
+            "Активные: {active_customers}, платящие: {paid_customers}\n"
+            "DAU/WAU/MAU: {dau}/{wau}/{mau}\n"
+            "Выручка: {revenue_cents}, MRR: {mrr_cents}\n"
+            "Запросы: {requests_by_kind}"
+        ),
+        "en": (
+            "📊 Statistics (last {period_days} days)\n"
+            "Active: {active_customers}, paying: {paid_customers}\n"
+            "DAU/WAU/MAU: {dau}/{wau}/{mau}\n"
+            "Revenue: {revenue_cents}, MRR: {mrr_cents}\n"
+            "Requests: {requests_by_kind}"
+        ),
+    },
+    # Authorization alert (shown via query.answer(show_alert=True))
+    "owner.no_rights": {
+        "ru": "Нет прав",
+        "en": "No permission",
+    },
+    # pause / resume
+    "owner.pause.platform_blocked": {
+        "ru": "Нельзя поставить на паузу платформенный тенант",
+        "en": "The platform tenant cannot be paused",
+    },
+    "owner.pause.done": {
+        "ru": "⏸ Поставлено на паузу.",
+        "en": "⏸ Paused.",
+    },
+    "owner.resume.done": {
+        "ru": "▶️ Возобновлено.",
+        "en": "▶️ Resumed.",
+    },
+    # /transfer
+    "owner.transfer.usage": {
+        "ru": "Использование: /transfer <slug>",
+        "en": "Usage: /transfer <slug>",
+    },
+    "owner.transfer.not_owner": {
+        "ru": "Тенант не найден или ты не владелец.",
+        "en": "Tenant not found or you are not the owner.",
+    },
+    "owner.transfer.prompt": {
+        "ru": (
+            "Перешли Telegram ID нового владельца (число). "
+            "Он должен уже иметь аккаунт в этом тенанте (запустить твоего бота)."
+        ),
+        "en": (
+            "Forward the Telegram ID of the new owner (a number). "
+            "They must already have an account in this tenant (have started your bot)."
+        ),
+    },
+    "owner.transfer.cancelled": {
+        "ru": "Отменено.",
+        "en": "Cancelled.",
+    },
+    "owner.transfer.target_invalid": {
+        "ru": "Нужен числовой Telegram ID. Попробуй ещё раз или /cancel.",
+        "en": "A numeric Telegram ID is required. Try again or /cancel.",
+    },
+    "owner.transfer.no_rights_anymore": {
+        "ru": "Больше нет прав на передачу.",
+        "en": "You no longer have permission to transfer.",
+    },
+    "owner.transfer.no_account": {
+        "ru": (
+            "У этого пользователя нет аккаунта в тенанте. "
+            "Он должен сначала запустить твоего бота."
+        ),
+        "en": (
+            "This user has no account in the tenant. "
+            "They must start your bot first."
+        ),
+    },
+    "owner.transfer.done": {
+        "ru": "✅ Готово. Владение передано.",
+        "en": "✅ Done. Ownership transferred.",
     },
 }

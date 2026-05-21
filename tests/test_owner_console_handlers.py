@@ -10,6 +10,8 @@ from types import SimpleNamespace
 from quantuum.db.models import Account, AccountIdentity, Tenant
 from quantuum.domain.tenants import grant_role
 
+from .conftest import build_translator
+
 TG = 222
 
 
@@ -70,21 +72,23 @@ async def test_tenants_lists_managed(session, monkeypatch):
     _patch_sessionmaker(monkeypatch, oc, session)
     t = await _make_tenant(session, "alpha", "Alpha")
     await _seed_account_with_role(session, tenant=t, role="owner")
+    i18n = await build_translator(session, t.id)
 
     msg = FakeMessage()
-    await oc.on_tenants(msg)
+    await oc.on_tenants(msg, i18n=i18n)
 
     text = msg.answers[0][0]
     assert "alpha" in text
     assert "Alpha" in text
 
 
-async def test_tenants_no_tenants(session, monkeypatch):
+async def test_tenants_no_tenants(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
 
     _patch_sessionmaker(monkeypatch, oc, session)
+    i18n = await build_translator(session, default_tenant.id)
     msg = FakeMessage(from_user_id=99999)
-    await oc.on_tenants(msg)
+    await oc.on_tenants(msg, i18n=i18n)
 
     assert "нет тенантов" in msg.answers[0][0]
 
@@ -98,9 +102,10 @@ async def test_manage_managed_tenant_active_shows_pause(session, monkeypatch):
     _patch_sessionmaker(monkeypatch, oc, session)
     t = await _make_tenant(session, "beta", "Beta", status="active")
     await _seed_account_with_role(session, tenant=t, role="owner")
+    i18n = await build_translator(session, t.id)
 
     msg = FakeMessage()
-    await oc.on_manage(msg, SimpleNamespace(args="beta"))
+    await oc.on_manage(msg, SimpleNamespace(args="beta"), i18n=i18n)
 
     text, markup = msg.answers[0]
     assert "beta" in text
@@ -121,9 +126,10 @@ async def test_manage_paused_tenant_shows_resume(session, monkeypatch):
     _patch_sessionmaker(monkeypatch, oc, session)
     t = await _make_tenant(session, "gamma", "Gamma", status="suspended")
     await _seed_account_with_role(session, tenant=t, role="owner")
+    i18n = await build_translator(session, t.id)
 
     msg = FakeMessage()
-    await oc.on_manage(msg, SimpleNamespace(args="gamma"))
+    await oc.on_manage(msg, SimpleNamespace(args="gamma"), i18n=i18n)
 
     _, markup = msg.answers[0]
     actions = {OwnerManageCb.unpack(b.callback_data).action for b in _inline(markup)}
@@ -136,19 +142,21 @@ async def test_manage_unmanaged_slug(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     # Tenant exists but the user holds no role in it.
-    await _make_tenant(session, "delta", "Delta")
+    t = await _make_tenant(session, "delta", "Delta")
+    i18n = await build_translator(session, t.id)
 
     msg = FakeMessage()
-    await oc.on_manage(msg, SimpleNamespace(args="delta"))
+    await oc.on_manage(msg, SimpleNamespace(args="delta"), i18n=i18n)
 
     assert "нет прав" in msg.answers[0][0]
 
 
-async def test_manage_missing_args(session, monkeypatch):
+async def test_manage_missing_args(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
 
     _patch_sessionmaker(monkeypatch, oc, session)
+    i18n = await build_translator(session, default_tenant.id)
     msg = FakeMessage()
-    await oc.on_manage(msg, SimpleNamespace(args=""))
+    await oc.on_manage(msg, SimpleNamespace(args=""), i18n=i18n)
 
     assert "Использование" in msg.answers[0][0]

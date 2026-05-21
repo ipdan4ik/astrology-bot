@@ -3,17 +3,20 @@ from unittest.mock import AsyncMock
 
 from quantuum.bot.handlers.master_onboarding import slug_is_available
 
+from .conftest import build_translator
+
 
 async def test_slug_is_available(session, default_tenant):
     assert await slug_is_available(session, "brand-new") is True
     assert await slug_is_available(session, "default") is False
 
 
-def test_master_cancel_kb_uses_owner_callback():
+async def test_master_cancel_kb_uses_owner_callback(session, default_tenant):
     from quantuum.bot.handlers.master_onboarding import master_cancel_kb
     from quantuum.bot.ui.callbacks import OwnerOnboardCb
 
-    kb = master_cancel_kb()
+    i18n = await build_translator(session, default_tenant.id)
+    kb = await master_cancel_kb(i18n)
     cb = kb.inline_keyboard[0][0].callback_data
     assert OwnerOnboardCb.unpack(cb).action == "cancel"
 
@@ -59,13 +62,14 @@ def _patch_sessionmaker(monkeypatch, module, session):
     monkeypatch.setattr(module, "get_sessionmaker", lambda: _Maker())
 
 
-async def test_confirm_creates_tenant_and_enqueues(session, monkeypatch):
+async def test_confirm_creates_tenant_and_enqueues(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import master_onboarding as mo
     from quantuum.bot.ui.callbacks import OwnerOnboardCb
     from quantuum.db.models import Tenant
     from quantuum.domain.invites import create_invite
 
     _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
     enqueued = {}
 
     async def fake_enqueue(tenant_id):
@@ -79,7 +83,7 @@ async def test_confirm_creates_tenant_and_enqueues(session, monkeypatch):
     query.from_user = SimpleNamespace(id=555)
     query.message = SimpleNamespace(chat=SimpleNamespace(id=555), answer=AsyncMock())
 
-    await mo.on_confirm(query, OwnerOnboardCb(action="confirm"), state, chat_id=555)
+    await mo.on_confirm(query, OwnerOnboardCb(action="confirm"), state, i18n=i18n, chat_id=555)
 
     from sqlmodel import select
     result = await session.execute(select(Tenant).where(Tenant.slug == "acme"))
@@ -90,24 +94,27 @@ async def test_confirm_creates_tenant_and_enqueues(session, monkeypatch):
     assert (await state.get_data())["tenant_id"] == tenant.id
 
 
-async def test_cancel_clears_state(monkeypatch):
+async def test_cancel_clears_state(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import master_onboarding as mo
     from quantuum.bot.ui.callbacks import OwnerOnboardCb
 
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
     state = _FakeState({"slug": "x"})
     query = AsyncMock()
     query.message = SimpleNamespace(answer=AsyncMock())
-    await mo.on_cancel(query, OwnerOnboardCb(action="cancel"), state)
+    await mo.on_cancel(query, OwnerOnboardCb(action="cancel"), state, i18n=i18n)
     assert state.state is None
     assert await state.get_data() == {}
 
 
-async def test_manual_token_finalizes(session, monkeypatch):
+async def test_manual_token_finalizes(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import master_onboarding as mo
     from quantuum.domain.invites import create_invite
     from quantuum.domain.provisioning import create_tenant_from_onboarding
 
     _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
 
     async def fake_validate(token):
         return (900, "zen_bot")
@@ -122,19 +129,20 @@ async def test_manual_token_finalizes(session, monkeypatch):
     state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
     message = SimpleNamespace(text="900:newtoken", answer=AsyncMock())
 
-    await mo.on_manual_token(message, state)
+    await mo.on_manual_token(message, state, i18n=i18n)
 
     await session.refresh(tenant)
     assert tenant.status == "active"
     assert state.state is None  # cleared
 
 
-async def test_manual_token_rejects_invalid(session, monkeypatch):
+async def test_manual_token_rejects_invalid(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import master_onboarding as mo
     from quantuum.domain.invites import create_invite
     from quantuum.domain.provisioning import create_tenant_from_onboarding
 
     _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
 
     async def fake_validate(token):
         return None
@@ -149,7 +157,7 @@ async def test_manual_token_rejects_invalid(session, monkeypatch):
     state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
     message = SimpleNamespace(text="garbage", answer=AsyncMock())
 
-    await mo.on_manual_token(message, state)
+    await mo.on_manual_token(message, state, i18n=i18n)
 
     await session.refresh(tenant)
     assert tenant.status != "active"  # still awaiting

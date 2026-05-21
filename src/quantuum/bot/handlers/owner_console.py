@@ -17,67 +17,80 @@ from quantuum.domain.owner_console import (
 )
 from quantuum.domain.stats import tenant_stats
 from quantuum.domain.tenants import set_tenant_status, transfer_ownership
+from quantuum.i18n import Translator
 
 router = Router()
 
 
 @router.message(Command("tenants"))
-async def on_tenants(message: Message) -> None:
+async def on_tenants(message: Message, i18n: Translator) -> None:
     tg_user_id = str(message.from_user.id)
     async with get_sessionmaker()() as session:
         tenants = await managed_tenants(session, tg_user_id)
     if not tenants:
-        await message.answer("У тебя пока нет тенантов. Создай бота по ссылке-приглашению.")
+        await message.answer(await i18n("owner.tenants.empty"))
         return
-    lines = ["Твои тенанты:"]
+    lines = [await i18n("owner.tenants.header")]
     for t in tenants:
-        lines.append(f"• {t.display_name} (/{t.slug}) — {t.status}")
-    lines.append("\nУправление: /manage <slug>")
+        lines.append(
+            await i18n(
+                "owner.tenants.line",
+                display_name=t.display_name,
+                slug=t.slug,
+                status=t.status,
+            )
+        )
+    lines.append(await i18n("owner.tenants.hint"))
     await message.answer("\n".join(lines))
 
 
 @router.message(Command("manage"))
-async def on_manage(message: Message, command: CommandObject) -> None:
+async def on_manage(message: Message, command: CommandObject, i18n: Translator) -> None:
     slug = (command.args or "").strip()
     if not slug:
-        await message.answer("Использование: /manage <slug>")
+        await message.answer(await i18n("owner.manage.usage"))
         return
     tg_user_id = str(message.from_user.id)
     async with get_sessionmaker()() as session:
         resolved = await resolve_managed_tenant_by_slug(session, tg_user_id=tg_user_id, slug=slug)
     if resolved is None:
-        await message.answer("Тенант не найден или у тебя нет прав.")
+        await message.answer(await i18n("owner.manage.not_found"))
         return
     tenant, _actor = resolved
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="📊 Статистика",
+            text=await i18n("owner.manage.kb.stats"),
             callback_data=OwnerManageCb(action="stats", tenant_id=tenant.id).pack(),
         )
     )
     if tenant.status == "active":
         builder.row(
             InlineKeyboardButton(
-                text="⏸ Пауза",
+                text=await i18n("owner.manage.kb.pause"),
                 callback_data=OwnerManageCb(action="pause", tenant_id=tenant.id).pack(),
             )
         )
     else:
         builder.row(
             InlineKeyboardButton(
-                text="▶️ Возобновить",
+                text=await i18n("owner.manage.kb.resume"),
                 callback_data=OwnerManageCb(action="resume", tenant_id=tenant.id).pack(),
             )
         )
     builder.row(
         InlineKeyboardButton(
-            text="🔁 Передать владение",
+            text=await i18n("owner.manage.kb.transfer"),
             callback_data=OwnerManageCb(action="transfer", tenant_id=tenant.id).pack(),
         )
     )
     await message.answer(
-        f"Управление: {tenant.display_name} (/{tenant.slug}) — {tenant.status}",
+        await i18n(
+            "owner.manage.title",
+            display_name=tenant.display_name,
+            slug=tenant.slug,
+            status=tenant.status,
+        ),
         reply_markup=builder.as_markup(),
     )
 
@@ -86,41 +99,50 @@ async def on_manage(message: Message, command: CommandObject) -> None:
 
 
 @router.callback_query(OwnerManageCb.filter(F.action == "stats"))
-async def on_manage_stats(query: CallbackQuery, callback_data: OwnerManageCb) -> None:
+async def on_manage_stats(
+    query: CallbackQuery, callback_data: OwnerManageCb, i18n: Translator
+) -> None:
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
             session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
         )
         if actor is None:
-            await query.answer("Нет прав", show_alert=True)
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
             return
         s = await tenant_stats(session, callback_data.tenant_id)
-    text = (
-        f"📊 Статистика (за {s['period_days']} дн.)\n"
-        f"Активные: {s['active_customers']}, платящие: {s['paid_customers']}\n"
-        f"DAU/WAU/MAU: {s['dau']}/{s['wau']}/{s['mau']}\n"
-        f"Выручка: {s['revenue_cents']}, MRR: {s['mrr_cents']}\n"
-        f"Запросы: {s['requests_by_kind']}"
+    text = await i18n(
+        "owner.stats.text",
+        period_days=s["period_days"],
+        active_customers=s["active_customers"],
+        paid_customers=s["paid_customers"],
+        dau=s["dau"],
+        wau=s["wau"],
+        mau=s["mau"],
+        revenue_cents=s["revenue_cents"],
+        mrr_cents=s["mrr_cents"],
+        requests_by_kind=s["requests_by_kind"],
     )
     await query.message.answer(text)
     await query.answer()
 
 
 @router.callback_query(OwnerManageCb.filter(F.action == "pause"))
-async def on_manage_pause(query: CallbackQuery, callback_data: OwnerManageCb) -> None:
+async def on_manage_pause(
+    query: CallbackQuery, callback_data: OwnerManageCb, i18n: Translator
+) -> None:
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
             session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
         )
         if actor is None:
-            await query.answer("Нет прав", show_alert=True)
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
             return
         tenant = await session.get(Tenant, callback_data.tenant_id)
         if tenant is not None and tenant.is_platform:
             await query.answer(
-                "Нельзя поставить на паузу платформенный тенант", show_alert=True
+                await i18n("owner.pause.platform_blocked"), show_alert=True
             )
             return
         await set_tenant_status(session, callback_data.tenant_id, "suspended", "paused")
@@ -133,19 +155,21 @@ async def on_manage_pause(query: CallbackQuery, callback_data: OwnerManageCb) ->
             entity_id=callback_data.tenant_id,
         )
         await session.commit()
-    await query.message.answer("⏸ Поставлено на паузу.")
+    await query.message.answer(await i18n("owner.pause.done"))
     await query.answer()
 
 
 @router.callback_query(OwnerManageCb.filter(F.action == "resume"))
-async def on_manage_resume(query: CallbackQuery, callback_data: OwnerManageCb) -> None:
+async def on_manage_resume(
+    query: CallbackQuery, callback_data: OwnerManageCb, i18n: Translator
+) -> None:
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
             session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
         )
         if actor is None:
-            await query.answer("Нет прав", show_alert=True)
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
             return
         await set_tenant_status(session, callback_data.tenant_id, "active", "active")
         await record_audit(
@@ -157,7 +181,7 @@ async def on_manage_resume(query: CallbackQuery, callback_data: OwnerManageCb) -
             entity_id=callback_data.tenant_id,
         )
         await session.commit()
-    await query.message.answer("▶️ Возобновлено.")
+    await query.message.answer(await i18n("owner.resume.done"))
     await query.answer()
 
 
@@ -170,11 +194,11 @@ class OwnerTransfer(StatesGroup):
 
 @router.message(Command("transfer"))
 async def on_transfer_cmd(
-    message: Message, command: CommandObject, state: FSMContext
+    message: Message, command: CommandObject, state: FSMContext, i18n: Translator
 ) -> None:
     slug = (command.args or "").strip()
     if not slug:
-        await message.answer("Использование: /transfer <slug>")
+        await message.answer(await i18n("owner.transfer.usage"))
         return
     tg_user_id = str(message.from_user.id)
     async with get_sessionmaker()() as session:
@@ -182,28 +206,25 @@ async def on_transfer_cmd(
             session, tg_user_id=tg_user_id, slug=slug, roles=("owner",)
         )
     if resolved is None:
-        await message.answer("Тенант не найден или ты не владелец.")
+        await message.answer(await i18n("owner.transfer.not_owner"))
         return
     tenant, actor = resolved
     await state.set_state(OwnerTransfer.awaiting_target)
     await state.update_data(tenant_id=tenant.id, actor_id=actor)
-    await message.answer(
-        "Перешли Telegram ID нового владельца (число). "
-        "Он должен уже иметь аккаунт в этом тенанте (запустить твоего бота)."
-    )
+    await message.answer(await i18n("owner.transfer.prompt"))
 
 
 @router.message(Command("cancel"), OwnerTransfer.awaiting_target)
-async def on_transfer_cancel(message: Message, state: FSMContext) -> None:
+async def on_transfer_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
     await state.clear()
-    await message.answer("Отменено.")
+    await message.answer(await i18n("owner.transfer.cancelled"))
 
 
 @router.message(OwnerTransfer.awaiting_target)
-async def on_transfer_target(message: Message, state: FSMContext) -> None:
+async def on_transfer_target(message: Message, state: FSMContext, i18n: Translator) -> None:
     raw = (message.text or "").strip()
     if not raw.isdigit():
-        await message.answer("Нужен числовой Telegram ID. Попробуй ещё раз или /cancel.")
+        await message.answer(await i18n("owner.transfer.target_invalid"))
         return
     data = await state.get_data()
     tenant_id = data["tenant_id"]
@@ -217,7 +238,7 @@ async def on_transfer_target(message: Message, state: FSMContext) -> None:
             roles=("owner",),
         )
         if actor_id is None:
-            await message.answer("Больше нет прав на передачу.")
+            await message.answer(await i18n("owner.transfer.no_rights_anymore"))
             await state.clear()
             return
         # find the new owner's account IN THIS tenant via tg_chat identity
@@ -233,10 +254,7 @@ async def on_transfer_target(message: Message, state: FSMContext) -> None:
         )
         new_owner_account_id = (await session.execute(q)).scalar_one_or_none()
         if new_owner_account_id is None:
-            await message.answer(
-                "У этого пользователя нет аккаунта в тенанте. "
-                "Он должен сначала запустить твоего бота."
-            )
+            await message.answer(await i18n("owner.transfer.no_account"))
             return  # stay in state so they can retry
         tenant = await session.get(Tenant, tenant_id)
         before = tenant.primary_owner_account_id
@@ -257,4 +275,4 @@ async def on_transfer_target(message: Message, state: FSMContext) -> None:
         )
         await session.commit()
     await state.clear()
-    await message.answer("✅ Готово. Владение передано.")
+    await message.answer(await i18n("owner.transfer.done"))

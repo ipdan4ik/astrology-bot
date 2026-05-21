@@ -15,6 +15,7 @@ from quantuum.domain.provisioning import (
     finalize_provisioning,
     validate_bot_token,
 )
+from quantuum.i18n import Translator
 from quantuum.tasks.enqueue import enqueue_provision_tenant
 
 router = Router()
@@ -36,9 +37,14 @@ async def slug_is_available(session, slug: str) -> bool:
     return result.scalar_one_or_none() is None
 
 
-def master_cancel_kb():
+async def master_cancel_kb(i18n: Translator):
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="Отмена", callback_data=OwnerOnboardCb(action="cancel").pack()))
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("master.kb.cancel"),
+            callback_data=OwnerOnboardCb(action="cancel").pack(),
+        )
+    )
     return builder.as_markup()
 
 
@@ -48,80 +54,104 @@ async def get_invite_by_id(session, invite_id: int):
     return await session.get(TenantInvite, invite_id)
 
 
-def confirm_kb():
+async def confirm_kb(i18n: Translator):
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="Создать бота", callback_data=OwnerOnboardCb(action="confirm").pack()))
-    builder.row(InlineKeyboardButton(text="Отмена", callback_data=OwnerOnboardCb(action="cancel").pack()))
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("master.kb.create_bot"),
+            callback_data=OwnerOnboardCb(action="confirm").pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("master.kb.cancel"),
+            callback_data=OwnerOnboardCb(action="cancel").pack(),
+        )
+    )
     return builder.as_markup()
 
 
 @router.message(CommandStart(deep_link=True))
-async def on_start_with_code(message: Message, command: CommandObject, state: FSMContext) -> None:
+async def on_start_with_code(
+    message: Message, command: CommandObject, state: FSMContext, i18n: Translator
+) -> None:
     code = (command.args or "").strip()
     async with get_sessionmaker()() as session:
         invite = await get_invite_by_code(session, code)
     if invite is None or not invite_is_usable(invite):
-        await message.answer("Приглашение недействительно или истекло.")
+        await message.answer(await i18n("master.onboard.invite_invalid"))
         return
     await state.set_state(OwnerOnboarding.slug)
     await state.update_data(invite_id=invite.id, default_lang=invite.preset_default_lang or "ru")
-    prefill = f" (предложено: {invite.preset_slug})" if invite.preset_slug else ""
+    prefill = (
+        await i18n("master.onboard.slug_prefill", slug=invite.preset_slug)
+        if invite.preset_slug
+        else ""
+    )
     await message.answer(
-        f"Добро пожаловать! Давай создадим бота. Введи slug тенанта (латиница, без пробелов){prefill}:",
-        reply_markup=master_cancel_kb(),
+        await i18n("master.onboard.slug_prompt", prefill=prefill),
+        reply_markup=await master_cancel_kb(i18n),
     )
 
 
 @router.message(CommandStart(deep_link=False))
-async def on_plain_start(message: Message) -> None:
-    await message.answer("Это бот онбординга платформы. Открой ссылку-приглашение, чтобы создать своего бота.")
+async def on_plain_start(message: Message, i18n: Translator) -> None:
+    await message.answer(await i18n("master.onboard.plain_start"))
 
 
 @router.message(OwnerOnboarding.slug)
-async def on_slug(message: Message, state: FSMContext) -> None:
+async def on_slug(message: Message, state: FSMContext, i18n: Translator) -> None:
     slug = (message.text or "").strip().lower()
     if not slug or " " in slug:
-        await message.answer("Slug не должен быть пустым или содержать пробелы. Попробуй ещё раз:")
+        await message.answer(await i18n("master.onboard.slug_invalid"))
         return
     async with get_sessionmaker()() as session:
         if not await slug_is_available(session, slug):
-            await message.answer("Этот slug уже занят. Введи другой:")
+            await message.answer(await i18n("master.onboard.slug_taken"))
             return
     await state.update_data(slug=slug)
     await state.set_state(OwnerOnboarding.display_name)
-    await message.answer("Отображаемое имя продукта (например «Acme Astro»):")
+    await message.answer(await i18n("master.onboard.display_name_prompt"))
 
 
 @router.message(OwnerOnboarding.display_name)
-async def on_display_name(message: Message, state: FSMContext) -> None:
+async def on_display_name(message: Message, state: FSMContext, i18n: Translator) -> None:
     name = (message.text or "").strip()
     if not name:
-        await message.answer("Имя не должно быть пустым. Введи ещё раз:")
+        await message.answer(await i18n("master.onboard.display_name_empty"))
         return
     await state.update_data(display_name=name)
     await state.set_state(OwnerOnboarding.default_lang)
-    await message.answer("Язык по умолчанию (двухбуквенный код, например ru или en):")
+    await message.answer(await i18n("master.onboard.lang_prompt"))
 
 
 @router.message(OwnerOnboarding.default_lang)
-async def on_default_lang(message: Message, state: FSMContext) -> None:
+async def on_default_lang(message: Message, state: FSMContext, i18n: Translator) -> None:
     lang = (message.text or "").strip().lower()
     if len(lang) != 2 or not lang.isalpha():
-        await message.answer("Нужен двухбуквенный код языка, например ru. Введи ещё раз:")
+        await message.answer(await i18n("master.onboard.lang_invalid"))
         return
     await state.update_data(default_lang=lang)
     data = await state.get_data()
     await state.set_state(OwnerOnboarding.confirm)
     await message.answer(
-        f"Проверь данные:\nslug: {data['slug']}\nназвание: {data['display_name']}\nязык: {lang}\n\n"
-        "Создаём бота?",
-        reply_markup=confirm_kb(),
+        await i18n(
+            "master.onboard.confirm",
+            slug=data["slug"],
+            display_name=data["display_name"],
+            lang=lang,
+        ),
+        reply_markup=await confirm_kb(i18n),
     )
 
 
 @router.callback_query(OwnerOnboardCb.filter(F.action == "confirm"), OwnerOnboarding.confirm)
 async def on_confirm(
-    query: CallbackQuery, callback_data: OwnerOnboardCb, state: FSMContext, chat_id: int | None = None
+    query: CallbackQuery,
+    callback_data: OwnerOnboardCb,
+    state: FSMContext,
+    i18n: Translator,
+    chat_id: int | None = None,
 ) -> None:
     data = await state.get_data()
     owner_tg_id = query.from_user.id
@@ -129,7 +159,7 @@ async def on_confirm(
     async with get_sessionmaker()() as session:
         invite = await get_invite_by_id(session, data["invite_id"])
         if invite is None or not invite_is_usable(invite):
-            await query.message.answer("Приглашение больше недействительно.")
+            await query.message.answer(await i18n("master.onboard.invite_gone"))
             await state.clear()
             await query.answer()
             return
@@ -145,23 +175,25 @@ async def on_confirm(
     await enqueue_provision_tenant(tenant.id)
     await state.set_state(ManualToken.awaiting)
     await state.update_data(tenant_id=tenant.id)
-    await query.message.answer("Создаю тенанта… Проверяю возможность автосоздания бота.")
+    await query.message.answer(await i18n("master.onboard.creating"))
     await query.answer()
 
 
 @router.callback_query(OwnerOnboardCb.filter(F.action == "cancel"))
-async def on_cancel(query: CallbackQuery, callback_data: OwnerOnboardCb, state: FSMContext) -> None:
+async def on_cancel(
+    query: CallbackQuery, callback_data: OwnerOnboardCb, state: FSMContext, i18n: Translator
+) -> None:
     await state.clear()
-    await query.message.answer("Онбординг отменён.")
+    await query.message.answer(await i18n("master.onboard.cancelled"))
     await query.answer()
 
 
 @router.message(ManualToken.awaiting)
-async def on_manual_token(message: Message, state: FSMContext) -> None:
+async def on_manual_token(message: Message, state: FSMContext, i18n: Translator) -> None:
     token = (message.text or "").strip()
     result = await validate_bot_token(token)
     if result is None:
-        await message.answer("Это не похоже на валидный токен бота. Пришли токен от @BotFather ещё раз:")
+        await message.answer(await i18n("master.onboard.token_invalid"))
         return
     bot_id, username = result
     data = await state.get_data()
@@ -176,6 +208,5 @@ async def on_manual_token(message: Message, state: FSMContext) -> None:
         )
     await state.clear()
     await message.answer(
-        f"Готово! Бот @{tenant_bot.bot_username} активирован. "
-        "Он станет доступен после перезапуска воркера."
+        await i18n("master.onboard.done", username=tenant_bot.bot_username)
     )

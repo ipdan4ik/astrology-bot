@@ -19,6 +19,8 @@ from quantuum.db.models import (
 )
 from quantuum.domain.tenants import grant_role
 
+from .conftest import build_translator
+
 OWNER_TG = 111
 CUSTOMER_TG = 222
 
@@ -139,9 +141,10 @@ async def test_stats_callback(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
 
     query = FakeCallbackQuery(from_user_id=OWNER_TG)
-    await oc.on_manage_stats(query, OwnerManageCb(action="stats", tenant_id=t.id))
+    await oc.on_manage_stats(query, OwnerManageCb(action="stats", tenant_id=t.id), i18n=i18n)
 
     assert query.message.answers, "stats text should be sent to the chat"
     text = query.message.answers[0][0]
@@ -162,10 +165,11 @@ async def test_pause_then_resume_by_owner(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
 
     # pause
     q1 = FakeCallbackQuery(from_user_id=OWNER_TG)
-    await oc.on_manage_pause(q1, OwnerManageCb(action="pause", tenant_id=t.id))
+    await oc.on_manage_pause(q1, OwnerManageCb(action="pause", tenant_id=t.id), i18n=i18n)
 
     await session.refresh(t)
     await session.refresh(bot)
@@ -176,7 +180,7 @@ async def test_pause_then_resume_by_owner(session, monkeypatch):
 
     # resume
     q2 = FakeCallbackQuery(from_user_id=OWNER_TG)
-    await oc.on_manage_resume(q2, OwnerManageCb(action="resume", tenant_id=t.id))
+    await oc.on_manage_resume(q2, OwnerManageCb(action="resume", tenant_id=t.id), i18n=i18n)
 
     await session.refresh(t)
     await session.refresh(bot)
@@ -191,10 +195,11 @@ async def test_pause_by_non_owner_denied(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
 
     # tg 222 holds a customer account but no role
     q = FakeCallbackQuery(from_user_id=CUSTOMER_TG)
-    await oc.on_manage_pause(q, OwnerManageCb(action="pause", tenant_id=t.id))
+    await oc.on_manage_pause(q, OwnerManageCb(action="pause", tenant_id=t.id), i18n=i18n)
 
     await session.refresh(t)
     await session.refresh(bot)
@@ -214,9 +219,10 @@ async def test_pause_platform_tenant_blocked(session, monkeypatch):
     t = await _make_tenant(session, "platform", "Platform", is_platform=True)
     bot = await _seed_bot(session, t.id)
     await _seed_account(session, tenant=t, tg=OWNER_TG, role="owner")
+    i18n = await build_translator(session, t.id)
 
     q = FakeCallbackQuery(from_user_id=OWNER_TG)
-    await oc.on_manage_pause(q, OwnerManageCb(action="pause", tenant_id=t.id))
+    await oc.on_manage_pause(q, OwnerManageCb(action="pause", tenant_id=t.id), i18n=i18n)
 
     await session.refresh(t)
     await session.refresh(bot)
@@ -233,17 +239,18 @@ async def test_transfer_success(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, _bot, _owner, customer = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
 
     state = FakeState()
 
     # step 1: /transfer <slug> by the owner
     msg1 = FakeMessage(from_user_id=OWNER_TG)
-    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state)
+    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state, i18n=i18n)
     assert state.state == oc.OwnerTransfer.awaiting_target
 
     # step 2: send the new owner's tg id
     msg2 = FakeMessage(from_user_id=OWNER_TG, text=str(CUSTOMER_TG))
-    await oc.on_transfer_target(msg2, state)
+    await oc.on_transfer_target(msg2, state, i18n=i18n)
 
     await session.refresh(t)
     assert t.primary_owner_account_id == customer.id
@@ -270,12 +277,13 @@ async def test_transfer_reauthorizes_at_apply_time(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, _bot, owner, customer = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
     before_owner = t.primary_owner_account_id
 
     state = FakeState()
     # step 1: /transfer <slug> by the owner (state set)
     msg1 = FakeMessage(from_user_id=OWNER_TG)
-    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state)
+    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state, i18n=i18n)
     assert state.state == oc.OwnerTransfer.awaiting_target
 
     # revoke the owner's role before the apply step
@@ -292,7 +300,7 @@ async def test_transfer_reauthorizes_at_apply_time(session, monkeypatch):
 
     # step 2: send the new owner's tg id — should be refused
     msg2 = FakeMessage(from_user_id=OWNER_TG, text=str(CUSTOMER_TG))
-    await oc.on_transfer_target(msg2, state)
+    await oc.on_transfer_target(msg2, state, i18n=i18n)
 
     await session.refresh(t)
     assert t.primary_owner_account_id == before_owner  # unchanged
@@ -306,11 +314,12 @@ async def test_transfer_by_non_owner(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
 
     state = FakeState()
     # tg 222 is a customer, not an owner
     msg = FakeMessage(from_user_id=CUSTOMER_TG)
-    await oc.on_transfer_cmd(msg, SimpleNamespace(args=t.slug), state)
+    await oc.on_transfer_cmd(msg, SimpleNamespace(args=t.slug), state, i18n=i18n)
 
     assert "не владелец" in msg.answers[0][0]
     assert state.state is None  # FSM not entered
@@ -321,15 +330,16 @@ async def test_transfer_target_without_account(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
     before_owner = t.primary_owner_account_id
 
     state = FakeState()
     msg1 = FakeMessage(from_user_id=OWNER_TG)
-    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state)
+    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state, i18n=i18n)
 
     # 999 has no account in T
     msg2 = FakeMessage(from_user_id=OWNER_TG, text="999")
-    await oc.on_transfer_target(msg2, state)
+    await oc.on_transfer_target(msg2, state, i18n=i18n)
 
     await session.refresh(t)
     assert t.primary_owner_account_id == before_owner  # unchanged
@@ -344,37 +354,41 @@ async def test_transfer_target_non_numeric(session, monkeypatch):
 
     _patch_sessionmaker(monkeypatch, oc, session)
     t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
 
     state = FakeState()
     msg1 = FakeMessage(from_user_id=OWNER_TG)
-    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state)
+    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state, i18n=i18n)
 
     msg2 = FakeMessage(from_user_id=OWNER_TG, text="not-a-number")
-    await oc.on_transfer_target(msg2, state)
+    await oc.on_transfer_target(msg2, state, i18n=i18n)
 
     assert any("числовой" in a[0] for a in msg2.answers)
     assert state.state == oc.OwnerTransfer.awaiting_target  # still awaiting
 
 
-async def test_transfer_missing_args(session, monkeypatch):
+async def test_transfer_missing_args(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
 
     _patch_sessionmaker(monkeypatch, oc, session)
+    i18n = await build_translator(session, default_tenant.id)
     state = FakeState()
     msg = FakeMessage(from_user_id=OWNER_TG)
-    await oc.on_transfer_cmd(msg, SimpleNamespace(args=""), state)
+    await oc.on_transfer_cmd(msg, SimpleNamespace(args=""), state, i18n=i18n)
 
     assert "Использование" in msg.answers[0][0]
     assert state.state is None
 
 
-async def test_transfer_cancel(session, monkeypatch):
+async def test_transfer_cancel(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
 
+    _patch_sessionmaker(monkeypatch, oc, session)
+    i18n = await build_translator(session, default_tenant.id)
     state = FakeState({"tenant_id": 1, "actor_id": 2})
     state.state = oc.OwnerTransfer.awaiting_target
     msg = FakeMessage(from_user_id=OWNER_TG)
-    await oc.on_transfer_cancel(msg, state)
+    await oc.on_transfer_cancel(msg, state, i18n=i18n)
 
     assert state.state is None
     assert await state.get_data() == {}
