@@ -30,7 +30,7 @@ These differences will silently break character-exact output if missed. Every im
 
 7. **Integer formatting in tables**: the TS `table()` does `r.map(String)`. Python must render ints as plain `str(int)` (no `.0`). Keep table cell values as `int` or `str`, never `float`, except where a `.toFixed`/`to_fixed` string is intended.
 
-8. **No trailing newline**: `buildBlueprint` returns `lines.join("\n")` and the CLI writes it verbatim. Golden fixture files therefore have **no trailing newline**. Compare `build_blueprint(...) == golden_path.read_text()` exactly.
+8. **Exactly one trailing newline**: `buildBlueprint` returns `lines.join("\n")` where the final pushed element is `""`, so the string ends with exactly one `\n`. The CLI writes it verbatim, so golden fixture files end with one `\n`. Python's `"\n".join(lines)` with the same trailing `""` element reproduces it. Compare `build_blueprint(...) == golden_path.read_text()` exactly — do NOT strip or add a newline on either side.
 
 ---
 
@@ -160,11 +160,11 @@ head -8 tests/fixtures/calc/anna.calc.md
 wc -c tests/fixtures/calc/*.calc.md
 # Confirm anna starts with "# Quantuum Blueprint — Anna Belyeva" and contains
 # "**UTC instant:** 1980-06-24T07:00:00.000Z" (Europe/Moscow June 1980 = UTC+3).
-# Confirm NO trailing newline:
-tail -c 40 tests/fixtures/calc/anna.calc.md | xxd | tail -2
+# Confirm exactly ONE trailing newline:
+tail -c 1 tests/fixtures/calc/anna.calc.md | xxd -p
 ```
 
-The last byte must NOT be `0a` (newline) — `buildBlueprint` does not emit a trailing newline.
+The last byte is `0a` (exactly one newline) — `buildBlueprint`'s final `push("")` yields one trailing `\n` after the join.
 
 - [ ] **Step 4: Commit**
 
