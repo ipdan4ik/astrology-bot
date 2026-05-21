@@ -8,6 +8,7 @@ from quantuum.common.datetime import utcnow
 from quantuum.db.models import Account
 from quantuum.domain.daily import (
     claim_horoscope,
+    due_daily_account_ids,
     get_settings,
     get_tg_chat_id,
     is_subscriber,
@@ -15,6 +16,7 @@ from quantuum.domain.daily import (
     set_horoscope_status,
 )
 from quantuum.domain.llm_config import get_llm_config
+from quantuum.tasks.enqueue import enqueue_daily
 from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.tenants import get_active_tenant_bot
 from quantuum.domain.transits import resolve_natal
@@ -115,3 +117,13 @@ async def daily_generate(ctx, account_id: int) -> None:
             logger.exception("daily_delivery_failed", account_id=account_id)
 
     logger.info("daily_generated", account_id=account_id)
+
+
+async def daily_dispatch(ctx) -> None:
+    """Hourly cron: enqueue a daily_generate job for every account due right now."""
+    sessionmaker = ctx["sessionmaker"]
+    async with sessionmaker() as session:
+        account_ids = await due_daily_account_ids(session, now=utcnow())
+    for account_id in account_ids:
+        await enqueue_daily(account_id)
+    logger.info("daily_dispatched", count=len(account_ids))

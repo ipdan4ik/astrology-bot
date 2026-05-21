@@ -10,7 +10,7 @@ from quantuum.tasks.blueprint import blueprint_generate
 from quantuum.tasks.lifecycle import subscription_lifecycle
 from quantuum.tasks.provision import provision_tenant
 from quantuum.tasks.qa import qa_generate
-from quantuum.tasks.daily import daily_generate
+from quantuum.tasks.daily import daily_dispatch, daily_generate
 from quantuum.tasks.transits import transit_generate
 
 
@@ -32,7 +32,7 @@ async def shutdown(ctx) -> None:
 
 class WorkerSettings:
     functions = [blueprint_generate, provision_tenant, subscription_lifecycle, qa_generate, transit_generate, daily_generate]
-    cron_jobs = [cron(subscription_lifecycle, minute=0)]  # top of every hour
+    cron_jobs = [cron(subscription_lifecycle, minute=0), cron(daily_dispatch, minute=0)]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
