@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from quantuum.bot.app import create_dispatcher
+from quantuum.bot.reload import diff_specs, load_active_bot_specs
 from quantuum.bot.botpool import build_bots
 from quantuum.bot.master_app import create_master_dispatcher
 from quantuum.db.bootstrap import (
@@ -30,11 +31,29 @@ class WebhookConsumer:
         master_dp: Dispatcher,
         customer_pool: dict[int, Bot],
         master_pool: dict[int, Bot],
+        sessionmaker=None,
     ) -> None:
         self.customer_dp = customer_dp
         self.master_dp = master_dp
         self.customer_pool = customer_pool
         self.master_pool = master_pool
+        self.sessionmaker = sessionmaker
+
+    async def reconcile(self) -> None:
+        async with self.sessionmaker() as session:
+            desired = await load_active_bot_specs(session, "webhook")
+        live = set(self.customer_pool) | set(self.master_pool)
+        to_add, to_remove = diff_specs(live, desired)
+        for bot_id in to_add:
+            spec = desired[bot_id]
+            bot = Bot(token=spec.token)
+            (self.master_pool if spec.is_master else self.customer_pool)[bot_id] = bot
+        for bot_id in to_remove:
+            bot = self.customer_pool.pop(bot_id, None) or self.master_pool.pop(bot_id, None)
+            if bot is not None:
+                await bot.session.close()
+        if to_add or to_remove:
+            logger.info("webhook_reconciled", added=len(to_add), removed=len(to_remove))
 
     async def process(self, envelope: dict) -> None:
         bot_id = envelope["bot_id"]
