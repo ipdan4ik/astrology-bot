@@ -72,6 +72,26 @@ class QaOut(BaseModel):
     completed_at: datetime | None
 
 
+class TransitCreateIn(BaseModel):
+    window_days: int | None = None
+
+
+class TransitCreatedOut(BaseModel):
+    id: int
+    status: str
+
+
+class TransitOut(BaseModel):
+    id: int
+    window_days: int
+    as_of: datetime | None
+    report_md: str | None
+    status: str
+    lang: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
 class InviteCreateIn(BaseModel):
     tier: str = "basic"
     max_uses: int = 1

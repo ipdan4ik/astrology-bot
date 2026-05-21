@@ -19,6 +19,9 @@ from quantuum.api.schemas import (
     QaOut,
     SubscriptionOut,
     SubscriptionPlanOut,
+    TransitCreatedOut,
+    TransitCreateIn,
+    TransitOut,
 )
 from quantuum.common.exceptions import InsufficientFundsError, NotFoundError
 from quantuum.db.models import Account, AccountBalance, AccountSubscription, Blueprint, Payment
@@ -34,6 +37,7 @@ from quantuum.payments.registry import provider_for_kind
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
 from quantuum.domain.qa import create_qa, get_qa, list_qa
+from quantuum.domain.transits import create_transit, get_transit, list_transits
 from quantuum.domain.quota import consume_quota, refund_quota
 from quantuum.domain.requests import create_request
 from quantuum.tasks import enqueue
@@ -266,6 +270,85 @@ async def read_qa_route(
     if qa.account_id != account.id:
         raise HTTPException(status_code=404, detail="not found")
     return _qa_out(qa)
+
+
+def _transit_out(row) -> TransitOut:
+    return TransitOut(
+        id=row.id,
+        window_days=row.window_days,
+        as_of=row.as_of,
+        report_md=row.report_md,
+        status=row.status,
+        lang=row.lang,
+        created_at=row.created_at,
+        completed_at=row.completed_at,
+    )
+
+
+@router.post("/transits", response_model=TransitCreatedOut, status_code=202)
+async def create_transit_route(
+    body: TransitCreateIn,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> TransitCreatedOut:
+    profile = await get_natal_profile(session, account.id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="natal profile required")
+
+    lang = account.preferred_lang or "ru"
+
+    try:
+        charged = await consume_quota(session, account.id, "transit")
+    except InsufficientFundsError as exc:
+        raise HTTPException(status_code=402, detail="insufficient quota") from exc
+
+    request = await create_request(
+        session,
+        tenant_id=account.tenant_id,
+        account_id=account.id,
+        kind="transit",
+        charged_against=charged,
+    )
+    row = await create_transit(
+        session,
+        tenant_id=account.tenant_id,
+        account_id=account.id,
+        natal_profile_id=profile.id,
+        window_days=body.window_days,  # create_transit clamps to [MIN, MAX], default if None
+        lang=lang,
+    )
+    try:
+        await enqueue.enqueue_transit(row.id, None, request.id)
+    except Exception as exc:
+        await refund_quota(session, request.id)
+        raise HTTPException(status_code=503, detail="could not enqueue; refunded") from exc
+    return TransitCreatedOut(id=row.id, status=row.status)
+
+
+@router.get("/transits", response_model=list[TransitOut])
+async def list_transits_route(
+    limit: int = 50,
+    offset: int = 0,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> list[TransitOut]:
+    rows = await list_transits(session, account_id=account.id, limit=limit, offset=offset)
+    return [_transit_out(row) for row in rows]
+
+
+@router.get("/transits/{report_id}", response_model=TransitOut)
+async def read_transit_route(
+    report_id: int,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> TransitOut:
+    try:
+        row = await get_transit(session, report_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="not found") from exc
+    if row.account_id != account.id:
+        raise HTTPException(status_code=404, detail="not found")
+    return _transit_out(row)
 
 
 @router.get("/balance", response_model=BalanceOut)
