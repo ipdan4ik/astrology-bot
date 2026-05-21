@@ -89,6 +89,17 @@ async def test_finalize_provisioning_activates_tenant(session):
     assert owner.tenant_id == tenant.id
     assert await account_has_role(session, tenant_id=tenant.id, account_id=owner.id, role="owner")
 
+    # The chosen default language is seeded so the new tenant's bot serves it (not the
+    # English fallback). Regression: seed_tenant_defaults was a no-op placeholder.
+    from quantuum.db.models import TenantLanguage
+
+    langs = (
+        await session.execute(select(TenantLanguage).where(TenantLanguage.tenant_id == tenant.id))
+    ).scalars().all()
+    default = [r.lang for r in langs if r.is_default]
+    assert default == ["ru"]
+    assert all(r.enabled for r in langs)
+
 
 async def test_validate_bot_token_rejects_garbage(monkeypatch):
     from quantuum.domain import provisioning

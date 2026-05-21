@@ -81,8 +81,12 @@ async def validate_bot_token(token: str) -> tuple[int, str] | None:
 
 
 async def seed_tenant_defaults(session, *, tenant_id: int, default_lang: str) -> None:
-    """Placeholder seam: per-tenant languages/config land in the i18n plan (Plan 5)."""
-    return None
+    """Seed the new tenant's languages so its bot serves the owner-chosen default lang
+    (and English as an extra). Without this the tenant has no language config and i18n
+    silently falls back to English."""
+    from quantuum.db.bootstrap import ensure_tenant_default_language
+
+    await ensure_tenant_default_language(session, tenant_id, default_lang=default_lang)
 
 
 async def finalize_provisioning(

@@ -13,13 +13,12 @@ def test_settings_load_from_env(monkeypatch):
 
 
 def test_settings_have_2b_defaults():
-    from quantuum.settings import get_settings
-
-    get_settings.cache_clear()
-    s = get_settings()
-    assert s.master_bot_token == ""
-    assert s.master_bot_username == ""
-    assert s.bootstrap_superadmin_email == ""
-    assert s.platform_tenant_slug == "platform"
-    assert s.platform_tenant_name == "Quantuum Platform"
-    get_settings.cache_clear()
+    # Assert the DECLARED field defaults, not a constructed instance — Settings reads the
+    # real .env (env_file=".env"), so a populated .env (e.g. a real MASTER_BOT_TOKEN) must
+    # not break this test.
+    defaults = Settings.model_fields
+    assert defaults["master_bot_token"].default == ""
+    assert defaults["master_bot_username"].default == ""
+    assert defaults["bootstrap_superadmin_email"].default == ""
+    assert defaults["platform_tenant_slug"].default == "platform"
+    assert defaults["platform_tenant_name"].default == "Quantuum Platform"

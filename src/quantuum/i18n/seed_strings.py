@@ -26,7 +26,7 @@ Placeholder variables per key:
 
     master.onboard.slug_prompt   — {prefill}
     master.onboard.slug_prefill  — {slug}
-    master.onboard.confirm       — {slug}, {display_name}, {lang}
+    master.onboard.confirm       — {slug}, {display_name}, {language}
     master.onboard.done          — {username}
 
     owner.tenants.line   — {display_name}, {slug}, {status}
@@ -541,14 +541,16 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Нужен двухбуквенный код языка, например ru. Введи ещё раз:",
         "en": "A two-letter language code is required, e.g. ru. Enter it again:",
     },
-    # Confirmation summary — {slug}, {display_name}, {lang}
+    # Confirmation summary — {slug}, {display_name}, {language}
+    # NB: the placeholder is {language}, NOT {lang}: the Translator reserves `lang`
+    # (the resolution language), so a `lang=` format var collides in t().
     "master.onboard.confirm": {
         "ru": (
-            "Проверь данные:\nslug: {slug}\nназвание: {display_name}\nязык: {lang}\n\n"
+            "Проверь данные:\nslug: {slug}\nназвание: {display_name}\nязык: {language}\n\n"
             "Создаём бота?"
         ),
         "en": (
-            "Check the details:\nslug: {slug}\nname: {display_name}\nlanguage: {lang}\n\n"
+            "Check the details:\nslug: {slug}\nname: {display_name}\nlanguage: {language}\n\n"
             "Create the bot?"
         ),
     },
