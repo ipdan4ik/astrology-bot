@@ -1,5 +1,5 @@
 from quantuum.llm.base import LLMClient, LLMResult
-from quantuum.llm.anthropic_client import AnthropicClient
+from quantuum.llm.anthropic_client import AnthropicClient, _strip_markdown_fence
 from quantuum.llm.blueprint_polish import polish_blueprint
 
 
@@ -47,6 +47,17 @@ async def test_anthropic_client_parses_and_strips_fence(monkeypatch):
     res = await client.complete(system="s", user="u", model="claude-x", temperature=0.5, max_tokens=100)
     assert res.text == "HELLO"  # fence stripped
     assert res.tokens_in == 5 and res.tokens_out == 7 and res.model == "claude-x"
+
+
+def test_strip_markdown_fence_variants():
+    # uppercase fence tag
+    assert _strip_markdown_fence("```MARKDOWN\nHELLO\n```") == "HELLO"
+    # trailing spaces after tag
+    assert _strip_markdown_fence("```markdown  \nHELLO\n```") == "HELLO"
+    # inner whitespace trimmed
+    assert _strip_markdown_fence("```markdown\n  HELLO  \n```") == "HELLO"
+    # non-fenced text stripped
+    assert _strip_markdown_fence("  plain text  ") == "plain text"
 
 
 def test_registry_returns_none_without_key():

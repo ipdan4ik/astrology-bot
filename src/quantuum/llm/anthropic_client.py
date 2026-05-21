@@ -4,16 +4,14 @@ import anthropic
 
 from quantuum.llm.base import LLMError, LLMResult
 
-_FENCE_RE = re.compile(r"^```(?:markdown|md)?\n(.*)\n```$", re.DOTALL)
+_FENCE_RE = re.compile(r"^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$", re.IGNORECASE | re.DOTALL)
 
 
 def _strip_markdown_fence(text: str) -> str:
     """Remove a leading/trailing markdown code fence if present."""
-    stripped = text.strip()
-    m = _FENCE_RE.match(stripped)
-    if m:
-        return m.group(1)
-    return stripped
+    trimmed = text.strip()
+    m = _FENCE_RE.match(trimmed)
+    return m.group(1).strip() if m else trimmed
 
 
 class AnthropicClient:
