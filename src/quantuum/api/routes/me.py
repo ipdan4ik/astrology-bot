@@ -3,9 +3,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from quantuum.api.deps import current_account, get_session
-from quantuum.api.schemas import BlueprintCreatedOut, BlueprintOut, MeOut, NatalProfileIn, NatalProfileOut
+from quantuum.api.schemas import (
+    BalanceOut,
+    BlueprintCreatedOut,
+    BlueprintOut,
+    MeOut,
+    NatalProfileIn,
+    NatalProfileOut,
+    PackagePlanOut,
+    PlansOut,
+    SubscriptionPlanOut,
+)
 from quantuum.common.exceptions import InsufficientFundsError
-from quantuum.db.models import Account, Blueprint
+from quantuum.db.models import Account, AccountBalance, Blueprint
+from quantuum.domain.plans import list_package_plans, list_subscription_plans
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
 from quantuum.domain.quota import consume_quota, refund_quota
@@ -155,4 +166,49 @@ async def download_blueprint(
         content=bp.llm_md,
         media_type="text/markdown",
         headers={"Content-Disposition": f'attachment; filename="blueprint-{bp.id}.md"'},
+    )
+
+
+@router.get("/balance", response_model=BalanceOut)
+async def get_balance(
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> BalanceOut:
+    balance = await session.get(AccountBalance, account.id)
+    if balance is None:
+        return BalanceOut(free_trial_used=False, subscription_active_until=None, package_credits=0)
+    return BalanceOut(
+        free_trial_used=balance.free_trial_used,
+        subscription_active_until=(
+            balance.subscription_active_until.isoformat()
+            if balance.subscription_active_until
+            else None
+        ),
+        package_credits=balance.package_credits,
+    )
+
+
+@router.get("/plans", response_model=PlansOut)
+async def get_plans(
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> PlansOut:
+    subs = await list_subscription_plans(session, tenant_id=account.tenant_id)
+    pkgs = await list_package_plans(session, tenant_id=account.tenant_id)
+    return PlansOut(
+        subscriptions=[
+            SubscriptionPlanOut(
+                id=s.id, slug=s.slug, name=s.name, period_days=s.period_days,
+                price_cents=s.price_cents, currency=s.currency,
+            )
+            for s in subs
+        ],
+        packages=[
+            PackagePlanOut(
+                id=p.id, slug=p.slug, name=p.name, request_count=p.request_count,
+                price_cents=p.price_cents, currency=p.currency,
+                expires_after_days=p.expires_after_days,
+            )
+            for p in pkgs
+        ],
     )

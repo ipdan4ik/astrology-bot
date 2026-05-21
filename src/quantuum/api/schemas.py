@@ -80,3 +80,33 @@ class TenantOut(BaseModel):
     tier: str
     status: str
     is_platform: bool
+
+
+class BalanceOut(BaseModel):
+    free_trial_used: bool
+    subscription_active_until: str | None
+    package_credits: int
+
+
+class SubscriptionPlanOut(BaseModel):
+    id: int
+    slug: str
+    name: str
+    period_days: int
+    price_cents: int
+    currency: str
+
+
+class PackagePlanOut(BaseModel):
+    id: int
+    slug: str
+    name: str
+    request_count: int
+    price_cents: int
+    currency: str
+    expires_after_days: int | None
+
+
+class PlansOut(BaseModel):
+    subscriptions: list[SubscriptionPlanOut]
+    packages: list[PackagePlanOut]
