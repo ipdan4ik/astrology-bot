@@ -1,6 +1,11 @@
 services:
   postgres-test:
     image: postgres:16
+    # Throwaway test data — disable durability for a large speedup (TRUNCATE/DDL/INSERT
+    # are otherwise fsync-bound). NEVER use these flags for real data.
+    command: >
+      postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+      -c autovacuum=off
     environment:
       POSTGRES_USER: quantuum
       POSTGRES_PASSWORD: quantuum
