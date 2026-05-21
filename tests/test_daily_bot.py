@@ -132,3 +132,22 @@ async def test_daily_set_hour(session, default_tenant, monkeypatch):
     row = await session.get(DailySubscription, acc.id)
     assert row.send_hour == 7
     assert (await session.execute(select(DailySubscription))).scalars().first().send_hour == 7
+
+
+async def test_daily_set_hour_same_hour_swallows_not_modified(session, default_tenant, monkeypatch):
+    from aiogram.exceptions import TelegramBadRequest
+
+    from quantuum.bot.handlers import daily
+
+    _patch_sessionmaker(monkeypatch, daily, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed(session, default_tenant.id, "106")
+
+    cb = FakeCallback(chat_id=106)
+    # Re-tapping the already-selected hour yields an identical view -> Telegram rejects the edit.
+    cb.message.edit_text = AsyncMock(
+        side_effect=TelegramBadRequest(method=None, message="Bad Request: message is not modified")
+    )
+    # Must not raise, and the callback must still be answered (no stuck spinner).
+    await daily.on_daily_set_hour(cb, DailyCb(action="set_hour", value=9), acc, i18n)
+    cb.answer.assert_awaited_once()
