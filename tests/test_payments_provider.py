@@ -28,3 +28,15 @@ async def test_tg_stars_create_invoice_not_supported_in_api():
             account_id=1, tenant_id=1, plan_kind="subscription", plan_id=1,
             amount_cents=250, currency="XTR", metadata={},
         )
+
+
+async def test_tg_stars_verify_callback_not_supported_in_api():
+    impl = TgStarsProvider()
+    with pytest.raises(PaymentNotSupportedInApiError):
+        await impl.verify_callback(b"", {})
+
+
+async def test_tg_stars_refund_raises_not_implemented():
+    impl = TgStarsProvider()
+    with pytest.raises(NotImplementedError):
+        await impl.refund(1)

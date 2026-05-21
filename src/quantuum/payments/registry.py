@@ -1,7 +1,7 @@
 from quantuum.payments.base import PaymentProvider
 from quantuum.payments.tg_stars import TgStarsProvider
 
-PROVIDERS: dict[str, type] = {
+PROVIDERS: dict[str, type[PaymentProvider]] = {
     "tg_stars": TgStarsProvider,
 }
 
