@@ -129,6 +129,12 @@ async def test_transits_get_cross_account_404(client, session, default_tenant):
     assert r.status_code == 404
 
 
+async def test_transits_get_missing_404(client, session, default_tenant):
+    acc = await _make_account(session, default_tenant.id)
+    r = await client.get("/v1/me/transits/99999", headers=_headers(acc, default_tenant.id))
+    assert r.status_code == 404
+
+
 async def test_transits_list_newest_first(client, session, default_tenant):
     acc = await _make_account(session, default_tenant.id)
     await _add_profile(session, default_tenant.id, acc.id)
