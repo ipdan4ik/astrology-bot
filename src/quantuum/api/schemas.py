@@ -238,3 +238,42 @@ class RoleOut(BaseModel):
 class TransferIn(BaseModel):
     new_owner_account_id: int
     revoke_previous: bool = False
+
+
+# ---------------------------------------------------------------------------
+# i18n / config schemas (Plan 5b, Tasks 7-9)
+# ---------------------------------------------------------------------------
+
+
+class LanguageItem(BaseModel):
+    lang: str
+    enabled: bool
+    is_default: bool
+
+
+class LanguagesPutIn(BaseModel):
+    languages: list[LanguageItem]
+
+
+class LanguageOut(BaseModel):
+    lang: str
+    enabled: bool
+    is_default: bool
+
+
+class StringOverrideIn(BaseModel):
+    key: str
+    lang: str
+    text: str
+
+
+class StringOut(BaseModel):
+    key: str
+    lang: str
+    text: str
+    is_override: bool
+
+
+class ConfigPutIn(BaseModel):
+    key: str
+    value: dict

@@ -1,19 +1,33 @@
 """Tenant admin routes: GET /admin/tenants/{tenant_id}, PATCH, pause, resume,
-roles CRUD, and ownership transfer."""
+roles CRUD, ownership transfer, and i18n/config admin (Plan 5b Tasks 7-9)."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from quantuum.api.deps import get_session, require_tenant_role
 from quantuum.api.schemas import (
+    ConfigPutIn,
+    LanguageOut,
+    LanguagesPutIn,
     RoleIn,
     RoleOut,
+    StringOut,
+    StringOverrideIn,
     TenantBotBrief,
     TenantDetailOut,
     TenantPatchIn,
     TransferIn,
 )
-from quantuum.db.models import Account, Tenant, TenantBot, TenantRole
+from quantuum.common.datetime import utcnow
+from quantuum.db.models import (
+    Account,
+    Tenant,
+    TenantBot,
+    TenantConfig,
+    TenantLanguage,
+    TenantRole,
+    TenantStringOverride,
+)
 from quantuum.domain.audit import record_audit
 from quantuum.domain.tenants import (
     account_has_role,
@@ -23,6 +37,8 @@ from quantuum.domain.tenants import (
     set_tenant_status,
     transfer_ownership,
 )
+from quantuum.i18n.cache import invalidate_i18n
+from quantuum.i18n.strings import load_platform_strings, load_tenant_overrides
 
 router = APIRouter(prefix="/admin/tenants", tags=["admin-tenants"])
 
@@ -352,3 +368,250 @@ async def transfer_tenant_ownership(
     if bot is not None:
         await session.refresh(bot)
     return _tenant_detail_out(tenant, bot)
+
+
+# ---------------------------------------------------------------------------
+# Task 7 — Languages
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{tenant_id}/languages", response_model=list[LanguageOut])
+async def get_tenant_languages(
+    tenant_id: int,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[LanguageOut]:
+    result = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
+    )
+    rows = result.scalars().all()
+    return [LanguageOut(lang=r.lang, enabled=r.enabled, is_default=r.is_default) for r in rows]
+
+
+@router.put("/{tenant_id}/languages", response_model=list[LanguageOut])
+async def put_tenant_languages(
+    tenant_id: int,
+    body: LanguagesPutIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[LanguageOut]:
+    # Validate exactly one default
+    defaults = [item for item in body.languages if item.is_default]
+    if len(defaults) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="exactly one language must have is_default=true",
+        )
+
+    # Step 1: clear all existing is_default flags for this tenant to avoid the
+    # partial unique index violation when switching the default row.
+    existing_result = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
+    )
+    existing_rows: dict[str, TenantLanguage] = {
+        r.lang: r for r in existing_result.scalars()
+    }
+
+    for row in existing_rows.values():
+        if row.is_default:
+            row.is_default = False
+            session.add(row)
+    await session.flush()
+
+    # Step 2: upsert each item
+    for item in body.languages:
+        if item.lang in existing_rows:
+            row = existing_rows[item.lang]
+            row.enabled = item.enabled
+            row.is_default = item.is_default
+            session.add(row)
+        else:
+            new_row = TenantLanguage(
+                tenant_id=tenant_id,
+                lang=item.lang,
+                enabled=item.enabled,
+                is_default=item.is_default,
+            )
+            session.add(new_row)
+
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="languages.update",
+        entity_type="tenant",
+        entity_id=tenant_id,
+        payload={"languages": [i.model_dump() for i in body.languages]},
+    )
+
+    await session.commit()
+
+    await invalidate_i18n(tenant_id)
+
+    # Re-fetch and return
+    refreshed = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
+    )
+    rows = refreshed.scalars().all()
+    return [LanguageOut(lang=r.lang, enabled=r.enabled, is_default=r.is_default) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Task 8 — String overrides
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{tenant_id}/strings", response_model=list[StringOut])
+async def get_tenant_strings(
+    tenant_id: int,
+    lang: str,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[StringOut]:
+    platform = await load_platform_strings(session, lang)
+    overrides = await load_tenant_overrides(session, tenant_id, lang)
+    out: list[StringOut] = []
+    for key, platform_text in platform.items():
+        if key in overrides:
+            out.append(StringOut(key=key, lang=lang, text=overrides[key], is_override=True))
+        else:
+            out.append(StringOut(key=key, lang=lang, text=platform_text, is_override=False))
+    return out
+
+
+@router.put("/{tenant_id}/strings", response_model=StringOut)
+async def put_tenant_string_override(
+    tenant_id: int,
+    body: StringOverrideIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> StringOut:
+    # Upsert TenantStringOverride
+    existing = await session.get(
+        TenantStringOverride, (tenant_id, body.key, body.lang)
+    )
+    if existing is not None:
+        existing.text = body.text
+        existing.updated_at = utcnow()
+        existing.updated_by_account_id = account.id
+        session.add(existing)
+    else:
+        row = TenantStringOverride(
+            tenant_id=tenant_id,
+            key=body.key,
+            lang=body.lang,
+            text=body.text,
+            updated_at=utcnow(),
+            updated_by_account_id=account.id,
+        )
+        session.add(row)
+
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="string.override",
+        entity_type="tenant_string_override",
+        entity_id=f"{body.key}:{body.lang}",
+        payload={"key": body.key, "lang": body.lang},
+    )
+
+    await session.commit()
+
+    await invalidate_i18n(tenant_id, body.lang)
+
+    return StringOut(key=body.key, lang=body.lang, text=body.text, is_override=True)
+
+
+@router.delete("/{tenant_id}/strings/{key}/{lang}", status_code=200)
+async def delete_tenant_string_override(
+    tenant_id: int,
+    key: str,
+    lang: str,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    row = await session.get(TenantStringOverride, (tenant_id, key, lang))
+    if row is None:
+        raise HTTPException(status_code=404, detail="string override not found")
+
+    await session.delete(row)
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="string.revert",
+        entity_type="tenant_string_override",
+        entity_id=f"{key}:{lang}",
+        payload={"key": key, "lang": lang},
+    )
+
+    await session.commit()
+
+    await invalidate_i18n(tenant_id, lang)
+
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Task 9 — Config
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{tenant_id}/config")
+async def get_tenant_config(
+    tenant_id: int,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    result = await session.execute(
+        select(TenantConfig).where(TenantConfig.tenant_id == tenant_id)
+    )
+    rows = result.scalars().all()
+    return {row.key: row.value_jsonb for row in rows}
+
+
+@router.put("/{tenant_id}/config")
+async def put_tenant_config(
+    tenant_id: int,
+    body: ConfigPutIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    existing = await session.get(TenantConfig, (tenant_id, body.key))
+    if existing is not None:
+        existing.value_jsonb = body.value
+        existing.updated_at = utcnow()
+        existing.updated_by_account_id = account.id
+        session.add(existing)
+    else:
+        row = TenantConfig(
+            tenant_id=tenant_id,
+            key=body.key,
+            value_jsonb=body.value,
+            updated_at=utcnow(),
+            updated_by_account_id=account.id,
+        )
+        session.add(row)
+
+    await session.flush()
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="config.update",
+        entity_type="tenant_config",
+        entity_id=body.key,
+        payload={"key": body.key},
+    )
+
+    await session.commit()
+
+    return {"key": body.key, "value": body.value}
