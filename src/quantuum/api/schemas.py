@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class MagicRequestIn(BaseModel):
@@ -86,6 +86,27 @@ class TransitOut(BaseModel):
     window_days: int
     as_of: datetime | None
     report_md: str | None
+    status: str
+    lang: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class DailySettingsIn(BaseModel):
+    enabled: bool
+    send_hour: int = Field(ge=0, le=23)
+
+
+class DailySettingsOut(BaseModel):
+    enabled: bool
+    send_hour: int
+    last_sent_on: date | None
+
+
+class DailyHoroscopeOut(BaseModel):
+    id: int
+    local_date: date
+    horoscope_md: str | None
     status: str
     lang: str | None
     created_at: datetime

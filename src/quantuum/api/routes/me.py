@@ -7,6 +7,9 @@ from quantuum.api.schemas import (
     BalanceOut,
     BlueprintCreatedOut,
     BlueprintOut,
+    DailyHoroscopeOut,
+    DailySettingsIn,
+    DailySettingsOut,
     MeOut,
     NatalProfileIn,
     NatalProfileOut,
@@ -38,6 +41,7 @@ from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
 from quantuum.domain.qa import create_qa, get_qa, list_qa
 from quantuum.domain.transits import create_transit, get_transit, list_transits
+from quantuum.domain.daily import get_settings, is_subscriber, list_horoscopes, upsert_settings
 from quantuum.domain.quota import consume_quota, refund_quota
 from quantuum.domain.requests import create_request
 from quantuum.tasks import enqueue
@@ -349,6 +353,58 @@ async def read_transit_route(
     if row.account_id != account.id:
         raise HTTPException(status_code=404, detail="not found")
     return _transit_out(row)
+
+
+def _daily_horoscope_out(row) -> DailyHoroscopeOut:
+    return DailyHoroscopeOut(
+        id=row.id,
+        local_date=row.local_date,
+        horoscope_md=row.horoscope_md,
+        status=row.status,
+        lang=row.lang,
+        created_at=row.created_at,
+        completed_at=row.completed_at,
+    )
+
+
+@router.get("/daily", response_model=DailySettingsOut)
+async def read_daily_settings(
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> DailySettingsOut:
+    row = await get_settings(session, account.id)
+    if row is None:
+        return DailySettingsOut(enabled=False, send_hour=9, last_sent_on=None)
+    return DailySettingsOut(enabled=row.enabled, send_hour=row.send_hour, last_sent_on=row.last_sent_on)
+
+
+@router.put("/daily", response_model=DailySettingsOut)
+async def write_daily_settings(
+    body: DailySettingsIn,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> DailySettingsOut:
+    if body.enabled and not await is_subscriber(session, account.id):
+        raise HTTPException(status_code=403, detail="daily horoscope is a subscriber feature")
+    row = await upsert_settings(
+        session,
+        tenant_id=account.tenant_id,
+        account_id=account.id,
+        enabled=body.enabled,
+        send_hour=body.send_hour,
+    )
+    return DailySettingsOut(enabled=row.enabled, send_hour=row.send_hour, last_sent_on=row.last_sent_on)
+
+
+@router.get("/daily/horoscopes", response_model=list[DailyHoroscopeOut])
+async def list_daily_horoscopes(
+    limit: int = 30,
+    offset: int = 0,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> list[DailyHoroscopeOut]:
+    rows = await list_horoscopes(session, account_id=account.id, limit=limit, offset=offset)
+    return [_daily_horoscope_out(row) for row in rows]
 
 
 @router.get("/balance", response_model=BalanceOut)
