@@ -278,3 +278,35 @@ class AccountPackage(SQLModel, table=True):
     expires_at: datetime | None = _dt_field(default=None)
     payment_id: int | None = Field(default=None, foreign_key="payments.id")
     created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class Payout(SQLModel, table=True):
+    __tablename__ = "payouts"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    period_start: datetime = _dt_field()
+    period_end: datetime = _dt_field()
+    gross_amount_cents: int
+    platform_fee_cents: int
+    net_amount_cents: int
+    currency: str = "XTR"
+    status: str = "calculated"  # calculated|paid
+    paid_at: datetime | None = _dt_field(default=None)
+    external_ref: str | None = None
+    calculated_by_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+    created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class TenantLicense(SQLModel, table=True):
+    __tablename__ = "tenant_licenses"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    status: str = "active"  # active|expired|cancelled
+    started_at: datetime = _dt_field(default_factory=utcnow)
+    ends_at: datetime | None = _dt_field(default=None)
+    price_cents: int
+    currency: str = "XTR"
+    payment_provider_id: int | None = Field(default=None, foreign_key="payment_providers.id")
+    created_at: datetime = _dt_field(default_factory=utcnow)
