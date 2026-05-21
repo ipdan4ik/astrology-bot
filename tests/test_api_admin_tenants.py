@@ -331,3 +331,56 @@ async def test_pause_by_owner(client, session, default_tenant):
     headers = await _make_role_headers(session, default_tenant.id, "owner")
     r = await client.post(f"/admin/tenants/{default_tenant.id}/pause", headers=headers)
     assert r.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Task 15 — tenant-scoped audit-log read (owner/admin)
+# ---------------------------------------------------------------------------
+
+
+async def test_tenant_audit_log_scoped_to_this_tenant(
+    client, owner_headers, session, default_tenant
+):
+    """GET /admin/tenants/{id}/audit-log returns only this tenant's entries."""
+    from quantuum.domain.audit import record_audit
+
+    # Another tenant with its own audit entry that must NOT leak.
+    other = Tenant(slug="audit-other", display_name="Other")
+    session.add(other)
+    await session.flush()
+    await record_audit(
+        session,
+        tenant_id=other.id,
+        actor_account_id=None,
+        action="tenant.update",
+        entity_type="tenant",
+        entity_id=other.id,
+    )
+    # An entry for THIS tenant.
+    await record_audit(
+        session,
+        tenant_id=default_tenant.id,
+        actor_account_id=None,
+        action="config.update",
+        entity_type="tenant_config",
+        entity_id="k",
+    )
+    await session.commit()
+
+    r = await client.get(
+        f"/admin/tenants/{default_tenant.id}/audit-log", headers=owner_headers
+    )
+    assert r.status_code == 200
+    entries = r.json()
+    assert len(entries) >= 1
+    assert all(e["tenant_id"] == default_tenant.id for e in entries)
+    assert any(e["action"] == "config.update" for e in entries)
+
+
+async def test_tenant_audit_log_customer_forbidden(
+    client, customer_headers, default_tenant
+):
+    r = await client.get(
+        f"/admin/tenants/{default_tenant.id}/audit-log", headers=customer_headers
+    )
+    assert r.status_code == 403

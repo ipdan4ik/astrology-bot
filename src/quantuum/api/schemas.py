@@ -280,6 +280,47 @@ class ConfigPutIn(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Platform admin schemas (Plan 5b, Tasks 14-15)
+# ---------------------------------------------------------------------------
+
+
+class PlatformConfigPutIn(BaseModel):
+    key: str
+    value: dict
+
+
+class PlatformStringIn(BaseModel):
+    key: str
+    lang: str
+    text: str
+
+
+class PlatformStringOut(BaseModel):
+    key: str
+    lang: str
+    text: str
+
+
+class SuperadminIn(BaseModel):
+    account_id: int
+
+
+class SuperadminOut(BaseModel):
+    account_id: int
+    email: str | None
+
+
+class AuditEntryOut(BaseModel):
+    id: int
+    tenant_id: int | None
+    actor_account_id: int | None
+    action: str
+    entity_type: str | None
+    entity_id: str | None
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Tenant plans + accounts schemas (Plan 5b, Tasks 10-11)
 # ---------------------------------------------------------------------------
 

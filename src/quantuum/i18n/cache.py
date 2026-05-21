@@ -50,3 +50,16 @@ async def invalidate_i18n(tenant_id: int, lang: str | None = None) -> None:
         async for k in r.scan_iter(match=pattern):
             await r.delete(k)
     await r.publish("i18n_invalidate", json.dumps({"tenant_id": tenant_id, "lang": lang}))
+
+
+async def invalidate_i18n_all(lang: str | None = None) -> None:
+    """Drop cached strings for ALL tenants — one lang, or every lang when None.
+
+    Platform-string edits affect every tenant, so we scan ``i18n:*:{lang}``
+    (or ``i18n:*:*`` when *lang* is None) and delete every match, then publish
+    a single global i18n_invalidate event (tenant_id None)."""
+    r = get_redis()
+    pattern = f"i18n:*:{lang}" if lang is not None else "i18n:*:*"
+    async for k in r.scan_iter(match=pattern):
+        await r.delete(k)
+    await r.publish("i18n_invalidate", json.dumps({"tenant_id": None, "lang": lang}))

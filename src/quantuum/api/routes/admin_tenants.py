@@ -8,6 +8,7 @@ from sqlmodel import select
 from quantuum.api.deps import get_session, require_tenant_role
 from quantuum.api.schemas import (
     AccountSummaryOut,
+    AuditEntryOut,
     BalancePatchIn,
     ConfigPutIn,
     LanguageOut,
@@ -42,7 +43,7 @@ from quantuum.db.models import (
     TenantRole,
     TenantStringOverride,
 )
-from quantuum.domain.audit import record_audit
+from quantuum.domain.audit import list_audit, record_audit
 from quantuum.domain.stats import tenant_stats
 from quantuum.domain.tenants import (
     account_has_role,
@@ -930,3 +931,33 @@ async def get_tenant_stats(
 ) -> TenantStatsOut:
     stats = await tenant_stats(session, tenant_id, period_days=period_days)
     return TenantStatsOut(**stats)
+
+
+# ---------------------------------------------------------------------------
+# Task 15 — Tenant-scoped audit-log read (owner + admin)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{tenant_id}/audit-log", response_model=list[AuditEntryOut])
+async def get_tenant_audit_log(
+    tenant_id: int,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> list[AuditEntryOut]:
+    entries = await list_audit(
+        session, tenant_id=tenant_id, limit=limit, offset=offset
+    )
+    return [
+        AuditEntryOut(
+            id=e.id,
+            tenant_id=e.tenant_id,
+            actor_account_id=e.actor_account_id,
+            action=e.action,
+            entity_type=e.entity_type,
+            entity_id=e.entity_id,
+            created_at=e.created_at,
+        )
+        for e in entries
+    ]

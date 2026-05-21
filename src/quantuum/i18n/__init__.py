@@ -1,4 +1,8 @@
-from quantuum.i18n.cache import get_cached_strings, invalidate_i18n
+from quantuum.i18n.cache import (
+    get_cached_strings,
+    invalidate_i18n,
+    invalidate_i18n_all,
+)
 from quantuum.i18n.resolver import FALLBACK_LANG, Translator, resolve_lang, safe_format, t
 
 __all__ = [
@@ -6,6 +10,7 @@ __all__ = [
     "Translator",
     "get_cached_strings",
     "invalidate_i18n",
+    "invalidate_i18n_all",
     "resolve_lang",
     "safe_format",
     "t",
