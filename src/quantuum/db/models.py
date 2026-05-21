@@ -361,3 +361,20 @@ class TenantLanguage(SQLModel, table=True):
     enabled: bool = True
     is_default: bool = False
     created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class AuditLog(SQLModel, table=True):
+    __tablename__ = "audit_log"
+    __table_args__ = (Index("ix_audit_log_tenant_created", "tenant_id", "created_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int | None = Field(default=None, foreign_key="tenants.id", index=True)
+    actor_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+    action: str
+    entity_type: str | None = None
+    entity_id: str | None = None
+    payload_jsonb: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    request_id: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
