@@ -261,6 +261,7 @@ class AccountSubscription(SQLModel, table=True):
     ends_at: datetime = _dt_field(default_factory=utcnow)
     renewed_at: datetime | None = _dt_field(default=None)
     cancelled_at: datetime | None = _dt_field(default=None)
+    reminder_sent_at: datetime | None = _dt_field(default=None)
     payment_id: int | None = Field(default=None, foreign_key="payments.id")
     created_at: datetime = _dt_field(default_factory=utcnow)
 

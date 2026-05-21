@@ -13,6 +13,9 @@ from quantuum.db.models import (
 )
 from quantuum.domain.plans import get_package_plan, get_subscription_plan
 
+GRACE_DAYS = 5  # spec §7: grace window grants this many days of access past ends_at
+REMINDER_DAYS = 3  # spec §7: renewal reminder fires this many days before ends_at
+
 
 async def record_pending_payment(
     session,
@@ -82,13 +85,16 @@ async def recompute_account_balance(session, account_id: int) -> AccountBalance:
     balance.package_credits = sum(pkg_result.scalars().all())
 
     sub_result = await session.execute(
-        select(AccountSubscription.ends_at).where(
+        select(AccountSubscription.status, AccountSubscription.ends_at).where(
             AccountSubscription.account_id == account_id,
             AccountSubscription.status.in_(("active", "grace")),
         )
     )
-    ends = list(sub_result.scalars().all())
-    balance.subscription_active_until = max(ends) if ends else None
+    effective_ends = [
+        (ends + timedelta(days=GRACE_DAYS)) if status == "grace" else ends
+        for status, ends in sub_result.all()
+    ]
+    balance.subscription_active_until = max(effective_ends) if effective_ends else None
 
     balance.updated_at = now
     session.add(balance)
