@@ -53,6 +53,25 @@ class BlueprintCreatedOut(BaseModel):
     status: str
 
 
+class QaCreateIn(BaseModel):
+    question: str
+
+
+class QaCreatedOut(BaseModel):
+    id: int
+    status: str
+
+
+class QaOut(BaseModel):
+    id: int
+    question: str
+    answer_md: str | None
+    status: str
+    lang: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
 class InviteCreateIn(BaseModel):
     tier: str = "basic"
     max_uses: int = 1

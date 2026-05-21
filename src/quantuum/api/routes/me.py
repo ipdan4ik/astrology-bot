@@ -14,10 +14,13 @@ from quantuum.api.schemas import (
     PaymentOut,
     PlansOut,
     PurchaseIn,
+    QaCreatedOut,
+    QaCreateIn,
+    QaOut,
     SubscriptionOut,
     SubscriptionPlanOut,
 )
-from quantuum.common.exceptions import InsufficientFundsError
+from quantuum.common.exceptions import InsufficientFundsError, NotFoundError
 from quantuum.db.models import Account, AccountBalance, AccountSubscription, Blueprint, Payment
 from quantuum.domain.plans import (
     get_package_plan,
@@ -30,6 +33,7 @@ from quantuum.payments.base import PaymentNotSupportedInApiError
 from quantuum.payments.registry import provider_for_kind
 from quantuum.domain.blueprints import create_blueprint, get_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
+from quantuum.domain.qa import create_qa, get_qa, list_qa
 from quantuum.domain.quota import consume_quota, refund_quota
 from quantuum.domain.requests import create_request
 from quantuum.tasks import enqueue
@@ -178,6 +182,90 @@ async def download_blueprint(
         media_type="text/markdown",
         headers={"Content-Disposition": f'attachment; filename="blueprint-{bp.id}.md"'},
     )
+
+
+def _qa_out(qa) -> QaOut:
+    return QaOut(
+        id=qa.id,
+        question=qa.question,
+        answer_md=qa.answer_md,
+        status=qa.status,
+        lang=qa.lang,
+        created_at=qa.created_at,
+        completed_at=qa.completed_at,
+    )
+
+
+@router.post("/qa", response_model=QaCreatedOut, status_code=202)
+async def create_qa_route(
+    body: QaCreateIn,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> QaCreatedOut:
+    profile = await get_natal_profile(session, account.id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="natal profile required")
+
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(status_code=422, detail="question required")
+    if len(question) > 1000:
+        question = question[:1000]
+
+    lang = account.preferred_lang or "ru"
+
+    try:
+        charged = await consume_quota(session, account.id, "qa")
+    except InsufficientFundsError as exc:
+        raise HTTPException(status_code=402, detail="insufficient quota") from exc
+
+    request = await create_request(
+        session,
+        tenant_id=account.tenant_id,
+        account_id=account.id,
+        kind="qa",
+        charged_against=charged,
+    )
+    qa = await create_qa(
+        session,
+        tenant_id=account.tenant_id,
+        account_id=account.id,
+        natal_profile_id=profile.id,
+        question=question,
+        lang=lang,
+    )
+    try:
+        await enqueue.enqueue_qa(qa.id, None, request.id)
+    except Exception as exc:
+        await refund_quota(session, request.id)
+        raise HTTPException(status_code=503, detail="could not enqueue; refunded") from exc
+    return QaCreatedOut(id=qa.id, status=qa.status)
+
+
+@router.get("/qa", response_model=list[QaOut])
+async def list_qa_route(
+    limit: int = 50,
+    offset: int = 0,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> list[QaOut]:
+    rows = await list_qa(session, account_id=account.id, limit=limit, offset=offset)
+    return [_qa_out(qa) for qa in rows]
+
+
+@router.get("/qa/{qa_id}", response_model=QaOut)
+async def read_qa_route(
+    qa_id: int,
+    account: Account = Depends(current_account),
+    session: AsyncSession = Depends(get_session),
+) -> QaOut:
+    try:
+        qa = await get_qa(session, qa_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="not found") from exc
+    if qa.account_id != account.id:
+        raise HTTPException(status_code=404, detail="not found")
+    return _qa_out(qa)
 
 
 @router.get("/balance", response_model=BalanceOut)
