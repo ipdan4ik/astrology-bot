@@ -6,6 +6,7 @@ from aiogram import BaseMiddleware
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.accounts import touch_last_seen
+from quantuum.i18n import Translator
 
 
 class AccountMiddleware(BaseMiddleware):
@@ -26,7 +27,15 @@ class AccountMiddleware(BaseMiddleware):
                 session, tenant_id=tenant_id, tg_user_id=str(from_user.id)
             )
             await touch_last_seen(session, account.id)
+            translator = await Translator.build(
+                session,
+                tenant_id=tenant_id,
+                preferred_lang=account.preferred_lang,
+                tg_language_code=getattr(from_user, "language_code", None),
+            )
 
         data["account"] = account
         data["chat_id"] = chat.id if chat is not None else None
+        data["lang"] = translator.lang
+        data["i18n"] = translator
         return await handler(event, data)
