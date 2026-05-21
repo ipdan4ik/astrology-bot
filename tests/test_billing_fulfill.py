@@ -57,3 +57,39 @@ async def test_fulfill_package_payment_credits(session, default_tenant):
 
 async def test_fulfill_unknown_payment_is_safe(session):
     assert await fulfill_payment(session, payment_id=999999, external_id="x") is False
+
+
+async def test_fulfill_deactivated_plan_pays_without_credit(session, default_tenant):
+    acc = await _account(session, default_tenant)
+    plan = SubscriptionPlan(slug="dead", name="Dead", period_days=30, price_cents=100, active=False)
+    session.add(plan)
+    await session.flush()
+    pay = await record_pending_payment(
+        session, tenant_id=default_tenant.id, account_id=acc.id, provider_id=None,
+        amount_cents=100, currency="XTR",
+        metadata={"kind": "subscription", "plan_id": plan.id},
+    )
+
+    result = await fulfill_payment(session, payment_id=pay.id, external_id="charge_dead")
+    assert result is True
+    await session.refresh(pay)
+    assert pay.status == "paid"
+    bal = await session.get(AccountBalance, acc.id)
+    assert bal.subscription_active_until is None
+
+
+async def test_fulfill_unknown_kind_pays_without_credit(session, default_tenant):
+    acc = await _account(session, default_tenant)
+    pay = await record_pending_payment(
+        session, tenant_id=default_tenant.id, account_id=acc.id, provider_id=None,
+        amount_cents=50, currency="XTR",
+        metadata={"kind": "gift_card", "plan_id": 5},
+    )
+
+    result = await fulfill_payment(session, payment_id=pay.id, external_id="charge_gc")
+    assert result is True
+    await session.refresh(pay)
+    assert pay.status == "paid"
+    bal = await session.get(AccountBalance, acc.id)
+    assert bal.package_credits == 0
+    assert bal.subscription_active_until is None

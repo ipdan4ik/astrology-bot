@@ -164,7 +164,7 @@ async def fulfill_payment(session, *, payment_id: int, external_id: str) -> bool
     transition, so duplicate/redelivered payment events never double-credit.
     """
     payment = await session.get(Payment, payment_id)
-    if payment is None or payment.status == "paid":
+    if payment is None or payment.status != "pending":
         return False
 
     payment.status = "paid"
