@@ -3,7 +3,7 @@ from quantuum.i18n.seed_strings import BASE_STRINGS
 
 # Reply-menu button keys, in display order. Routing matches the rendered label
 # in any enabled language, so callers derive label sets from BASE_STRINGS.
-MENU_BUTTON_KEYS = ("btn.generate", "btn.ask", "btn.profile", "btn.history", "btn.help")
+MENU_BUTTON_KEYS = ("btn.generate", "btn.ask", "btn.transits", "btn.profile", "btn.history", "btn.help")
 
 
 def menu_button_labels(key: str) -> set[str]:

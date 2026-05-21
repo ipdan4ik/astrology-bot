@@ -26,11 +26,13 @@ def create_dispatcher() -> Dispatcher:
         profile,
         qa,
         start,
+        transits,
     )
 
     dp.include_router(start.router)
     dp.include_router(buy.router)
     dp.include_router(qa.router)
+    dp.include_router(transits.router)
     dp.include_router(generate.router)
     dp.include_router(profile.router)
     dp.include_router(history.router)
