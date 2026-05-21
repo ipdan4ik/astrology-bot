@@ -81,7 +81,7 @@ async def test_transit_generate_happy_path(session, default_tenant):
     assert reloaded.transit_md and "Current sky" in reloaded.transit_md
     assert reloaded.as_of is not None
     assert reloaded.llm_tokens_in == 11 and reloaded.llm_tokens_out == 22
-    assert reloaded.llm_provider == "anthropic"
+    assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
     bot.send_message.assert_awaited()
 

@@ -107,7 +107,7 @@ async def test_qa_generate_happy_path(session, default_tenant):
     assert reloaded.answer_md == "ANSWER"
     assert reloaded.llm_tokens_in == 11
     assert reloaded.llm_tokens_out == 22
-    assert reloaded.llm_provider == "anthropic"
+    assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
     bot.send_message.assert_awaited()
 

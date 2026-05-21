@@ -1,6 +1,6 @@
 from quantuum.llm.base import LLMClient, LLMResult
-from quantuum.llm.anthropic_client import AnthropicClient, _strip_markdown_fence
 from quantuum.llm.blueprint_polish import polish_blueprint
+from quantuum.llm.openai_client import OpenAIClient, _strip_markdown_fence
 
 
 class FakeLLM:
@@ -25,28 +25,67 @@ async def test_polish_blueprint_wraps_calc_md():
     assert "Quantuum Blueprint Writer" in call["system"]
 
 
-async def test_anthropic_client_parses_and_strips_fence(monkeypatch):
-    client = AnthropicClient(api_key="x")
+async def test_openai_client_parses_and_strips_fence(monkeypatch):
+    client = OpenAIClient(api_key="x")
 
-    class _Block:
-        type = "text"
-        text = "```markdown\nHELLO\n```"
+    class _Msg:
+        content = "```markdown\nHELLO\n```"
+
+    class _Choice:
+        message = _Msg()
 
     class _Resp:
-        content = [_Block()]
-        usage = type("U", (), {"input_tokens": 5, "output_tokens": 7})()
-        model = "claude-x"
+        choices = [_Choice()]
+        usage = type("U", (), {"prompt_tokens": 5, "completion_tokens": 7})()
+        model = "gpt-4o"
 
-    class _Msgs:
+    class _Completions:
         async def create(self, **kw):
             self.kw = kw
             return _Resp()
 
-    fake_sdk = type("C", (), {"messages": _Msgs()})()
+    class _Chat:
+        completions = _Completions()
+
+    fake_sdk = type("C", (), {"chat": _Chat()})()
     monkeypatch.setattr(client, "_client", fake_sdk)
-    res = await client.complete(system="s", user="u", model="claude-x", temperature=0.5, max_tokens=100)
+    res = await client.complete(system="s", user="u", model="gpt-4o", temperature=0.5, max_tokens=100)
     assert res.text == "HELLO"  # fence stripped
-    assert res.tokens_in == 5 and res.tokens_out == 7 and res.model == "claude-x"
+    assert res.tokens_in == 5 and res.tokens_out == 7 and res.model == "gpt-4o"
+
+
+async def test_openai_client_sends_system_and_user_messages(monkeypatch):
+    client = OpenAIClient(api_key="x")
+    captured = {}
+
+    class _Msg:
+        content = "OK"
+
+    class _Choice:
+        message = _Msg()
+
+    class _Resp:
+        choices = [_Choice()]
+        usage = type("U", (), {"prompt_tokens": 1, "completion_tokens": 2})()
+        model = "gpt-4o"
+
+    class _Completions:
+        async def create(self, **kw):
+            captured.update(kw)
+            return _Resp()
+
+    class _Chat:
+        completions = _Completions()
+
+    monkeypatch.setattr(client, "_client", type("C", (), {"chat": _Chat()})())
+    await client.complete(system="SYS", user="USR", model="gpt-4o", temperature=0.3, max_tokens=50)
+    assert captured["messages"] == [
+        {"role": "system", "content": "SYS"},
+        {"role": "user", "content": "USR"},
+    ]
+    assert captured["model"] == "gpt-4o"
+    assert captured["temperature"] == 0.3
+    assert captured["max_tokens"] == 50
 
 
 def test_strip_markdown_fence_variants():
@@ -64,18 +103,18 @@ def test_registry_returns_none_without_key():
     from quantuum.llm.registry import get_llm_client
 
     class S:
-        llm_provider = "anthropic"
+        llm_provider = "openai"
         llm_api_key = ""
 
     assert get_llm_client(S()) is None
 
 
 def test_registry_returns_client_with_key():
+    from quantuum.llm.openai_client import OpenAIClient
     from quantuum.llm.registry import get_llm_client
-    from quantuum.llm.anthropic_client import AnthropicClient
 
     class S:
-        llm_provider = "anthropic"
+        llm_provider = "openai"
         llm_api_key = "sk-test"
 
-    assert isinstance(get_llm_client(S()), AnthropicClient)
+    assert isinstance(get_llm_client(S()), OpenAIClient)

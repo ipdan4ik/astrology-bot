@@ -143,7 +143,7 @@ async def test_blueprint_generate_real_engine_with_llm(session, default_tenant):
     assert reloaded.calc_md.startswith("# Quantuum Blueprint —")
     assert reloaded.llm_md == "POLISHED REPORT"
     assert reloaded.llm_tokens_in == 11
-    assert reloaded.llm_provider == "anthropic"
+    assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
     bot.send_document.assert_awaited()
 
