@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from quantuum.astrology.blueprint import BlueprintInput
 from quantuum.astrology.transits import (
     DEFAULT_WINDOW_DAYS,
@@ -42,9 +44,6 @@ def test_compute_natal_targets_matches_engine():
     birth = parse_birth_instant(inp)
     targets = compute_natal_targets(inp)
     assert abs(targets["Asc"] - ascendant_longitude(birth, inp.latitude, inp.longitude)) < 1e-9
-
-
-from datetime import datetime, timedelta, timezone
 
 
 def test_find_hits_forward_single(monkeypatch):
@@ -105,8 +104,9 @@ def test_find_hits_bisection_accuracy(monkeypatch):
     grid_times = [as_of + timedelta(days=k) for k in range(0, 61)]
     grid_lons = [fake_lon("X", t) for t in grid_times]
 
-    # natal 0 -> Square exact when lon == 90 (day 45) and lon == 270 (day 135, out of window).
-    hits = T._find_hits("X", "Sun", 0.0, as_of, grid_times, grid_lons, as_of + timedelta(days=60))
+    # natal 5 -> Square exact when lon == 95 (day 47.5, BETWEEN grid points 47 and 48,
+    # so this exercises the bisection path, not the exact-grid-point shortcut).
+    hits = T._find_hits("X", "Sun", 5.0, as_of, grid_times, grid_lons, as_of + timedelta(days=60))
     sq = [h for h in hits if h.aspect == "Square"]
     assert len(sq) == 1
-    assert abs((sq[0].exact_at - (as_of + timedelta(days=45))).total_seconds()) < 600
+    assert abs((sq[0].exact_at - (as_of + timedelta(days=47.5))).total_seconds()) < 600
