@@ -17,9 +17,10 @@ def create_dispatcher() -> Dispatcher:
     dp.message.middleware(AccountMiddleware())
     dp.callback_query.middleware(TenantMiddleware())
     dp.callback_query.middleware(AccountMiddleware())
-    from quantuum.bot.handlers import generate, history, menu, onboarding, profile, start
+    from quantuum.bot.handlers import buy, generate, history, menu, onboarding, profile, start
 
     dp.include_router(start.router)
+    dp.include_router(buy.router)
     dp.include_router(generate.router)
     dp.include_router(profile.router)
     dp.include_router(history.router)
