@@ -62,6 +62,45 @@ async def test_revoke_invite(client, sa_headers):
     assert r.json()["status"] == "revoked"
 
 
+async def test_create_invite_records_audit(client, sa_headers, session):
+    r = await client.post(
+        "/admin/platform/invites",
+        json={"tier": "pro", "max_uses": 3},
+        headers=sa_headers,
+    )
+    assert r.status_code == 201
+    invite_id = r.json()["id"]
+
+    result = await session.execute(
+        select(AuditLog).where(AuditLog.action == "platform.invite.create")
+    )
+    rows = result.scalars().all()
+    assert any(row.entity_id == str(invite_id) for row in rows)
+    row = next(row for row in rows if row.entity_id == str(invite_id))
+    assert row.entity_type == "tenant_invite"
+    assert row.payload_jsonb.get("tier") == "pro"
+    assert row.payload_jsonb.get("max_uses") == 3
+
+
+async def test_revoke_invite_records_audit(client, sa_headers, session):
+    created = await client.post("/admin/platform/invites", json={}, headers=sa_headers)
+    invite_id = created.json()["id"]
+
+    r = await client.post(
+        f"/admin/platform/invites/{invite_id}/revoke", headers=sa_headers
+    )
+    assert r.status_code == 200
+
+    result = await session.execute(
+        select(AuditLog).where(AuditLog.action == "platform.invite.revoke")
+    )
+    rows = result.scalars().all()
+    assert any(
+        row.entity_id == str(invite_id) and row.entity_type == "tenant_invite"
+        for row in rows
+    )
+
+
 async def test_list_tenants(client, sa_headers, default_tenant):
     r = await client.get("/admin/platform/tenants", headers=sa_headers)
     assert r.status_code == 200
@@ -202,6 +241,30 @@ async def test_superadmin_grant_and_revoke(client, sa_headers, session, default_
 
     lst2 = await client.get("/admin/platform/superadmins", headers=sa_headers)
     assert all(row["account_id"] != fresh.id for row in lst2.json())
+
+
+async def test_superadmin_grant_returns_real_email(
+    client, sa_headers, session, default_tenant
+):
+    fresh = Account(tenant_id=default_tenant.id, is_superadmin=False)
+    session.add(fresh)
+    await session.flush()
+    session.add(
+        AccountIdentity(
+            account_id=fresh.id, provider="magic_link", email="x@y.com"
+        )
+    )
+    await session.commit()
+    await session.refresh(fresh)
+
+    g = await client.post(
+        "/admin/platform/superadmins",
+        json={"account_id": fresh.id},
+        headers=sa_headers,
+    )
+    assert g.status_code == 200
+    assert g.json()["account_id"] == fresh.id
+    assert g.json()["email"] == "x@y.com"
 
 
 async def test_superadmin_grant_missing_account_404(client, sa_headers):

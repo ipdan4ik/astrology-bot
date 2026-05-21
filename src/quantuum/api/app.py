@@ -25,7 +25,7 @@ async def _lifespan(app: FastAPI):
     async with get_sessionmaker()() as session:
         await ensure_default_tenant(session)
         await ensure_default_tenant_bot(session)
-        await ensure_platform_tenant(session)
+        platform = await ensure_platform_tenant(session)
         await ensure_master_bot(session)
         await ensure_superadmin(session)
         await ensure_global_plans(session)
@@ -33,6 +33,7 @@ async def _lifespan(app: FastAPI):
         await ensure_base_strings(session)
         default_tenant_id = await get_default_tenant_id(session)
         await ensure_tenant_default_language(session, default_tenant_id)
+        await ensure_tenant_default_language(session, platform.id, default_lang="ru")
     yield
 
 

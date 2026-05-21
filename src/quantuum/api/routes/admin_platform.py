@@ -65,6 +65,16 @@ async def create_invite_route(
         preset_username=body.preset_username,
         preset_default_lang=body.preset_default_lang,
     )
+    await record_audit(
+        session,
+        tenant_id=None,
+        actor_account_id=admin.id,
+        action="platform.invite.create",
+        entity_type="tenant_invite",
+        entity_id=invite.id,
+        payload={"tier": invite.tier, "max_uses": invite.max_uses},
+    )
+    await session.commit()
     return _invite_out(invite)
 
 
@@ -85,6 +95,15 @@ async def revoke_invite_route(
     invite = await revoke_invite(session, invite_id)
     if invite is None:
         raise HTTPException(status_code=404, detail="invite not found")
+    await record_audit(
+        session,
+        tenant_id=None,
+        actor_account_id=admin.id,
+        action="platform.invite.revoke",
+        entity_type="tenant_invite",
+        entity_id=invite.id,
+    )
+    await session.commit()
     return _invite_out(invite)
 
 
@@ -283,7 +302,17 @@ async def grant_superadmin(
     )
 
     await session.commit()
-    return SuperadminOut(account_id=body.account_id, email=None)
+
+    email_result = await session.execute(
+        select(AccountIdentity.email)
+        .where(
+            AccountIdentity.account_id == body.account_id,
+            AccountIdentity.provider == "magic_link",
+        )
+        .limit(1)
+    )
+    email = email_result.scalar_one_or_none()
+    return SuperadminOut(account_id=body.account_id, email=email)
 
 
 @router.delete("/superadmins/{account_id}", status_code=200)

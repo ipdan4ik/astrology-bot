@@ -94,3 +94,24 @@ async def test_ensure_tenant_default_language(session, default_tenant):
     assert len(rows2) == 2, f"Expected 2 language rows after re-run, got {len(rows2)}"
     defaults2 = [r for r in rows2 if r.is_default]
     assert len(defaults2) == 1 and defaults2[0].lang == "ru"
+
+
+async def test_platform_tenant_default_language_seeded(session):
+    """Bootstrap must seed the platform tenant's default language (ru) too."""
+    from quantuum.db.bootstrap import (
+        ensure_platform_tenant,
+        ensure_tenant_default_language,
+    )
+
+    platform = await ensure_platform_tenant(session)
+    await ensure_tenant_default_language(session, platform.id, default_lang="ru")
+
+    result = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == platform.id)
+    )
+    rows = list(result.scalars())
+    defaults = [r for r in rows if r.is_default]
+    assert len(defaults) == 1, (
+        f"Expected exactly 1 default language for platform tenant, got {len(defaults)}"
+    )
+    assert defaults[0].lang == "ru"

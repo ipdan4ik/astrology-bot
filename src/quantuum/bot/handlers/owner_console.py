@@ -207,8 +207,19 @@ async def on_transfer_target(message: Message, state: FSMContext) -> None:
         return
     data = await state.get_data()
     tenant_id = data["tenant_id"]
-    actor_id = data["actor_id"]
     async with get_sessionmaker()() as session:
+        # Re-authorize at apply time: the owner's role may have changed since
+        # /transfer was issued.
+        actor_id = await authorize_tenant_action(
+            session,
+            tg_user_id=str(message.from_user.id),
+            tenant_id=tenant_id,
+            roles=("owner",),
+        )
+        if actor_id is None:
+            await message.answer("Больше нет прав на передачу.")
+            await state.clear()
+            return
         # find the new owner's account IN THIS tenant via tg_chat identity
         q = (
             select(Account.id)

@@ -263,6 +263,44 @@ async def test_transfer_success(session, monkeypatch):
     assert state.state is None  # cleared
 
 
+async def test_transfer_reauthorizes_at_apply_time(session, monkeypatch):
+    """If the owner's role is revoked after /transfer but before the target step,
+    on_transfer_target must refuse: reply no-rights, clear state, no transfer."""
+    from quantuum.bot.handlers import owner_console as oc
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, owner, customer = await _seed_owner_tenant(session)
+    before_owner = t.primary_owner_account_id
+
+    state = FakeState()
+    # step 1: /transfer <slug> by the owner (state set)
+    msg1 = FakeMessage(from_user_id=OWNER_TG)
+    await oc.on_transfer_cmd(msg1, SimpleNamespace(args=t.slug), state)
+    assert state.state == oc.OwnerTransfer.awaiting_target
+
+    # revoke the owner's role before the apply step
+    result = await session.execute(
+        select(TenantRole).where(
+            TenantRole.tenant_id == t.id,
+            TenantRole.account_id == owner.id,
+            TenantRole.role == "owner",
+        )
+    )
+    role_row = result.scalar_one()
+    await session.delete(role_row)
+    await session.commit()
+
+    # step 2: send the new owner's tg id — should be refused
+    msg2 = FakeMessage(from_user_id=OWNER_TG, text=str(CUSTOMER_TG))
+    await oc.on_transfer_target(msg2, state)
+
+    await session.refresh(t)
+    assert t.primary_owner_account_id == before_owner  # unchanged
+    assert await _audit_rows(session, t.id, "tenant.transfer") == []
+    assert state.state is None  # cleared
+    assert any("Больше нет прав" in a[0] for a in msg2.answers)
+
+
 async def test_transfer_by_non_owner(session, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
 
