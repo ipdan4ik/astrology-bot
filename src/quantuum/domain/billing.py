@@ -121,6 +121,7 @@ async def apply_subscription_payment(
         sub.ends_at = base + timedelta(days=plan.period_days)
         sub.renewed_at = now
         sub.status = "active"
+        sub.reminder_sent_at = None
     else:
         sub = AccountSubscription(
             tenant_id=tenant_id,

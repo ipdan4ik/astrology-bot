@@ -7,6 +7,19 @@ from quantuum.common.datetime import utcnow
 from quantuum.db.models import Payment, Payout
 
 
+async def find_payout_for_period(
+    session, *, tenant_id: int, period_start: datetime, period_end: datetime
+) -> Payout | None:
+    result = await session.execute(
+        select(Payout).where(
+            Payout.tenant_id == tenant_id,
+            Payout.period_start == period_start,
+            Payout.period_end == period_end,
+        )
+    )
+    return result.scalars().first()
+
+
 async def calculate_payout(
     session,
     *,

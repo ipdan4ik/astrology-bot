@@ -93,3 +93,27 @@ async def test_recompute_excludes_expired_packages(session, default_tenant):
 
     bal = await recompute_account_balance(session, acc.id)
     assert bal.package_credits == 3  # expired pack excluded
+
+
+async def test_renewal_resets_reminder_sent_at(session, default_tenant):
+    from quantuum.common.datetime import utcnow
+    from quantuum.db.models import SubscriptionPlan
+    from quantuum.domain.billing import apply_subscription_payment
+
+    acc = await _account(session, default_tenant)
+    plan = SubscriptionPlan(slug="m", name="M", period_days=30, price_cents=250)
+    session.add(plan)
+    await session.flush()
+
+    sub1 = await apply_subscription_payment(
+        session, account_id=acc.id, tenant_id=default_tenant.id, plan=plan, payment_id=None
+    )
+    sub1.reminder_sent_at = utcnow()
+    session.add(sub1)
+    await session.commit()
+
+    sub2 = await apply_subscription_payment(
+        session, account_id=acc.id, tenant_id=default_tenant.id, plan=plan, payment_id=None
+    )
+    assert sub2.id == sub1.id
+    assert sub2.reminder_sent_at is None  # renewal re-arms the reminder

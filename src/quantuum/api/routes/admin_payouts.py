@@ -5,7 +5,7 @@ from sqlmodel import select
 from quantuum.api.deps import get_session, require_superadmin
 from quantuum.api.schemas import PayoutCalculateIn, PayoutMarkPaidIn, PayoutOut
 from quantuum.db.models import Account, Payout
-from quantuum.domain.payouts import calculate_payout, mark_payout_paid
+from quantuum.domain.payouts import calculate_payout, find_payout_for_period, mark_payout_paid
 from quantuum.settings import get_settings
 
 router = APIRouter(prefix="/admin/platform/payouts", tags=["admin-payouts"])
@@ -33,6 +33,14 @@ async def calculate(
     admin: Account = Depends(require_superadmin),
     session: AsyncSession = Depends(get_session),
 ) -> PayoutOut:
+    if body.period_start >= body.period_end:
+        raise HTTPException(status_code=400, detail="period_start must be before period_end")
+    existing = await find_payout_for_period(
+        session, tenant_id=body.tenant_id,
+        period_start=body.period_start, period_end=body.period_end,
+    )
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="payout already exists for this period")
     payout = await calculate_payout(
         session,
         tenant_id=body.tenant_id,

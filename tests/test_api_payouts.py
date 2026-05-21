@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
@@ -37,13 +39,15 @@ async def customer(session, default_tenant):
 
 async def test_calculate_and_mark_paid(client, superadmin, default_tenant):
     now = utcnow()
+    start = (now - timedelta(days=1)).replace(microsecond=0)
+    end = now.replace(microsecond=0)
     r = await client.post(
         "/admin/platform/payouts/calculate",
         headers=superadmin,
         json={
             "tenant_id": default_tenant.id,
-            "period_start": (now.replace(microsecond=0)).isoformat(),
-            "period_end": (now.replace(microsecond=0)).isoformat(),
+            "period_start": start.isoformat(),
+            "period_end": end.isoformat(),
         },
     )
     assert r.status_code == 201
@@ -74,3 +78,26 @@ async def test_mark_unknown_payout_404(client, superadmin):
         "/admin/platform/payouts/999999", headers=superadmin, json={"external_ref": "x"}
     )
     assert r.status_code == 404
+
+
+async def test_calculate_invalid_period_400(client, superadmin, default_tenant):
+    now = utcnow().replace(microsecond=0)
+    r = await client.post(
+        "/admin/platform/payouts/calculate",
+        headers=superadmin,
+        json={"tenant_id": default_tenant.id,
+              "period_start": now.isoformat(), "period_end": now.isoformat()},
+    )
+    assert r.status_code == 400
+
+
+async def test_calculate_duplicate_period_409(client, superadmin, default_tenant):
+    from datetime import timedelta
+    now = utcnow().replace(microsecond=0)
+    start = (now - timedelta(days=2)).isoformat()
+    end = now.isoformat()
+    body = {"tenant_id": default_tenant.id, "period_start": start, "period_end": end}
+    r1 = await client.post("/admin/platform/payouts/calculate", headers=superadmin, json=body)
+    assert r1.status_code == 201
+    r2 = await client.post("/admin/platform/payouts/calculate", headers=superadmin, json=body)
+    assert r2.status_code == 409
