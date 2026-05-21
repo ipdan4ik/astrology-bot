@@ -1,6 +1,8 @@
+import math
+
 from quantuum.astrology.util import (
-    norm360, to_sign_degree, fmt_deg, reduce_numerology, js_round, to_fixed,
-    ELEMENTS, MODALITIES, SIGN_NAMES,
+    norm360, norm_rad, to_sign_degree, fmt_deg, reduce_numerology, js_round, to_fixed,
+    ELEMENTS, MODALITIES, SIGN_NAMES, TWO_PI,
 )
 
 
@@ -27,6 +29,8 @@ def test_to_sign_degree_anna_sun():
     sd = to_sign_degree(92.91)
     assert sd.sign == "Cancer"
     assert sd.degree == 2
+    assert sd.minute == 54
+    assert sd.second == 36
     assert fmt_deg(to_sign_degree(92.91)).startswith("♋ Cancer 02°")
 
 
@@ -35,6 +39,12 @@ def test_reduce_numerology_keeps_master():
     assert reduce_numerology(38) == 11
     assert reduce_numerology(39) == 3
     assert reduce_numerology(11, keep_master=False) == 2
+
+
+def test_norm_rad_normalises():
+    assert 0 <= norm_rad(-0.1) < TWO_PI
+    assert 0 <= norm_rad(7.0) < TWO_PI
+    assert math.isclose(norm_rad(-0.1), TWO_PI - 0.1)
 
 
 def test_element_modality_tables_complete():
