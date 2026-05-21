@@ -1,6 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from functools import lru_cache
+from zoneinfo import available_timezones
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -25,36 +26,54 @@ class Onboarding(StatesGroup):
     timezone = State()
 
 
-def parse_birth_date(text: str) -> date | None:
+def parse_required_text(text: str | None) -> str | None:
+    """Trim a free-text field; return None if empty (or a non-text message)."""
+    cleaned = (text or "").strip()
+    return cleaned or None
+
+
+def parse_birth_date(text: str | None) -> date | None:
     try:
-        return datetime.strptime(text.strip(), "%Y-%m-%d").date()
+        return datetime.strptime((text or "").strip(), "%Y-%m-%d").date()
     except ValueError:
         return None
 
 
-def parse_birth_time(text: str) -> time | None:
+def parse_birth_time(text: str | None) -> time | None:
     try:
-        return datetime.strptime(text.strip(), "%H:%M").time()
+        return datetime.strptime((text or "").strip(), "%H:%M").time()
     except ValueError:
         return None
 
 
-def parse_coords(text: str) -> tuple[Decimal, Decimal] | None:
-    parts = text.replace(" ", "").split(",")
+def parse_coords(text: str | None) -> tuple[Decimal, Decimal] | None:
+    parts = (text or "").replace(" ", "").split(",")
     if len(parts) != 2:
         return None
     try:
-        return Decimal(parts[0]), Decimal(parts[1])
+        lat, lon = Decimal(parts[0]), Decimal(parts[1])
     except (InvalidOperation, ValueError):
         return None
+    if not (Decimal("-90") <= lat <= Decimal("90")):
+        return None
+    if not (Decimal("-180") <= lon <= Decimal("180")):
+        return None
+    return lat, lon
 
 
-def is_valid_timezone(text: str) -> bool:
-    try:
-        ZoneInfo(text.strip())
-        return True
-    except (ZoneInfoNotFoundError, ValueError):
-        return False
+@lru_cache(maxsize=1)
+def _valid_timezones() -> frozenset[str]:
+    return frozenset(available_timezones())
+
+
+def is_valid_timezone(text: str | None) -> bool:
+    """True only for a full IANA zone key (e.g. Europe/Moscow).
+
+    Membership in available_timezones() is the authoritative check: it rejects bare regions
+    like "Europe" (which would otherwise make ZoneInfo raise IsADirectoryError on the tzdata
+    package layout) as well as unknown zones, blanks, and non-text messages.
+    """
+    return (text or "").strip() in _valid_timezones()
 
 
 def build_profile_data(raw: dict, timezone: str) -> dict:
@@ -102,7 +121,11 @@ async def start_onboarding(query: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(Onboarding.full_name)
 async def on_full_name(message: Message, state: FSMContext) -> None:
-    await state.update_data(full_name=message.text.strip())
+    name = parse_required_text(message.text)
+    if name is None:
+        await message.answer("Не понял имя. Введи полное имя текстом:")
+        return
+    await state.update_data(full_name=name)
     await state.set_state(Onboarding.birth_date)
     await message.answer("Дата рождения в формате ГГГГ-ММ-ДД (например 1980-06-24):")
 
@@ -131,7 +154,11 @@ async def on_birth_time(message: Message, state: FSMContext) -> None:
 
 @router.message(Onboarding.birth_place)
 async def on_birth_place(message: Message, state: FSMContext) -> None:
-    await state.update_data(birth_place=message.text.strip())
+    place = parse_required_text(message.text)
+    if place is None:
+        await message.answer("Не понял город. Введи город рождения текстом (например Moscow):")
+        return
+    await state.update_data(birth_place=place)
     await state.set_state(Onboarding.coords)
     await message.answer("Координаты «широта, долгота» (например 55.7558, 37.6173):")
 

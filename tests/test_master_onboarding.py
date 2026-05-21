@@ -204,4 +204,22 @@ async def test_managed_bot_created_finalizes(session, default_tenant, monkeypatc
     assert tb.bot_telegram_id == 900
     assert tb.bot_username == "zen_managed_bot"
     assert tb.status == "active"
+
+
+async def test_default_lang_renders_confirm(session, default_tenant, monkeypatch):
+    """Regression: the confirm summary must render. The template uses {language}, not
+    {lang} — passing lang= as a format var collides with the Translator's reserved
+    `lang` and raised 't() got multiple values for argument lang'."""
+    from quantuum.bot.handlers import master_onboarding as mo
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({"slug": "acme", "display_name": "Acme"})
+    message = SimpleNamespace(text="ru", answer=AsyncMock())
+
+    await mo.on_default_lang(message, state, i18n=i18n)
+
+    assert state.state == mo.OwnerOnboarding.confirm
+    text = message.answer.await_args.args[0]
+    assert "acme" in text and "Acme" in text and "ru" in text  # rendered, no crash
     message.answer.assert_awaited()

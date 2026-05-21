@@ -82,7 +82,8 @@ async def _setup(session, tenant_id):
     return acc, profile, qa
 
 
-async def test_qa_generate_happy_path(session, default_tenant):
+async def test_qa_generate_happy_path(session, default_tenant, monkeypatch):
+    import quantuum.tasks.qa as qa_mod
     from quantuum.domain.quota import consume_quota
     from quantuum.domain.requests import create_request
 
@@ -98,8 +99,9 @@ async def test_qa_generate_happy_path(session, default_tenant):
         charged_against="package",
     )
 
-    bot = AsyncMock()
-    ctx = {"sessionmaker": _Maker(session), "bot": bot, "llm_client": FakeLLM()}
+    deliver = AsyncMock()
+    monkeypatch.setattr(qa_mod, "deliver_via_tenant_bot", deliver)
+    ctx = {"sessionmaker": _Maker(session), "bot": AsyncMock(), "llm_client": FakeLLM()}
     await qa_generate(ctx, qa.id, chat_id=999, request_id=req.id)
 
     reloaded = await get_qa(session, qa.id)
@@ -109,7 +111,9 @@ async def test_qa_generate_happy_path(session, default_tenant):
     assert reloaded.llm_tokens_out == 22
     assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
-    bot.send_message.assert_awaited()
+    deliver.assert_awaited_once()
+    assert deliver.await_args.kwargs["tenant_id"] == default_tenant.id
+    assert deliver.await_args.kwargs["chat_id"] == 999
 
 
 async def test_qa_generate_no_llm_refunds(session, default_tenant):

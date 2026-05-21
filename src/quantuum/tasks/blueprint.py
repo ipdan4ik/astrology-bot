@@ -1,5 +1,3 @@
-from aiogram.types import BufferedInputFile
-
 from quantuum.astrology.blueprint import build_blueprint, from_natal_profile
 from quantuum.db.models import NatalProfile
 from quantuum.domain.blueprints import get_blueprint, set_status
@@ -8,6 +6,7 @@ from quantuum.domain.quota import refund_quota
 from quantuum.domain.requests import complete_request
 from quantuum.llm.blueprint_polish import polish_blueprint
 from quantuum.logging_setup import get_logger
+from quantuum.tasks.delivery import deliver_via_tenant_bot
 
 logger = get_logger("task.blueprint")
 
@@ -16,13 +15,14 @@ async def blueprint_generate(
     ctx, blueprint_id: int, chat_id: int | None = None, request_id: int | None = None
 ) -> None:
     sessionmaker = ctx["sessionmaker"]
-    bot = ctx["bot"]
 
     delivery_md = None
+    tenant_id = None
 
     async with sessionmaker() as session:
         try:
             bp = await get_blueprint(session, blueprint_id)
+            tenant_id = bp.tenant_id
             profile = await session.get(NatalProfile, bp.natal_profile_id)
 
             inp = from_natal_profile(profile)
@@ -83,12 +83,16 @@ async def blueprint_generate(
             return
 
     # Delivery is best-effort and must NOT trigger a refund of a successful generation.
-    if chat_id is not None and delivery_md is not None:
+    if chat_id is not None and delivery_md is not None and tenant_id is not None:
         try:
-            await bot.send_message(chat_id, delivery_md[:500])
-            await bot.send_document(
-                chat_id,
-                BufferedInputFile(delivery_md.encode(), filename="blueprint.md"),
+            await deliver_via_tenant_bot(
+                sessionmaker,
+                tenant_id=tenant_id,
+                chat_id=chat_id,
+                text=delivery_md,
+                filename="blueprint.md",
+                preview_len=500,
+                always_document=True,
             )
         except Exception:
             logger.exception("blueprint_delivery_failed", blueprint_id=blueprint_id, chat_id=chat_id)

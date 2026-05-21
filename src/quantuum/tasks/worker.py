@@ -18,16 +18,17 @@ async def startup(ctx) -> None:
     configure_logging()
     settings = get_settings()
     ctx["sessionmaker"] = get_sessionmaker()
-    ctx["bot"] = Bot(token=settings.bot_token) if settings.bot_token else None
+    # Per-reading delivery resolves the OWNING tenant's bot (deliver_via_tenant_bot); the
+    # worker no longer holds a single shared customer bot. master_bot is still needed for
+    # provisioning DMs to the platform owner.
     ctx["master_bot"] = Bot(token=settings.master_bot_token) if settings.master_bot_token else None
     ctx["llm_client"] = get_llm_client(settings)
 
 
 async def shutdown(ctx) -> None:
-    for key in ("bot", "master_bot"):
-        bot: Bot = ctx.get(key)
-        if bot is not None:
-            await bot.session.close()
+    master_bot: Bot = ctx.get("master_bot")
+    if master_bot is not None:
+        await master_bot.session.close()
 
 
 class WorkerSettings:

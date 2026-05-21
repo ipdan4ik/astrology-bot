@@ -145,7 +145,7 @@ async def on_default_lang(message: Message, state: FSMContext, i18n: Translator)
             "master.onboard.confirm",
             slug=data["slug"],
             display_name=data["display_name"],
-            lang=lang,
+            language=lang,  # NOT lang= — Translator reserves `lang` (resolution language)
         ),
         reply_markup=await confirm_kb(i18n),
     )

@@ -1,5 +1,3 @@
-from aiogram.types import BufferedInputFile
-
 from quantuum.astrology.transits import compute_transits, render_transits_md
 from quantuum.common.datetime import utcnow
 from quantuum.domain.llm_config import get_llm_config
@@ -8,6 +6,7 @@ from quantuum.domain.requests import complete_request
 from quantuum.domain.transits import get_transit, resolve_natal, set_transit_status
 from quantuum.llm.transit_report import transit_report
 from quantuum.logging_setup import get_logger
+from quantuum.tasks.delivery import deliver_via_tenant_bot
 
 logger = get_logger("task.transits")
 
@@ -16,13 +15,14 @@ async def transit_generate(
     ctx, report_id: int, chat_id: int | None = None, request_id: int | None = None
 ) -> None:
     sessionmaker = ctx["sessionmaker"]
-    bot = ctx["bot"]
 
     delivery_md = None
+    tenant_id = None
 
     async with sessionmaker() as session:
         try:
             row = await get_transit(session, report_id)
+            tenant_id = row.tenant_id
             inp, natal_md, blueprint_id = await resolve_natal(
                 session, account_id=row.account_id, natal_profile_id=row.natal_profile_id
             )
@@ -86,14 +86,17 @@ async def transit_generate(
             return
 
     # Delivery is best-effort and must NOT trigger a refund of a successful report.
-    if chat_id is not None and delivery_md is not None:
+    if chat_id is not None and delivery_md is not None and tenant_id is not None:
         try:
-            await bot.send_message(chat_id, delivery_md[:4000])
-            if len(delivery_md) > 4000:
-                await bot.send_document(
-                    chat_id,
-                    BufferedInputFile(delivery_md.encode(), filename="transits.md"),
-                )
+            await deliver_via_tenant_bot(
+                sessionmaker,
+                tenant_id=tenant_id,
+                chat_id=chat_id,
+                text=delivery_md,
+                filename="transits.md",
+                preview_len=4000,
+                always_document=False,
+            )
         except Exception:
             logger.exception("transit_delivery_failed", report_id=report_id, chat_id=chat_id)
 
