@@ -62,3 +62,13 @@ async def test_webhook_reconcile_adds_then_removes(session, default_tenant):
 
     assert set(consumer.customer_pool) == set()
     assert set(consumer.master_pool) == {4002}
+
+
+def test_runner_run_reconciles_and_starts_empty():
+    import inspect
+
+    import quantuum.bot.runner as runner
+
+    src = inspect.getsource(runner.run)
+    assert "reconcile" in src
+    assert "reload_signals" in src

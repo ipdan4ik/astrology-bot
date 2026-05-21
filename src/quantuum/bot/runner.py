@@ -3,8 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from quantuum.bot.app import create_dispatcher
-from quantuum.bot.reload import diff_specs, load_active_bot_specs
-from quantuum.bot.botpool import build_bots
+from quantuum.bot.reload import diff_specs, load_active_bot_specs, reload_signals
 from quantuum.bot.master_app import create_master_dispatcher
 from quantuum.db.bootstrap import (
     ensure_base_strings,
@@ -16,9 +15,10 @@ from quantuum.db.bootstrap import (
     ensure_tenant_default_language,
 )
 from quantuum.db.session import get_sessionmaker
-from quantuum.domain.tenants import get_default_tenant_id, get_platform_tenant_id, list_active_tenant_bots
+from quantuum.domain.tenants import get_default_tenant_id
 from quantuum.logging_setup import configure_logging, get_logger
 from quantuum.redis_client import pop_update
+from quantuum.settings import get_settings
 
 logger = get_logger("bot.runner")
 
@@ -69,7 +69,8 @@ class WebhookConsumer:
 
 async def run() -> None:
     configure_logging()
-    async with get_sessionmaker()() as session:
+    sessionmaker = get_sessionmaker()
+    async with sessionmaker() as session:
         await ensure_default_tenant(session)
         await ensure_default_tenant_bot(session)
         platform = await ensure_platform_tenant(session)
@@ -79,22 +80,31 @@ async def run() -> None:
         default_tenant_id = await get_default_tenant_id(session)
         await ensure_tenant_default_language(session, default_tenant_id)
         await ensure_tenant_default_language(session, platform.id, default_lang="ru")
-        rows = await list_active_tenant_bots(session, transport="webhook")
-        platform_id = await get_platform_tenant_id(session)
 
-    master_rows = [r for r in rows if r.tenant_id == platform_id]
-    customer_rows = [r for r in rows if r.tenant_id != platform_id]
     consumer = WebhookConsumer(
         customer_dp=create_dispatcher(),
         master_dp=create_master_dispatcher(),
-        customer_pool=build_bots(customer_rows),
-        master_pool=build_bots(master_rows),
+        customer_pool={},
+        master_pool={},
+        sessionmaker=sessionmaker,
     )
+    await consumer.reconcile()
     logger.info(
         "bot_runner_started",
         customer_bots=len(consumer.customer_pool),
         master_bots=len(consumer.master_pool),
     )
+
+    async def _reload_loop() -> None:
+        interval = get_settings().bot_reload_interval_seconds
+        async for _ in reload_signals(interval):
+            try:
+                await consumer.reconcile()
+            except Exception:
+                logger.exception("webhook_reconcile_failed")
+
+    asyncio.create_task(_reload_loop())
+
     while True:
         envelope = await pop_update(timeout=5)
         if envelope is None:
