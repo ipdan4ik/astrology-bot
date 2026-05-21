@@ -25,6 +25,11 @@ class OwnerOnboardCb(CallbackData, prefix="own"):
     action: str  # confirm | cancel
 
 
+class OwnerManageCb(CallbackData, prefix="omng"):
+    action: str  # stats | pause | resume | transfer
+    tenant_id: int = 0
+
+
 class BuyCb(CallbackData, prefix="buy"):
     action: str  # open | pick
     kind: str = ""  # subscription | package
