@@ -22,6 +22,7 @@ from quantuum.domain.provisioning import (
     validate_bot_token,
 )
 from quantuum.i18n import Translator
+from quantuum.redis_client import publish_bot_reload
 from quantuum.tasks.enqueue import enqueue_provision_tenant
 
 router = Router()
@@ -215,6 +216,7 @@ async def on_managed_bot_created(
             bot_username=created.bot_user.username,
             default_lang=data.get("default_lang", "ru"),
         )
+    await publish_bot_reload()
     await state.clear()
     await message.answer(
         await i18n("master.onboard.done", username=tenant_bot.bot_username),
@@ -240,6 +242,7 @@ async def on_manual_token(message: Message, state: FSMContext, i18n: Translator)
             bot_username=username,
             default_lang=data.get("default_lang", "ru"),
         )
+    await publish_bot_reload()
     await state.clear()
     await message.answer(
         await i18n("master.onboard.done", username=tenant_bot.bot_username)

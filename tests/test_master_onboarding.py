@@ -223,3 +223,35 @@ async def test_default_lang_renders_confirm(session, default_tenant, monkeypatch
     text = message.answer.await_args.args[0]
     assert "acme" in text and "Acme" in text and "ru" in text  # rendered, no crash
     message.answer.assert_awaited()
+
+
+async def test_finalize_publishes_bot_reload(session, default_tenant, monkeypatch):
+    """After a managed bot is created and provisioning is finalized, the worker is nudged
+    to reconcile so the new bot serves without a restart."""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+
+    published = AsyncMock()
+    monkeypatch.setattr(mo, "publish_bot_reload", published)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="zen", display_name="Zen",
+        default_lang="ru", owner_tg_id=777, owner_chat_id=777,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+    created = SimpleNamespace(bot_user=SimpleNamespace(id=900, username="zen_managed_bot"))
+    message = SimpleNamespace(managed_bot_created=created, answer=AsyncMock())
+    bot = AsyncMock(return_value="900:managedtoken")
+
+    await mo.on_managed_bot_created(message, state, i18n=i18n, bot=bot)
+
+    published.assert_awaited_once()
