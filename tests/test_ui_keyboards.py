@@ -1,4 +1,3 @@
-from quantuum.bot.ui import text
 from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb, OnboardCb, ProfileCb
 from quantuum.bot.ui.keyboards import (
     blueprint_detail_kb,
@@ -7,6 +6,8 @@ from quantuum.bot.ui.keyboards import (
     main_menu_kb,
     profile_kb,
 )
+
+from .conftest import build_translator
 
 
 def _reply_texts(kb):
@@ -17,22 +18,38 @@ def _inline(kb):
     return [b for row in kb.inline_keyboard for b in row]
 
 
-def test_main_menu_has_four_buttons():
-    assert set(_reply_texts(main_menu_kb())) == {
-        text.BTN_GENERATE, text.BTN_PROFILE, text.BTN_HISTORY, text.BTN_HELP
+async def test_main_menu_has_four_localised_buttons(session, default_tenant):
+    i18n = await build_translator(session, default_tenant.id)
+    kb = await main_menu_kb(i18n)
+    assert set(_reply_texts(kb)) == {
+        "🔮 Разбор", "👤 Профиль", "📜 История", "ℹ️ Помощь"
     }
 
 
-def test_profile_kb_with_profile_has_field_edit_buttons():
-    kb = profile_kb(has_profile=True)
+async def test_main_menu_respects_lang(session, default_tenant):
+    i18n = await build_translator(session, default_tenant.id, lang="en")
+    kb = await main_menu_kb(i18n)
+    assert set(_reply_texts(kb)) == {
+        "🔮 Reading", "👤 Profile", "📜 History", "ℹ️ Help"
+    }
+
+
+async def test_profile_kb_with_profile_has_field_edit_buttons(session, default_tenant):
+    i18n = await build_translator(session, default_tenant.id)
+    kb = await profile_kb(has_profile=True, i18n=i18n)
     fields = {ProfileCb.unpack(b.callback_data).field for b in _inline(kb)}
     assert {"name", "birth_date", "birth_time", "birth_place", "coords", "timezone"} <= fields
+    # Labels resolved via i18n (ru)
+    labels = {b.text for b in _inline(kb)}
+    assert "✏️ Имя" in labels and "✏️ Таймзона" in labels
 
 
-def test_profile_kb_without_profile_has_fill_button():
-    kb = profile_kb(has_profile=False)
+async def test_profile_kb_without_profile_has_fill_button(session, default_tenant):
+    i18n = await build_translator(session, default_tenant.id)
+    kb = await profile_kb(has_profile=False, i18n=i18n)
     actions = {OnboardCb.unpack(b.callback_data).action for b in _inline(kb)}
     assert "start" in actions
+    assert {b.text for b in _inline(kb)} == {"📝 Заполнить профиль"}
 
 
 def test_history_list_kb_pager_conditional():
@@ -51,6 +68,16 @@ def test_blueprint_detail_kb_download_only_when_available():
     assert "download" not in without and "back" in without
 
 
-def test_cancel_kb():
-    actions = [OnboardCb.unpack(b.callback_data).action for b in _inline(cancel_kb())]
-    assert actions == ["cancel"]
+async def test_cancel_kb_localised(session, default_tenant):
+    i18n = await build_translator(session, default_tenant.id)
+    kb = await cancel_kb(i18n)
+    btns = _inline(kb)
+    assert [OnboardCb.unpack(b.callback_data).action for b in btns] == ["cancel"]
+    assert [b.text for b in btns] == ["✖️ Отмена"]
+
+
+async def test_cancel_kb_no_i18n_falls_back_to_ru():
+    # Backwards-compatible call (onboarding flow) keeps RU literal without i18n.
+    kb = await cancel_kb()
+    btns = _inline(kb)
+    assert [b.text for b in btns] == ["✖️ Отмена"]

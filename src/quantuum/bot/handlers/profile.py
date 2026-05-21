@@ -6,11 +6,12 @@ from aiogram.types import CallbackQuery, Message
 
 from quantuum.bot.ui.callbacks import ProfileCb
 from quantuum.bot.ui.keyboards import cancel_kb, profile_kb
-from quantuum.bot.ui.profile_fields import FIELD_PROMPTS, apply_field_edit
+from quantuum.bot.ui.profile_fields import FIELD_PROMPT_KEYS, apply_field_edit
 from quantuum.bot.ui.text import render_profile
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.natal_profiles import get_natal_profile, upsert_natal_profile
+from quantuum.i18n import Translator
 
 router = Router()
 
@@ -33,48 +34,64 @@ def profile_to_kwargs(profile) -> dict:
 
 
 async def save_field(session, *, account: Account, field: str, raw: str) -> str | None:
+    """Apply a single-field edit. Returns None on success, or an i18n error key."""
     profile = await get_natal_profile(session, account.id)
     if profile is None:
-        return "Профиль не найден."
-    updated, err = apply_field_edit(profile_to_kwargs(profile), field, raw)
-    if err is not None:
-        return err
+        return "profile.not_found"
+    updated, err_key = apply_field_edit(profile_to_kwargs(profile), field, raw)
+    if err_key is not None:
+        return err_key
     await upsert_natal_profile(
         session, tenant_id=account.tenant_id, account_id=account.id, **updated
     )
     return None
 
 
-async def show_profile(message: Message, account: Account) -> None:
+async def show_profile(message: Message, account: Account, i18n: Translator) -> None:
     async with get_sessionmaker()() as session:
         profile = await get_natal_profile(session, account.id)
     if profile is None:
-        await message.answer("Профиль не заполнен.", reply_markup=profile_kb(has_profile=False))
+        await message.answer(
+            await i18n("profile.empty"),
+            reply_markup=await profile_kb(has_profile=False, i18n=i18n),
+        )
     else:
-        await message.answer(render_profile(profile), reply_markup=profile_kb(has_profile=True))
+        await message.answer(
+            await render_profile(i18n, profile),
+            reply_markup=await profile_kb(has_profile=True, i18n=i18n),
+        )
 
 
 @router.message(Command("profile"))
-async def on_profile_cmd(message: Message, account: Account) -> None:
-    await show_profile(message, account)
+async def on_profile_cmd(message: Message, account: Account, i18n: Translator) -> None:
+    await show_profile(message, account, i18n)
 
 
 @router.callback_query(ProfileCb.filter(F.action == "edit"))
-async def on_edit_field(query: CallbackQuery, callback_data: ProfileCb, state: FSMContext) -> None:
+async def on_edit_field(
+    query: CallbackQuery, callback_data: ProfileCb, state: FSMContext, i18n: Translator
+) -> None:
     await state.set_state(ProfileEdit.awaiting_value)
     await state.update_data(field=callback_data.field)
-    await query.message.answer(FIELD_PROMPTS[callback_data.field], reply_markup=cancel_kb())
+    prompt_key = FIELD_PROMPT_KEYS[callback_data.field]
+    await query.message.answer(await i18n(prompt_key), reply_markup=await cancel_kb(i18n))
     await query.answer()
 
 
 @router.message(ProfileEdit.awaiting_value)
-async def on_edit_value(message: Message, state: FSMContext, account: Account) -> None:
+async def on_edit_value(
+    message: Message, state: FSMContext, account: Account, i18n: Translator
+) -> None:
     data = await state.get_data()
     field = data["field"]
     async with get_sessionmaker()() as session:
-        err = await save_field(session, account=account, field=field, raw=message.text or "")
-    if err is not None:
-        await message.answer(err + "\nПопробуй ещё раз:", reply_markup=cancel_kb())
+        err_key = await save_field(session, account=account, field=field, raw=message.text or "")
+    if err_key is not None:
+        err_text = await i18n(err_key)
+        await message.answer(
+            await i18n("profile.field_edit_error", err=err_text),
+            reply_markup=await cancel_kb(i18n),
+        )
         return
     await state.clear()
-    await show_profile(message, account)
+    await show_profile(message, account, i18n)

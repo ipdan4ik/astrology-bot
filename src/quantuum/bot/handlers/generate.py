@@ -62,7 +62,10 @@ async def run_generate(message: Message, account: Account, chat_id: int) -> None
             session, account=account, chat_id=chat_id, enqueue=enqueue_blueprint
         )
     if status == "no_profile":
-        await message.answer("Сначала заполни профиль:", reply_markup=profile_kb(has_profile=False))
+        await message.answer(
+            "Сначала заполни профиль:",
+            reply_markup=await profile_kb(has_profile=False),
+        )
     elif status == "no_quota":
         await message.answer(
             "Бесплатная генерация уже использована. Купи пакет разборов или подписку:",

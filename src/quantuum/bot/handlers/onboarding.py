@@ -95,7 +95,7 @@ async def save_collected_profile(session, *, account: Account, data: dict):
 async def start_onboarding(query: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(Onboarding.full_name)
     await query.message.answer(
-        "Введи полное имя (как в свидетельстве о рождении):", reply_markup=cancel_kb()
+        "Введи полное имя (как в свидетельстве о рождении):", reply_markup=await cancel_kb()
     )
     await query.answer()
 

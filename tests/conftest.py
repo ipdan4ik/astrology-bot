@@ -81,3 +81,25 @@ async def default_tenant(session):
     await session.commit()
     await session.refresh(tenant)
     return tenant
+
+
+async def build_translator(session, tenant_id, *, lang: str | None = None):
+    """Seed BASE_STRINGS + tenant languages and return a ready Translator.
+
+    The default tenant lang is "ru" (matching production), so unless *lang* is
+    given the returned Translator resolves Russian strings.
+    """
+    from quantuum.db.bootstrap import (
+        ensure_base_strings,
+        ensure_tenant_default_language,
+    )
+    from quantuum.i18n import Translator
+
+    await ensure_base_strings(session)
+    await ensure_tenant_default_language(session, tenant_id)
+    return await Translator.build(
+        session,
+        tenant_id=tenant_id,
+        preferred_lang=lang,
+        tg_language_code=None,
+    )
