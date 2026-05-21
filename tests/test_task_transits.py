@@ -121,7 +121,8 @@ async def test_transit_generate_llm_failure_refunds(session, default_tenant):
             raise LLMError("upstream 500")
 
     acc, profile, row = await _setup(session, default_tenant.id)
-    await consume_quota(session, acc.id, "transit")
+    charged = await consume_quota(session, acc.id, "transit")
+    assert charged == "package"
     req = await create_request(
         session, tenant_id=default_tenant.id, account_id=acc.id,
         kind="transit", charged_against="package",

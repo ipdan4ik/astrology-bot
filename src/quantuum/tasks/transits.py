@@ -17,6 +17,7 @@ async def transit_generate(
 ) -> None:
     sessionmaker = ctx["sessionmaker"]
     bot = ctx["bot"]
+
     delivery_md = None
 
     async with sessionmaker() as session:
