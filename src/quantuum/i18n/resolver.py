@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from quantuum.i18n.strings import get_tenant_default_lang, merged_strings
+from quantuum.i18n.cache import get_cached_strings
+from quantuum.i18n.strings import get_tenant_default_lang
 from quantuum.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -36,13 +37,13 @@ async def t(
     default_lang = await get_tenant_default_lang(session, tenant_id)
 
     # Steps 1 & 2: merged (override-over-platform) for the requested lang
-    primary = await merged_strings(session, tenant_id, lang)
+    primary = await get_cached_strings(session, tenant_id, lang)
     if key in primary:
         return safe_format(primary[key], vars)
 
     # Steps 3 & 4: merged for the tenant's default lang (skip if same as lang)
     if default_lang and default_lang != lang:
-        fallback = await merged_strings(session, tenant_id, default_lang)
+        fallback = await get_cached_strings(session, tenant_id, default_lang)
         if key in fallback:
             return safe_format(fallback[key], vars)
 

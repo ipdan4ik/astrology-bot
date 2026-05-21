@@ -16,11 +16,14 @@ os.environ.setdefault("BOT_TOKEN_ENC_KEY", "wWyNAOxSSib9kfo4PeMJ6CX-ugqbCPhAp6kL
 
 @pytest_asyncio.fixture(autouse=True)
 async def reset_redis():
-    """Reset the global Redis singleton before each test so each test gets a fresh client
-    bound to its own event loop."""
+    """Reset the global Redis singleton and flush the test DB before each test so each
+    test gets a fresh client bound to its own event loop with no leftover keys."""
     import quantuum.redis_client as rc
 
     rc._redis = None
+    # Flush the test Redis DB so cached i18n strings (and any other keys) from a
+    # prior test don't bleed into the current one.
+    await rc.get_redis().flushdb()
     yield
     if rc._redis is not None:
         await rc._redis.aclose()
