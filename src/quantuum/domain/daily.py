@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -128,7 +128,7 @@ async def due_daily_account_ids(session, *, now: datetime) -> list[int]:
     for sub, tz_name in result.all():
         try:
             local = now.astimezone(ZoneInfo(tz_name))
-        except Exception:
+        except (ZoneInfoNotFoundError, KeyError):
             continue
         if local.hour != sub.send_hour:
             continue
