@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     default_tenant_name: str = "Quantuum"
     magic_link_ttl_seconds: int = 900
     log_json: bool = True
+    llm_provider: str = "anthropic"
+    llm_api_key: str = ""
+    llm_model: str = "claude-sonnet-4-6"
+    llm_temperature: float = 0.85
+    llm_max_tokens: int = 9000
 
 
 @lru_cache
