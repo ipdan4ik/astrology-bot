@@ -59,7 +59,8 @@ async def _setup(session, tenant_id):
     return acc, profile, row
 
 
-async def test_transit_generate_happy_path(session, default_tenant):
+async def test_transit_generate_happy_path(session, default_tenant, monkeypatch):
+    import quantuum.tasks.transits as tr_mod
     from quantuum.domain.quota import consume_quota
     from quantuum.domain.requests import create_request
 
@@ -71,8 +72,9 @@ async def test_transit_generate_happy_path(session, default_tenant):
         kind="transit", charged_against="package",
     )
 
-    bot = AsyncMock()
-    ctx = {"sessionmaker": _Maker(session), "bot": bot, "llm_client": FakeLLM()}
+    deliver = AsyncMock()
+    monkeypatch.setattr(tr_mod, "deliver_via_tenant_bot", deliver)
+    ctx = {"sessionmaker": _Maker(session), "bot": AsyncMock(), "llm_client": FakeLLM()}
     await transit_generate(ctx, row.id, chat_id=999, request_id=req.id)
 
     reloaded = await get_transit(session, row.id)
@@ -83,7 +85,9 @@ async def test_transit_generate_happy_path(session, default_tenant):
     assert reloaded.llm_tokens_in == 11 and reloaded.llm_tokens_out == 22
     assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
-    bot.send_message.assert_awaited()
+    deliver.assert_awaited_once()
+    assert deliver.await_args.kwargs["tenant_id"] == default_tenant.id
+    assert deliver.await_args.kwargs["chat_id"] == 999
 
 
 async def test_transit_generate_no_llm_refunds(session, default_tenant):

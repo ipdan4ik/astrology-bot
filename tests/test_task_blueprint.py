@@ -145,12 +145,27 @@ async def test_blueprint_generate_real_engine_with_llm(session, default_tenant):
     assert reloaded.llm_tokens_in == 11
     assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
-    bot.send_document.assert_awaited()
 
 
-async def test_blueprint_generate_without_llm_falls_back_to_calc_md(session, default_tenant):
-    acc, bp = await _setup(session, default_tenant.id)
-    bot = AsyncMock()
+async def test_blueprint_delivers_via_owning_tenant_bot(session, default_tenant, monkeypatch):
+    """Regression: a blueprint must be delivered through ITS tenant's bot, not the platform
+    default ctx[bot]. A user who only ever talked to their own tenant bot cannot be messaged
+    by the default bot, so delivery via ctx[bot] silently failed (blueprint_delivery_failed)."""
+    import quantuum.tasks.blueprint as bp_mod
+    from quantuum.db.models import Tenant
+
+    other = Tenant(slug="other-co", display_name="Other Co", status="active")
+    session.add(other)
+    await session.flush()
+
+    acc, bp = await _setup(session, other.id)
+
+    captured: dict = {}
+
+    async def fake_deliver(sessionmaker, *, tenant_id, chat_id, text, filename, **kw):
+        captured.update(tenant_id=tenant_id, chat_id=chat_id, filename=filename)
+
+    monkeypatch.setattr(bp_mod, "deliver_via_tenant_bot", fake_deliver, raising=False)
 
     class _Maker:
         def __call__(self):
@@ -164,14 +179,42 @@ async def test_blueprint_generate_without_llm_falls_back_to_calc_md(session, def
         async def __aexit__(self, *a):
             return False
 
-    ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": None}
+    ctx = {"sessionmaker": _Maker(), "bot": AsyncMock(), "llm_client": FakeLLM()}
+    await bp_mod.blueprint_generate(ctx, bp.id, chat_id=999)
+
+    assert captured.get("tenant_id") == other.id
+    assert captured.get("chat_id") == 999
+    assert captured.get("filename") == "blueprint.md"
+
+
+async def test_blueprint_generate_without_llm_falls_back_to_calc_md(session, default_tenant, monkeypatch):
+    import quantuum.tasks.blueprint as bp_mod
+
+    acc, bp = await _setup(session, default_tenant.id)
+    deliver = AsyncMock()
+    monkeypatch.setattr(bp_mod, "deliver_via_tenant_bot", deliver)
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx(session)
+
+    class _Ctx:
+        def __init__(self, s):
+            self._s = s
+        async def __aenter__(self):
+            return self._s
+        async def __aexit__(self, *a):
+            return False
+
+    ctx = {"sessionmaker": _Maker(), "bot": AsyncMock(), "llm_client": None}
     await blueprint_generate(ctx, bp.id, chat_id=999)
 
     reloaded = await get_blueprint(session, bp.id)
     assert reloaded.status == "done"
     assert reloaded.llm_md == reloaded.calc_md
     assert reloaded.llm_provider == "none"
-    bot.send_document.assert_awaited()
+    deliver.assert_awaited_once()
+    assert deliver.await_args.kwargs["tenant_id"] == default_tenant.id
 
 
 async def test_blueprint_uses_db_config_model(session, default_tenant):

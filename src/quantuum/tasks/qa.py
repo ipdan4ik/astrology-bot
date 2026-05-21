@@ -1,11 +1,10 @@
-from aiogram.types import BufferedInputFile
-
 from quantuum.domain.llm_config import get_llm_config
 from quantuum.domain.qa import get_qa, resolve_calc_md, set_qa_status
 from quantuum.domain.quota import refund_quota
 from quantuum.domain.requests import complete_request
 from quantuum.llm.qa_answer import qa_answer
 from quantuum.logging_setup import get_logger
+from quantuum.tasks.delivery import deliver_via_tenant_bot
 
 logger = get_logger("task.qa")
 
@@ -14,13 +13,14 @@ async def qa_generate(
     ctx, qa_id: int, chat_id: int | None = None, request_id: int | None = None
 ) -> None:
     sessionmaker = ctx["sessionmaker"]
-    bot = ctx["bot"]
 
     delivery_md = None
+    tenant_id = None
 
     async with sessionmaker() as session:
         try:
             qa = await get_qa(session, qa_id)
+            tenant_id = qa.tenant_id
             calc_md, blueprint_id = await resolve_calc_md(
                 session, account_id=qa.account_id, natal_profile_id=qa.natal_profile_id
             )
@@ -74,14 +74,17 @@ async def qa_generate(
             return
 
     # Delivery is best-effort and must NOT trigger a refund of a successful generation.
-    if chat_id is not None and delivery_md is not None:
+    if chat_id is not None and delivery_md is not None and tenant_id is not None:
         try:
-            await bot.send_message(chat_id, delivery_md[:4000])
-            if len(delivery_md) > 4000:
-                await bot.send_document(
-                    chat_id,
-                    BufferedInputFile(delivery_md.encode(), filename="answer.md"),
-                )
+            await deliver_via_tenant_bot(
+                sessionmaker,
+                tenant_id=tenant_id,
+                chat_id=chat_id,
+                text=delivery_md,
+                filename="answer.md",
+                preview_len=4000,
+                always_document=False,
+            )
         except Exception:
             logger.exception("qa_delivery_failed", qa_id=qa_id, chat_id=chat_id)
 
