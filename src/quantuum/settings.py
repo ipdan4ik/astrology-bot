@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     default_bot_transport: str = "polling"
     master_bot_token: str = ""
     master_bot_username: str = ""
+    bot_reload_interval_seconds: float = 10.0
     bootstrap_superadmin_email: str = ""
     platform_tenant_slug: str = "platform"
     platform_tenant_name: str = "Quantuum Platform"
