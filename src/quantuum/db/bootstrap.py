@@ -136,3 +136,11 @@ async def ensure_global_plans(session) -> None:
         if pkg_exists.scalar_one_or_none() is None:
             session.add(PackagePlan(slug=slug, name=name, request_count=count, price_cents=price))
     await session.commit()
+
+
+async def ensure_platform_stars_provider(session) -> None:
+    """Seed a Telegram Stars provider row for the platform tenant (idempotent)."""
+    from quantuum.domain.providers import ensure_stars_provider
+
+    platform = await ensure_platform_tenant(session)
+    await ensure_stars_provider(session, platform.id)

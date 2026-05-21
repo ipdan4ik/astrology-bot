@@ -9,6 +9,7 @@ from quantuum.db.bootstrap import (
     ensure_default_tenant,
     ensure_default_tenant_bot,
     ensure_master_bot,
+    ensure_platform_stars_provider,
     ensure_platform_tenant,
 )
 from quantuum.db.session import get_sessionmaker
@@ -33,6 +34,7 @@ async def run() -> None:
         await ensure_default_tenant_bot(session)
         await ensure_platform_tenant(session)
         await ensure_master_bot(session)
+        await ensure_platform_stars_provider(session)
         rows = await list_active_tenant_bots(session, transport="polling")
         master_rows, customer_rows = await split_by_platform(session, rows)
 
