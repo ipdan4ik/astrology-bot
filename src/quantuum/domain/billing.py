@@ -11,6 +11,7 @@ from quantuum.db.models import (
     Payment,
     SubscriptionPlan,
 )
+from quantuum.domain.plans import get_package_plan, get_subscription_plan
 
 
 async def record_pending_payment(
@@ -153,3 +154,41 @@ async def apply_package_payment(
     await session.refresh(pkg)
     await recompute_account_balance(session, account_id)
     return pkg
+
+
+async def fulfill_payment(session, *, payment_id: int, external_id: str) -> bool:
+    """Idempotently mark a payment paid and apply its crediting.
+
+    Returns True if this call performed the fulfillment (the pending->paid transition);
+    False if the payment is unknown or was already paid. Crediting happens ONLY on the
+    transition, so duplicate/redelivered payment events never double-credit.
+    """
+    payment = await session.get(Payment, payment_id)
+    if payment is None or payment.status == "paid":
+        return False
+
+    payment.status = "paid"
+    payment.external_id = external_id
+    payment.paid_at = utcnow()
+    session.add(payment)
+    await session.commit()
+    await session.refresh(payment)
+
+    meta = payment.metadata_json or {}
+    kind = meta.get("kind")
+    plan_id = meta.get("plan_id")
+    if kind == "subscription" and plan_id is not None:
+        plan = await get_subscription_plan(session, plan_id)
+        if plan is not None:
+            await apply_subscription_payment(
+                session, account_id=payment.account_id, tenant_id=payment.tenant_id,
+                plan=plan, payment_id=payment.id,
+            )
+    elif kind == "package" and plan_id is not None:
+        plan = await get_package_plan(session, plan_id)
+        if plan is not None:
+            await apply_package_payment(
+                session, account_id=payment.account_id, tenant_id=payment.tenant_id,
+                plan=plan, payment_id=payment.id,
+            )
+    return True
