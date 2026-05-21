@@ -199,3 +199,25 @@ class PayoutOut(BaseModel):
     status: str
     external_ref: str | None
     paid_at: str | None
+
+
+class TenantBotBrief(BaseModel):
+    username: str | None
+    status: str
+
+
+class TenantDetailOut(BaseModel):
+    id: int
+    slug: str
+    display_name: str
+    status: str
+    tier: str
+    is_platform: bool
+    primary_owner_account_id: int | None
+    created_at: str
+    bot: TenantBotBrief | None
+
+
+class TenantPatchIn(BaseModel):
+    display_name: str | None = None
+    tier: str | None = None

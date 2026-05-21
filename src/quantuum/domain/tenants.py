@@ -4,6 +4,25 @@ from quantuum.db.models import Tenant, TenantBot, TenantRole
 from quantuum.settings import get_settings
 
 
+async def set_tenant_status(
+    session, tenant_id: int, status: str, bot_status: str
+) -> None:
+    """Set tenant.status and update all its TenantBot rows to bot_status."""
+    tenant = await session.get(Tenant, tenant_id)
+    if tenant is not None:
+        tenant.status = status
+        session.add(tenant)
+
+    result = await session.execute(
+        select(TenantBot).where(TenantBot.tenant_id == tenant_id)
+    )
+    for bot in result.scalars().all():
+        bot.status = bot_status
+        session.add(bot)
+
+    await session.flush()
+
+
 async def get_default_tenant_id(session) -> int:
     settings = get_settings()
     result = await session.execute(select(Tenant).where(Tenant.slug == settings.default_tenant_slug))
