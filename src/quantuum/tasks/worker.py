@@ -9,6 +9,7 @@ from quantuum.settings import get_settings
 from quantuum.tasks.blueprint import blueprint_generate
 from quantuum.tasks.lifecycle import subscription_lifecycle
 from quantuum.tasks.provision import provision_tenant
+from quantuum.tasks.qa import qa_generate
 
 
 async def startup(ctx) -> None:
@@ -28,7 +29,7 @@ async def shutdown(ctx) -> None:
 
 
 class WorkerSettings:
-    functions = [blueprint_generate, provision_tenant, subscription_lifecycle]
+    functions = [blueprint_generate, provision_tenant, subscription_lifecycle, qa_generate]
     cron_jobs = [cron(subscription_lifecycle, minute=0)]  # top of every hour
     on_startup = startup
     on_shutdown = shutdown
