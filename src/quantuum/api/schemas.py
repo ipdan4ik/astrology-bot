@@ -300,3 +300,22 @@ class AccountSummaryOut(BaseModel):
 class BalancePatchIn(BaseModel):
     package_credits: int | None = None
     subscription_active_until: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Tenant stats schema (Plan 5b, Task 12)
+# ---------------------------------------------------------------------------
+
+
+class TenantStatsOut(BaseModel):
+    period_days: int
+    active_customers: int
+    paid_customers: int
+    dau: int
+    wau: int
+    mau: int
+    requests_by_kind: dict[str, int]
+    revenue_cents: int
+    mrr_cents: int
+    llm_tokens_in: int
+    llm_tokens_out: int

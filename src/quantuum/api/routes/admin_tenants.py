@@ -26,6 +26,7 @@ from quantuum.api.schemas import (
     TenantDetailOut,
     TenantPatchIn,
     TenantPlansOut,
+    TenantStatsOut,
     TransferIn,
 )
 from quantuum.common.datetime import utcnow
@@ -42,6 +43,7 @@ from quantuum.db.models import (
     TenantStringOverride,
 )
 from quantuum.domain.audit import record_audit
+from quantuum.domain.stats import tenant_stats
 from quantuum.domain.tenants import (
     account_has_role,
     count_owners,
@@ -912,3 +914,19 @@ async def patch_account_balance(
     await session.refresh(target)
     await session.refresh(bal)
     return _account_summary_out(target, bal)
+
+
+# ---------------------------------------------------------------------------
+# Task 12 — Per-tenant real-time stats (owner + admin, read-only)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{tenant_id}/stats", response_model=TenantStatsOut)
+async def get_tenant_stats(
+    tenant_id: int,
+    period_days: int = Query(default=30, ge=1, le=365),
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> TenantStatsOut:
+    stats = await tenant_stats(session, tenant_id, period_days=period_days)
+    return TenantStatsOut(**stats)
