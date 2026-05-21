@@ -127,3 +127,47 @@ class PaymentOut(BaseModel):
     status: str
     created_at: str
     paid_at: str | None
+
+
+class SubscriptionPlanCreateIn(BaseModel):
+    slug: str
+    name: str
+    period_days: int
+    price_cents: int
+    currency: str = "XTR"
+    tenant_id: int | None = None
+
+
+class PackagePlanCreateIn(BaseModel):
+    slug: str
+    name: str
+    request_count: int
+    price_cents: int
+    currency: str = "XTR"
+    expires_after_days: int | None = None
+    tenant_id: int | None = None
+
+
+class SubscriptionPlanPatchIn(BaseModel):
+    name: str | None = None
+    period_days: int | None = None
+    price_cents: int | None = None
+    active: bool | None = None
+
+
+class PackagePlanPatchIn(BaseModel):
+    name: str | None = None
+    request_count: int | None = None
+    price_cents: int | None = None
+    expires_after_days: int | None = None
+    active: bool | None = None
+
+
+class SubscriptionPlanAdminOut(SubscriptionPlanOut):
+    active: bool
+    tenant_id: int | None
+
+
+class PackagePlanAdminOut(PackagePlanOut):
+    active: bool
+    tenant_id: int | None

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 
-from quantuum.api.routes import admin_platform, auth, health, me, webhook
+from quantuum.api.routes import admin_platform, auth, billing, health, me, webhook
 from quantuum.db.bootstrap import (
     ensure_default_tenant,
     ensure_default_tenant_bot,
@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(me.router)
     app.include_router(webhook.router)
     app.include_router(admin_platform.router)
+    app.include_router(billing.router)
 
     from quantuum.common.exceptions import NotFoundError
     from fastapi.responses import JSONResponse
