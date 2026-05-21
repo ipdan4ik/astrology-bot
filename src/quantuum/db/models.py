@@ -157,6 +157,28 @@ class Blueprint(SQLModel, table=True):
     completed_at: datetime | None = _dt_field(default=None)
 
 
+class QaAnswer(SQLModel, table=True):
+    __tablename__ = "qa_answers"
+    __table_args__ = (Index("ix_qa_answers_tenant_created", "tenant_id", "created_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    natal_profile_id: int = Field(foreign_key="natal_profiles.id")
+    blueprint_id: int | None = Field(default=None, foreign_key="blueprints.id")
+    question: str
+    answer_md: str | None = None
+    lang: str | None = None
+    status: str = "pending"  # pending|generating|done|failed
+    error: str | None = None
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    llm_tokens_in: int | None = None
+    llm_tokens_out: int | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    completed_at: datetime | None = _dt_field(default=None)
+
+
 class Request(SQLModel, table=True):
     __tablename__ = "requests"
 
