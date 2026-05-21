@@ -255,3 +255,13 @@ async def test_load_active_bot_specs_skips_null_id_and_empty_token(session, defa
 
     specs = await load_active_bot_specs(session, "polling")
     assert specs == {}
+
+
+def test_polling_run_is_supervised():
+    import inspect
+
+    import quantuum.bot.polling as polling
+
+    src = inspect.getsource(polling.run)
+    assert "PollingSupervisor" in src
+    assert "reload_signals" in src
