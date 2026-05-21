@@ -110,3 +110,70 @@ class TransitReport:
     sky: list[SkyPosition]
     active: list[ActiveAspect]
     upcoming: list[TransitHit]
+
+
+def _aspect_offset(lon: float, n: float, theta_b: float) -> float:
+    """Signed offset (deg, [-180,180)) of *lon* from natal *n* for branch *theta_b*."""
+    return ((lon - n - theta_b + 180) % 360) - 180
+
+
+def _is_retrograde(body: str, t: datetime) -> bool:
+    l1 = ecliptic_longitude(body, t)
+    l2 = ecliptic_longitude(body, t + timedelta(hours=6))
+    return (((l2 - l1 + 540) % 360) - 180) < 0
+
+
+def _bisect(body: str, n: float, theta_b: float, t0: datetime, t1: datetime) -> datetime:
+    """Refine a confirmed sign-change bracket [t0, t1] to the exact crossing instant."""
+    f0 = _aspect_offset(ecliptic_longitude(body, t0), n, theta_b)
+    lo, hi = t0, t1
+    for _ in range(BISECTION_ITERS):
+        mid = lo + (hi - lo) / 2
+        fm = _aspect_offset(ecliptic_longitude(body, mid), n, theta_b)
+        if f0 * fm <= 0:
+            hi = mid
+        else:
+            lo, f0 = mid, fm
+    return lo + (hi - lo) / 2
+
+
+def _branches(angle: float) -> tuple[float, ...]:
+    """Aspect branches to scan: +/-angle, deduped for the symmetric 0 and 180."""
+    if angle in (0.0, 180.0):
+        return (angle,)
+    return (angle, -angle)
+
+
+def _find_hits(
+    body: str,
+    target: str,
+    n: float,
+    as_of: datetime,
+    grid_times: list[datetime],
+    grid_lons: list[float],
+    window_end: datetime,
+) -> list[TransitHit]:
+    """All exact transits of *body* to natal *n* with as_of < exact_at <= window_end."""
+    hits: list[TransitHit] = []
+    for aspect, defn in TRANSIT_ASPECTS.items():
+        for theta_b in _branches(defn["angle"]):
+            for k in range(len(grid_times) - 1):
+                f0 = _aspect_offset(grid_lons[k], n, theta_b)
+                f1 = _aspect_offset(grid_lons[k + 1], n, theta_b)
+                if f0 == 0.0:
+                    exact = grid_times[k]
+                elif f0 * f1 < 0 and abs(f1 - f0) < 180:
+                    exact = _bisect(body, n, theta_b, grid_times[k], grid_times[k + 1])
+                else:
+                    continue
+                if as_of < exact <= window_end:
+                    hits.append(
+                        TransitHit(
+                            body=body,
+                            target=target,
+                            aspect=aspect,
+                            exact_at=exact,
+                            retrograde=_is_retrograde(body, exact),
+                        )
+                    )
+    return hits

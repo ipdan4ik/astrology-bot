@@ -42,3 +42,71 @@ def test_compute_natal_targets_matches_engine():
     birth = parse_birth_instant(inp)
     targets = compute_natal_targets(inp)
     assert abs(targets["Asc"] - ascendant_longitude(birth, inp.latitude, inp.longitude)) < 1e-9
+
+
+from datetime import datetime, timedelta, timezone
+
+
+def test_find_hits_forward_single(monkeypatch):
+    from quantuum.astrology import transits as T
+
+    as_of = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    def fake_lon(body, t):
+        days = (t - as_of).total_seconds() / 86400
+        return (1.0 * days) % 360  # 1 deg/day from 0
+
+    monkeypatch.setattr(T, "ecliptic_longitude", fake_lon)
+    grid_times = [as_of + timedelta(days=k) for k in range(0, 31)]
+    grid_lons = [fake_lon("X", t) for t in grid_times]
+
+    hits = T._find_hits("X", "Sun", 10.0, as_of, grid_times, grid_lons, as_of + timedelta(days=30))
+    conj = [h for h in hits if h.aspect == "Conjunction"]
+    assert len(conj) == 1
+    # Conjunction (lon == 10) exact at ~day 10.
+    assert abs((conj[0].exact_at - (as_of + timedelta(days=10))).total_seconds()) < 3600
+    assert conj[0].body == "X" and conj[0].target == "Sun"
+
+
+def test_find_hits_retrograde_triple(monkeypatch):
+    from quantuum.astrology import transits as T
+
+    as_of = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    def fake_lon(body, t):
+        d = (t - as_of).total_seconds() / 86400
+        if d <= 20:
+            return 0.6 * d            # 0 -> 12, crosses 10 going up (~16.7d)
+        if d <= 40:
+            return 12 - 0.6 * (d - 20)  # 12 -> 0, crosses 10 going down (~23.3d)
+        return 0.6 * (d - 40)         # 0 -> .. crosses 10 going up again (~56.7d)
+
+    monkeypatch.setattr(T, "ecliptic_longitude", fake_lon)
+    grid_times = [as_of + timedelta(days=k) for k in range(0, 61)]
+    grid_lons = [fake_lon("X", t) for t in grid_times]
+
+    hits = T._find_hits("X", "Sun", 10.0, as_of, grid_times, grid_lons, as_of + timedelta(days=60))
+    conj = [h for h in hits if h.aspect == "Conjunction"]
+    assert len(conj) == 3  # triple pass over the natal point
+    # The middle pass is retrograde (longitude decreasing).
+    assert any(h.retrograde for h in conj)
+
+
+def test_find_hits_bisection_accuracy(monkeypatch):
+    from quantuum.astrology import transits as T
+
+    as_of = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    def fake_lon(body, t):
+        days = (t - as_of).total_seconds() / 86400
+        return (2.0 * days) % 360
+
+    monkeypatch.setattr(T, "ecliptic_longitude", fake_lon)
+    grid_times = [as_of + timedelta(days=k) for k in range(0, 61)]
+    grid_lons = [fake_lon("X", t) for t in grid_times]
+
+    # natal 0 -> Square exact when lon == 90 (day 45) and lon == 270 (day 135, out of window).
+    hits = T._find_hits("X", "Sun", 0.0, as_of, grid_times, grid_lons, as_of + timedelta(days=60))
+    sq = [h for h in hits if h.aspect == "Square"]
+    assert len(sq) == 1
+    assert abs((sq[0].exact_at - (as_of + timedelta(days=45))).total_seconds()) < 600
