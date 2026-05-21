@@ -1,6 +1,8 @@
 import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
-from quantuum.bot.reload import BotSpec, diff_specs, load_active_bot_specs, reload_signals
+from quantuum.bot.reload import BotSpec, diff_specs, load_active_bot_specs, reload_signals, PollingSupervisor, poll_one
 from quantuum.redis_client import publish_bot_reload
 from quantuum.common.crypto import encrypt_token
 from quantuum.db.models import Tenant, TenantBot
@@ -81,3 +83,63 @@ async def test_reload_signals_yields_on_timeout():
     gen = reload_signals(interval=0.2)
     await asyncio.wait_for(gen.__anext__(), timeout=3.0)  # no publish -> interval tick
     await gen.aclose()
+
+
+async def test_poll_one_feeds_updates_then_stops_on_cancel():
+    update = SimpleNamespace(update_id=10)
+    bot = SimpleNamespace(
+        id=1,
+        delete_webhook=AsyncMock(),
+        get_updates=AsyncMock(side_effect=[[update], asyncio.CancelledError()]),
+    )
+    dp = SimpleNamespace(feed_update=AsyncMock())
+
+    with __import__("pytest").raises(asyncio.CancelledError):
+        await poll_one(dp, bot, allowed_updates=["message"])
+
+    bot.delete_webhook.assert_awaited_once()
+    dp.feed_update.assert_awaited_once_with(bot, update)
+
+
+async def test_polling_supervisor_reconcile_spawns_and_cancels(monkeypatch):
+    import quantuum.bot.reload as reload_mod
+
+    # Control the desired set without touching the DB.
+    desired = {1: _spec(1), 2: _spec(2, is_master=True)}
+
+    async def fake_load(session, transport):
+        return dict(desired)
+
+    monkeypatch.setattr(reload_mod, "load_active_bot_specs", fake_load)
+
+    spawned: list[int] = []
+
+    def fake_spawn(spec):
+        spawned.append(spec.bot_telegram_id)
+        bot = SimpleNamespace(session=SimpleNamespace(close=AsyncMock()))
+        task = asyncio.create_task(asyncio.sleep(3600))
+        return bot, task
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return None
+        async def __aexit__(self, *a):
+            return False
+
+    sup = PollingSupervisor(_Maker(), customer_dp=None, master_dp=None, spawn=fake_spawn)
+
+    await sup.reconcile()
+    assert sorted(spawned) == [1, 2]
+    assert set(sup.live) == {1, 2}
+
+    removed_bot, removed_task = sup.live[1]
+    desired.pop(1)  # bot 1 deactivated
+    await sup.reconcile()
+
+    assert set(sup.live) == {2}
+    assert removed_task.cancelled()
+    removed_bot.session.close.assert_awaited_once()
