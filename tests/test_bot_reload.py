@@ -1,4 +1,7 @@
-from quantuum.bot.reload import BotSpec, diff_specs, load_active_bot_specs
+import asyncio
+
+from quantuum.bot.reload import BotSpec, diff_specs, load_active_bot_specs, reload_signals
+from quantuum.redis_client import publish_bot_reload
 from quantuum.common.crypto import encrypt_token
 from quantuum.db.models import Tenant, TenantBot
 
@@ -63,3 +66,18 @@ async def test_load_active_bot_specs_excludes_inactive_and_other_transport(sessi
 
     specs = await load_active_bot_specs(session, "polling")
     assert set(specs) == {3}
+
+
+async def test_reload_signals_yields_on_publish():
+    gen = reload_signals(interval=5.0)
+    waiter = asyncio.create_task(gen.__anext__())
+    await asyncio.sleep(0.2)  # let the subscription register before publishing
+    await publish_bot_reload()
+    await asyncio.wait_for(waiter, timeout=3.0)  # nudge wakes it well before the 5s interval
+    await gen.aclose()
+
+
+async def test_reload_signals_yields_on_timeout():
+    gen = reload_signals(interval=0.2)
+    await asyncio.wait_for(gen.__anext__(), timeout=3.0)  # no publish -> interval tick
+    await gen.aclose()

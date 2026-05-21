@@ -25,3 +25,11 @@ async def pop_update(timeout: int = 5) -> dict | None:
         return None
     _, payload = result
     return json.loads(payload)
+
+
+BOT_RELOAD_CHANNEL = "bot:reload"
+
+
+async def publish_bot_reload() -> None:
+    """Nudge the bot workers to reconcile their bot pools immediately."""
+    await get_redis().publish(BOT_RELOAD_CHANNEL, "1")

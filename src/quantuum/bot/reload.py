@@ -1,8 +1,10 @@
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from quantuum.common.crypto import decrypt_token
 from quantuum.domain.tenants import get_platform_tenant_id, list_active_tenant_bots
 from quantuum.logging_setup import get_logger
+from quantuum.redis_client import BOT_RELOAD_CHANNEL, get_redis
 
 logger = get_logger("bot.reload")
 
@@ -38,3 +40,20 @@ async def load_active_bot_specs(session, transport: str) -> dict[int, BotSpec]:
             is_master=(tb.tenant_id == platform_id),
         )
     return specs
+
+
+async def reload_signals(interval: float) -> AsyncIterator[None]:
+    """Yield once per nudge OR per `interval` seconds, whichever comes first.
+
+    Each yield should drive one reconcile, so a missed nudge is still corrected within
+    `interval` (self-healing). Redundant nudges coalesce into harmless extra reconciles.
+    """
+    pubsub = get_redis().pubsub()
+    await pubsub.subscribe(BOT_RELOAD_CHANNEL)
+    try:
+        while True:
+            await pubsub.get_message(ignore_subscribe_messages=True, timeout=interval)
+            yield
+    finally:
+        await pubsub.unsubscribe(BOT_RELOAD_CHANNEL)
+        await pubsub.aclose()
