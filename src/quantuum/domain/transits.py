@@ -69,6 +69,9 @@ async def resolve_natal(session, *, account_id: int, natal_profile_id: int):
     builds one from the profile. The numeric natal targets come from the
     BlueprintInput (via compute_natal_targets), not from the markdown.
     """
+    # Profile is loaded first (unlike qa.py's blueprint-first resolve_calc_md): we
+    # always need a BlueprintInput from the profile for the numeric natal targets,
+    # regardless of whether a done Blueprint exists. Do not reorder to blueprint-first.
     profile = await session.get(NatalProfile, natal_profile_id)
     if profile is None:
         raise NotFoundError("natal profile not found")
