@@ -177,3 +177,113 @@ def _find_hits(
                         )
                     )
     return hits
+
+
+def _active_now(
+    body: str,
+    target: str,
+    n: float,
+    as_of: datetime,
+    pair_hits: list[TransitHit],
+) -> ActiveAspect | None:
+    """Strongest aspect of *body* to natal *n* currently within orb, or None."""
+    lon_now = ecliptic_longitude(body, as_of)
+    sep = _sep180(lon_now, n)
+    best: str | None = None
+    best_orb = 0.0
+    for aspect, defn in TRANSIT_ASPECTS.items():
+        orb = abs(sep - defn["angle"])
+        if orb <= defn["orb"] and (best is None or orb < best_orb):
+            best, best_orb = aspect, orb
+    if best is None:
+        return None
+    sep_later = _sep180(ecliptic_longitude(body, as_of + timedelta(hours=6)), n)
+    orb_later = abs(sep_later - TRANSIT_ASPECTS[best]["angle"])
+    applying = orb_later < best_orb
+    futures = [h.exact_at for h in pair_hits if h.aspect == best and h.exact_at > as_of]
+    exact_at = min(futures) if futures else None
+    return ActiveAspect(
+        body=body, target=target, aspect=best, orb=best_orb, applying=applying, exact_at=exact_at
+    )
+
+
+def compute_transits(
+    inp: BlueprintInput, *, as_of: datetime, window_days: int = DEFAULT_WINDOW_DAYS
+) -> TransitReport:
+    window_days = clamp_window(window_days)
+    window_end = as_of + timedelta(days=window_days)
+    natal = compute_natal_targets(inp)
+
+    sky = [
+        SkyPosition(body=b, longitude=(p := planet_position(b, as_of)).longitude, retrograde=p.retrograde)
+        for b in CURRENT_SKY_BODIES
+    ]
+
+    # Sample each forecast body's longitude on the daily grid once (reused across targets).
+    n_steps = math.ceil(window_days * 24 / GRID_STEP_HOURS)
+    grid_times = [as_of + timedelta(hours=GRID_STEP_HOURS * k) for k in range(n_steps + 2)]
+    grid_lons = {b: [ecliptic_longitude(b, t) for t in grid_times] for b in TRANSIT_FORECAST_BODIES}
+
+    all_hits: list[TransitHit] = []
+    active: list[ActiveAspect] = []
+    for b in TRANSIT_FORECAST_BODIES:
+        for target in NATAL_TARGETS:
+            n = natal[target]
+            pair_hits = _find_hits(b, target, n, as_of, grid_times, grid_lons[b], window_end)
+            all_hits.extend(pair_hits)
+            act = _active_now(b, target, n, as_of, pair_hits)
+            if act is not None:
+                active.append(act)
+
+    active.sort(key=lambda a: (not a.applying, a.orb))
+    upcoming = sorted(
+        (h for h in all_hits if h.exact_at > as_of), key=lambda h: h.exact_at
+    )
+    return TransitReport(
+        as_of=as_of, window_days=window_days, sky=sky, active=active, upcoming=upcoming
+    )
+
+
+def render_transits_md(report: TransitReport) -> str:
+    """Deterministic Markdown (3 tables) used to ground the LLM narration."""
+    lines: list[str] = []
+
+    lines.append("## Current sky")
+    lines.append("")
+    lines.append("| Body | Position | ℞ |")
+    lines.append("| --- | --- | --- |")
+    for s in report.sky:
+        lines.append(
+            f"| {s.body} | {fmt_deg(to_sign_degree(s.longitude))} | {'℞' if s.retrograde else ''} |"
+        )
+    lines.append("")
+
+    lines.append("## Active transits now")
+    lines.append("")
+    if not report.active:
+        lines.append("_No transits within orb right now._")
+    else:
+        lines.append("| Transit | Aspect | Natal | Orb | Phase | Exact |")
+        lines.append("| --- | --- | --- | --- | --- | --- |")
+        for a in report.active:
+            phase = "applying" if a.applying else "separating"
+            exact = a.exact_at.strftime("%Y-%m-%d") if a.exact_at else "—"
+            lines.append(
+                f"| {a.body} | {a.aspect} | {a.target} | {to_fixed(a.orb, 2)}° | {phase} | {exact} |"
+            )
+    lines.append("")
+
+    lines.append(f"## Upcoming exact transits (next {report.window_days} days)")
+    lines.append("")
+    if not report.upcoming:
+        lines.append("_No exact transits in the window._")
+    else:
+        lines.append("| Date | Transit | Aspect | Natal | ℞ |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        for h in report.upcoming:
+            lines.append(
+                f"| {h.exact_at.strftime('%Y-%m-%d')} | {h.body} | {h.aspect} | {h.target} | {'℞' if h.retrograde else ''} |"
+            )
+    lines.append("")
+
+    return "\n".join(lines)
