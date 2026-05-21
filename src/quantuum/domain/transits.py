@@ -14,7 +14,7 @@ async def create_transit(
     tenant_id: int,
     account_id: int,
     natal_profile_id: int,
-    window_days: int | None,
+    window_days: int | str | None,  # API passes int|None; bot passes str|None — clamp_window coerces
     lang: str | None,
 ) -> TransitReport:
     row = TransitReport(
