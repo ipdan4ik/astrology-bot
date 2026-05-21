@@ -230,6 +230,8 @@ class DailyHoroscope(SQLModel, table=True):
     transit_md: str | None = None
     horoscope_md: str | None = None
     lang: str | None = None
+    # No "pending" state (unlike QaAnswer/TransitReport): the row is created only
+    # when generation starts, via claim_horoscope (the unique guard claims the day).
     status: str = "generating"  # generating|done|failed
     error: str | None = None
     llm_provider: str | None = None
