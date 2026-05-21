@@ -1,10 +1,12 @@
 from aiogram import Bot
+from arq import cron
 from arq.connections import RedisSettings
 
 from quantuum.db.session import get_sessionmaker
 from quantuum.logging_setup import configure_logging
 from quantuum.settings import get_settings
 from quantuum.tasks.blueprint import blueprint_generate
+from quantuum.tasks.lifecycle import subscription_lifecycle
 from quantuum.tasks.provision import provision_tenant
 
 
@@ -24,7 +26,8 @@ async def shutdown(ctx) -> None:
 
 
 class WorkerSettings:
-    functions = [blueprint_generate, provision_tenant]
+    functions = [blueprint_generate, provision_tenant, subscription_lifecycle]
+    cron_jobs = [cron(subscription_lifecycle, minute=0)]  # top of every hour
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
