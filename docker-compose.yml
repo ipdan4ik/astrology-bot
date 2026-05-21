@@ -65,6 +65,8 @@ services:
     environment:
       MASTER_BOT_TOKEN: ${MASTER_BOT_TOKEN:-}
       MASTER_BOT_USERNAME: ${MASTER_BOT_USERNAME:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-sonnet-4-6}
     depends_on:
       migration:
         condition: service_completed_successfully
