@@ -18,10 +18,11 @@ def test_fake_satisfies_protocol():
 
 async def test_polish_blueprint_wraps_calc_md():
     fake = FakeLLM()
-    res = await polish_blueprint(fake, "# calc", model="m", temperature=0.1, max_tokens=1000)
+    res = await polish_blueprint(fake, "# calc", lang="en", model="m", temperature=0.1, max_tokens=1000)
     assert res.text == "POLISHED" and res.tokens_in == 11
     call = fake.calls[0]
     assert "CALCULATED MARKDOWN:" in call["user"] and "# calc" in call["user"]
+    assert "Answer in language: en." in call["user"]
     assert "Quantuum Blueprint Writer" in call["system"]
 
 
