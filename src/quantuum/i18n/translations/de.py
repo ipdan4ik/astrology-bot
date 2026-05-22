@@ -109,8 +109,8 @@ TRANSLATIONS = {
     # Daily horoscope
     # -------------------------------------------------------------------------
     "daily.header": "🌟 Heutiges Horoskop",
-    "daily.status_on": "Tageshoroskop ist AN. Lieferzeit: {hour}:00 (deine Zeitzone).",
-    "daily.status_off": "Tageshoroskop ist AUS.",
+    "daily.status_on": "Tageshoroskop ist eingeschaltet. Lieferzeit: {hour}:00 (deine Zeitzone).",
+    "daily.status_off": "Tageshoroskop ist ausgeschaltet.",
     "daily.not_subscriber": "Das Tageshoroskop ist ein Abonnement-Feature. Abonniere, um es jeden Morgen zu erhalten:",
     "daily.no_profile": "Fülle zuerst dein Geburtshoroskop-Profil aus (/profile).",
     "daily.enabled": "Tageshoroskop aktiviert ✅",
@@ -135,7 +135,7 @@ TRANSLATIONS = {
     "history.kb.download": "📥 .md herunterladen",
     "history.kb.preview": "👁 Vorschau",
     "history.kb.back": "← Zurück",
-    "history.kb.prev_page": "← Zurück",
+    "history.kb.prev_page": "← Vorherige",
     "history.kb.next_page": "Weiter →",
     "history.unavailable": "Nicht verfügbar",
     # -------------------------------------------------------------------------
@@ -224,11 +224,11 @@ TRANSLATIONS = {
     "admin.tenants.empty": "Noch keine Bots.",
     "admin.tenant.title": "Bot: {display_name} (/{slug}) — {status}",
     "admin.tenant.kb.stats": "📊 Stats",
-    "admin.tenant.kb.suspend": "⏸ Sperren",
+    "admin.tenant.kb.suspend": "⏸ Aussetzen",
     "admin.tenant.kb.resume": "▶️ Fortsetzen",
     "admin.tenant.kb.delete": "🗑 Löschen",
     "admin.kb.back": "⬅️ Zurück",
-    "admin.tenant.suspended": "⏸ Bot gesperrt.",
+    "admin.tenant.suspended": "⏸ Bot ausgesetzt.",
     "admin.tenant.resumed": "▶️ Bot fortgesetzt.",
     "admin.invites.title": "Aktive Einladungen:",
     "admin.invites.empty": "Keine aktiven Einladungen.",

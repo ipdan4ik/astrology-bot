@@ -30,7 +30,7 @@ TRANSLATIONS = {
         "Menu du bas :\n"
         "🔮 Lecture — générer une lecture\n"
         "👤 Profil — voir et modifier les données natales\n"
-        "📜 Historique — générations passées\n\n"
+        "📜 Historique — lectures passées\n\n"
         "Commandes : /start /profile /blueprint\n"
         "Support : @quantuum_support"
     ),
@@ -73,7 +73,7 @@ TRANSLATIONS = {
     "profile.error.birth_date_invalid": "Date non reconnue. Format AAAA-MM-JJ.",
     "profile.error.birth_time_invalid": "Heure non reconnue. Format HH:MM.",
     "profile.error.unknown_field": "Champ inconnu.",
-    "profile.field_edit_error": "{err}\nVeuillez réessayer :",
+    "profile.field_edit_error": "{err}\nRéessaie :",
     # -------------------------------------------------------------------------
     # Start / welcome
     # -------------------------------------------------------------------------
@@ -87,7 +87,7 @@ TRANSLATIONS = {
     # Generate (blueprint request)
     # -------------------------------------------------------------------------
     "generate.no_profile": "Remplis d'abord ton profil :",
-    "generate.no_quota": "Ta génération gratuite a déjà été utilisée. Achète un forfait ou un abonnement :",
+    "generate.no_quota": "Ta lecture gratuite a déjà été utilisée. Achète un forfait ou un abonnement :",
     "generate.queued": "Génération de ta lecture en cours, cela prendra environ une minute…",
     # -------------------------------------------------------------------------
     # Q&A astrologer
@@ -97,7 +97,7 @@ TRANSLATIONS = {
     "qa.no_profile": "Remplis d'abord ton profil natal (/profile).",
     "qa.no_quota": "Tu n'as plus de crédits. Achète un forfait ou un abonnement pour consulter l'astrologue :",
     "qa.too_long": "La question est trop longue (max 1000 caractères).",
-    "qa.empty": "Question vide. Veuillez saisir ta question :",
+    "qa.empty": "Question vide. Écris ta question :",
     # -------------------------------------------------------------------------
     # Transits
     # -------------------------------------------------------------------------
@@ -161,7 +161,7 @@ TRANSLATIONS = {
     "master.onboard.invite_invalid": "L'invitation est invalide ou a expiré.",
     "master.onboard.slug_prompt": "Bienvenue ! Créons un bot. Entre le slug du tenant (lettres latines, sans espaces){prefill} :",
     "master.onboard.slug_prefill": " (suggéré : {slug})",
-    "master.onboard.plain_start": "Ceci est le bot d'onboarding de la plateforme. Ouvre un lien d'invitation pour créer ton propre bot.",
+    "master.onboard.plain_start": "Ceci est le bot d'accueil de la plateforme. Ouvre un lien d'invitation pour créer ton propre bot.",
     "master.onboard.slug_invalid": "Le slug ne doit pas être vide ni contenir d'espaces. Réessaie :",
     "master.onboard.slug_taken": "Ce slug est déjà pris. Entre un autre :",
     "master.onboard.display_name_prompt": "Nom d'affichage du produit (ex. «Acme Astro») :",
@@ -174,7 +174,7 @@ TRANSLATIONS = {
     ),
     "master.onboard.invite_gone": "L'invitation n'est plus valide.",
     "master.onboard.creating": "Création du tenant… Vérification de la création automatique du bot.",
-    "master.onboard.cancelled": "Onboarding annulé.",
+    "master.onboard.cancelled": "Inscription annulée.",
     "master.onboard.token_invalid": "Ce token ne semble pas valide. Renvoie le token de @BotFather :",
     "master.onboard.done": "Terminé ! Le bot @{username} est activé. Il sera disponible après le redémarrage du worker.",
     "master.kb.cancel": "Annuler",

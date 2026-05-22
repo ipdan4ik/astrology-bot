@@ -16,8 +16,8 @@ TRANSLATIONS = {
     # Blueprint status words
     # -------------------------------------------------------------------------
     "status.pending": "in coda",
-    "status.calculating": "calcolo",
-    "status.generating": "generazione",
+    "status.calculating": "in calcolo",
+    "status.generating": "in generazione",
     "status.done": "pronto",
     "status.failed": "errore",
     "status.refunded": "rimborso",
@@ -109,8 +109,8 @@ TRANSLATIONS = {
     # Daily horoscope
     # -------------------------------------------------------------------------
     "daily.header": "🌟 Oroscopo di oggi",
-    "daily.status_on": "Oroscopo quotidiano ATTIVO. Orario di consegna: {hour}:00 (fuso orario locale).",
-    "daily.status_off": "Oroscopo quotidiano DISATTIVO.",
+    "daily.status_on": "Oroscopo quotidiano attivato. Orario di consegna: {hour}:00 (fuso orario locale).",
+    "daily.status_off": "Oroscopo quotidiano disattivato.",
     "daily.not_subscriber": "L'oroscopo quotidiano è una funzione riservata agli abbonati. Abbonati per riceverlo ogni mattina:",
     "daily.no_profile": "Compila prima il tuo profilo natale (/profile).",
     "daily.enabled": "Oroscopo quotidiano attivato ✅",
@@ -217,7 +217,7 @@ TRANSLATIONS = {
     # Superadmin cabinet
     # -------------------------------------------------------------------------
     "admin.denied": "Non autorizzato.",
-    "admin.menu.title": "🛠 Pannello superammin",
+    "admin.menu.title": "🛠 Pannello superadmin",
     "admin.menu.kb.tenants": "🏢 Bot",
     "admin.menu.kb.invites": "🎟 Inviti",
     "admin.tenants.title": "Tutti i bot:",

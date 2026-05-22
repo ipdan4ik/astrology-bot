@@ -109,8 +109,8 @@ TRANSLATIONS = {
     # Daily horoscope
     # -------------------------------------------------------------------------
     "daily.header": "🌟 Horóscopo de hoje",
-    "daily.status_on": "Horóscopo diário ATIVO. Horário de entrega: {hour}:00 (seu fuso horário).",
-    "daily.status_off": "Horóscopo diário INATIVO.",
+    "daily.status_on": "Horóscopo diário ativado. Horário de entrega: {hour}:00 (seu fuso horário).",
+    "daily.status_off": "Horóscopo diário desativado.",
     "daily.not_subscriber": "O horóscopo diário é um recurso para assinantes. Assine para recebê-lo toda manhã:",
     "daily.no_profile": "Preencha seu perfil natal primeiro (/profile).",
     "daily.enabled": "Horóscopo diário ativado ✅",
@@ -198,7 +198,7 @@ TRANSLATIONS = {
         "Ativos: {active_customers}, pagantes: {paid_customers}\n"
         "DAU/WAU/MAU: {dau}/{wau}/{mau}\n"
         "Receita: {revenue_cents}, MRR: {mrr_cents}\n"
-        "Requisições: {requests_by_kind}"
+        "Solicitações: {requests_by_kind}"
     ),
     "owner.no_rights": "Sem permissão",
     "owner.pause.platform_blocked": "O tenant da plataforma não pode ser pausado",

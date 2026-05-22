@@ -18,7 +18,7 @@ TRANSLATIONS = {
     "status.pending": "en cola",
     "status.calculating": "calculando",
     "status.generating": "generando",
-    "status.done": "listo",
+    "status.done": "lista",
     "status.failed": "error",
     "status.refunded": "reembolsado",
     # -------------------------------------------------------------------------
@@ -87,14 +87,14 @@ TRANSLATIONS = {
     # Generate (blueprint request)
     # -------------------------------------------------------------------------
     "generate.no_profile": "Por favor, completa tu perfil primero:",
-    "generate.no_quota": "Tu generación gratuita ya se ha utilizado. Compra un paquete o suscripción:",
+    "generate.no_quota": "Tu lectura gratuita ya se ha utilizado. Compra un paquete o suscripción:",
     "generate.queued": "Generando tu lectura, esto tardará aproximadamente un minuto…",
     # -------------------------------------------------------------------------
     # Q&A astrologer
     # -------------------------------------------------------------------------
     "qa.ask_prompt": "Envía tu pregunta al astrólogo:",
     "qa.thinking": "Pensando en tu respuesta… ⏳",
-    "qa.no_profile": "Completa tu carta natal primero (/profile).",
+    "qa.no_profile": "Completa tu perfil natal primero (/profile).",
     "qa.no_quota": "Te has quedado sin créditos. Compra un paquete o suscripción para preguntar al astrólogo:",
     "qa.too_long": "La pregunta es demasiado larga (máx. 1000 caracteres).",
     "qa.empty": "Pregunta vacía. Por favor escribe tu pregunta:",
@@ -102,7 +102,7 @@ TRANSLATIONS = {
     # Transits
     # -------------------------------------------------------------------------
     "transit.thinking": "Calculando tus tránsitos… ⏳",
-    "transit.no_profile": "Completa tu carta natal primero (/profile).",
+    "transit.no_profile": "Completa tu perfil natal primero (/profile).",
     "transit.no_quota": "Te has quedado sin créditos. Compra un paquete o suscripción para ver tus tránsitos:",
     "transit.failed": "No se pudieron calcular los tránsitos. Inténtalo más tarde.",
     # -------------------------------------------------------------------------
@@ -112,7 +112,7 @@ TRANSLATIONS = {
     "daily.status_on": "Horóscopo diario ACTIVADO. Hora de entrega: {hour}:00 (tu zona horaria).",
     "daily.status_off": "Horóscopo diario DESACTIVADO.",
     "daily.not_subscriber": "El horóscopo diario es una función de suscripción. Suscríbete para recibirlo cada mañana:",
-    "daily.no_profile": "Completa tu carta natal primero (/profile).",
+    "daily.no_profile": "Completa tu perfil natal primero (/profile).",
     "daily.enabled": "Horóscopo diario activado ✅",
     "daily.disabled": "Horóscopo diario desactivado.",
     "daily.hour_set": "Hora de entrega: {hour}:00 ✅",
@@ -127,7 +127,7 @@ TRANSLATIONS = {
     "history.detail_header": "🔮 Lectura #{id}",
     "history.detail_status": "Estado: {status}",
     "history.detail_created": "Creado: {created_at}",
-    "history.detail_ready": "Listo: {completed_at}",
+    "history.detail_ready": "Lista: {completed_at}",
     "history.not_found": "No encontrado",
     # -------------------------------------------------------------------------
     # History / blueprint detail keyboard labels

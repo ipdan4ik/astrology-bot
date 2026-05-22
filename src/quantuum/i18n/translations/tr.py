@@ -10,7 +10,7 @@ TRANSLATIONS = {
     "btn.help": "ℹ️ Yardım",
     "btn.ask": "❓ Astrologa sor",
     "btn.transits": "🌌 Transitler",
-    "btn.daily": "🔔 Günlük burç",
+    "btn.daily": "🔔 Günlük yorum",
     "btn.language": "🌐 Dil",
     # -------------------------------------------------------------------------
     # Blueprint status words
@@ -261,7 +261,7 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # Onboarding flow
     # -------------------------------------------------------------------------
-    "onb.prompt.full_name": "Tam adınızı girin (nüfus cüzdanındaki gibi):",
+    "onb.prompt.full_name": "Tam adınızı girin (doğum belgesindeki gibi):",
     "onb.error.full_name": "Ad anlaşılamadı. Tam adınızı metin olarak girin:",
     "onb.prompt.birth_date": "Doğum tarihi YYYY-AA-GG biçiminde (örn. 1980-06-24):",
     "onb.error.birth_date": "Tarih anlaşılamadı. Biçim YYYY-AA-GG:",
