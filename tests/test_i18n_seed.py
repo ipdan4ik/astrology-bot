@@ -134,7 +134,7 @@ def test_language_selection_strings_present():
         "onb.done",
     ]:
         assert key in BASE_STRINGS, f"missing {key}"
-        assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key]
+        assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key], f"{key} missing ru/en"
 
 
 def test_place_edit_strings_present_and_obsolete_removed():
