@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantuum — фичи бота</title>
+<style>
+  :root{
+    --bg:#0b0d1a; --card:#171b33; --card2:#1c2140;
+    --txt:#e7e9f5; --muted:#9aa0c3; --line:#2a2f52;
+    --accent:#a78bfa; --accent2:#f0abfc;
+    --low:#34d399; --med:#fbbf24; --high:#fb7185;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+    background:radial-gradient(1200px 600px at 80% -10%,#241a47 0%,transparent 60%),
+               radial-gradient(900px 500px at -10% 10%,#10233f 0%,transparent 55%),
+               var(--bg);
+    color:var(--txt); line-height:1.55; padding:0 0 64px;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:0 20px}
+  header{padding:56px 0 28px; text-align:center}
+  h1{font-size:2.5rem; margin:0 0 8px; letter-spacing:-.02em;
+     background:linear-gradient(90deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
+  .sub{color:var(--muted); max-width:680px; margin:0 auto; font-size:1.02rem}
+  .legend{display:flex; gap:18px; justify-content:center; flex-wrap:wrap; margin:22px 0 8px}
+  .legend span{display:inline-flex; align-items:center; gap:7px; color:var(--muted); font-size:.9rem}
+  .dot{width:11px; height:11px; border-radius:50%; display:inline-block}
+  .dot.low{background:var(--low)} .dot.med{background:var(--med)} .dot.high{background:var(--high)}
+
+  .sect-head{margin:46px 0 4px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+             border-bottom:1px solid var(--line); padding-bottom:10px}
+  .sect-head h2{font-size:1.45rem; margin:0; display:flex; align-items:center; gap:10px}
+  .sect-head .note{color:var(--muted); font-size:.9rem; font-style:italic}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; margin-top:16px}
+  .card{
+    background:linear-gradient(180deg,var(--card),var(--card2));
+    border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  .card:hover{transform:translateY(-3px); border-color:var(--accent)}
+  .card .top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
+  .card h3{margin:0; font-size:1.05rem}
+  .card p{margin:8px 0 0; color:var(--muted); font-size:.92rem}
+  .badge{flex:none; font-size:.72rem; font-weight:600; padding:4px 9px; border-radius:999px;
+         white-space:nowrap; border:1px solid transparent}
+  .badge .dots{letter-spacing:1px}
+  .badge.low{color:var(--low); background:rgba(52,211,153,.1); border-color:rgba(52,211,153,.3)}
+  .badge.med{color:var(--med); background:rgba(251,191,36,.1); border-color:rgba(251,191,36,.3)}
+  .badge.high{color:var(--high); background:rgba(251,113,133,.1); border-color:rgba(251,113,133,.3)}
+  code{background:#222746; padding:1px 6px; border-radius:5px; font-size:.86em}
+
+  .panel{background:rgba(255,255,255,.03); border:1px solid var(--line);
+         border-radius:14px; padding:18px 20px; margin-top:26px}
+  .panel h4{margin:0 0 8px; font-size:1rem; color:var(--accent)}
+  .panel p{margin:0; color:var(--muted); font-size:.92rem}
+  .tags{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px}
+  .tag{font-size:.8rem; color:var(--txt); background:#222746; border:1px solid var(--line);
+       padding:3px 10px; border-radius:8px}
+  footer{text-align:center; color:var(--muted); font-size:.82rem; margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>✦ Quantuum</h1>
+    <p class="sub">Мультитенантная SaaS-платформа эзотерических Telegram-ботов: мастер-бот заводит и обслуживает множество клиентских ботов — у каждого свои пользователи, оплаты и язык.</p>
+    <div class="legend">
+      <span><i class="dot low"></i> низкая сложность</span>
+      <span><i class="dot med"></i> средняя</span>
+      <span><i class="dot high"></i> высокая</span>
+    </div>
+  </header>
+
+  <div class="sect-head">
+    <h2>🔮 Эзотерика и разборы</h2>
+    <span class="note">что бот считает и генерирует</span>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="top"><h3>Натальная астрология</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Движок эфемерид (<code>astronomy</code>): позиции 10 планет + узлы, дома (Whole Sign / Porphyry).</p></div>
+    <div class="card"><div class="top"><h3>Нумерология</h3><span class="badge low"><span class="dots">●○○</span></span></div>
+      <p>Пифагорейская: числа жизненного пути, судьбы, зрелости (+ мастер-числа 11/22/33).</p></div>
+    <div class="card"><div class="top"><h3>Human Design</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Бодиграф: 64 ворот, активные каналы, определённые центры.</p></div>
+    <div class="card"><div class="top"><h3>Gene Keys</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Генные ключи поверх Human Design: тени / дары / сиддхи.</p></div>
+    <div class="card"><div class="top"><h3>Майянский Цолькин</h3><span class="badge low"><span class="dots">●○○</span></span></div>
+      <p>День-знак + галактический тон (260-дневный календарь, Dreamspell).</p></div>
+    <div class="card"><div class="top"><h3>Китайский гороскоп (Бацзы)</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Четыре столпа по лунному календарю (<code>lunar_python</code>), стихии и полярность.</p></div>
+    <div class="card"><div class="top"><h3>Blueprint — разбор</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Сводный разбор из всех систем выше, отполированный LLM. Конвейер: расчёт → LLM → доставка.</p></div>
+    <div class="card"><div class="top"><h3>Транзиты</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Текущие планеты vs натал, аспекты, отчёт за 30/60/90 дней через LLM.</p></div>
+    <div class="card"><div class="top"><h3>Ежедневный гороскоп</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Подписка: транзит дня + LLM, рассылка в выбранный локальный час (учёт таймзоны).</p></div>
+    <div class="card"><div class="top"><h3>Спросить астролога (Q&amp;A)</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Вопрос по своему профилю, ответ LLM на основе разбора.</p></div>
+  </div>
+
+  <div class="sect-head">
+    <h2>👤 Личный кабинет и оплата</h2>
+    <span class="note">аккаунт пользователя, настройки, покупки</span>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="top"><h3>Онбординг и натальный профиль</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>FSM сбора имени/даты/времени/места; геокодинг (Nominatim) + таймзона (<code>timezonefinder</code>).</p></div>
+    <div class="card"><div class="top"><h3>Профиль: просмотр и правка</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Редактирование полей, повторный геокодинг при смене места рождения.</p></div>
+    <div class="card"><div class="top"><h3>История и скачивание</h3><span class="badge low"><span class="dots">●○○</span></span></div>
+      <p>Список прошлых разборов (пагинация), просмотр, выгрузка markdown.</p></div>
+    <div class="card"><div class="top"><h3>Выбор языка</h3><span class="badge low"><span class="dots">●○○</span></span></div>
+      <p>Пикер языка при первом входе и в меню; запоминается per-user.</p></div>
+    <div class="card"><div class="top"><h3>Покупки (Telegram Stars)</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p><code>/buy</code> → инвойс в Stars (XTR), фулфилмент по webhook.</p></div>
+  </div>
+
+  <div class="sect-head">
+    <h2>🛠 Управление и аналитика</h2>
+    <span class="note">кабинеты владельца/суперадмина, API, метрики</span>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="top"><h3>Кабинет владельца бота</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>В мастер-боте: <code>/manage</code> — статистика, пауза/возобновление, передача владения, удаление.</p></div>
+    <div class="card"><div class="top"><h3>Кабинет суперадмина</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>В мастер-боте: <code>/admin</code> — все боты (стат/пауза/удаление) и инвайты (создание/отзыв).</p></div>
+    <div class="card"><div class="top"><h3>HTTP Admin API</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>FastAPI: тенанты, роли, i18n-оверрайды, планы, аккаунты, статистика, аудит, платформенные эндпоинты.</p></div>
+    <div class="card"><div class="top"><h3>Статистика и аналитика</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>DAU/WAU/MAU, активные/платящие, выручка, MRR, расход LLM-токенов.</p></div>
+    <div class="card"><div class="top"><h3>Аудит-лог</h3><span class="badge low"><span class="dots">●○○</span></span></div>
+      <p>Запись каждого изменения: актор, сущность, payload, IP/UA.</p></div>
+  </div>
+
+  <div class="sect-head">
+    <h2>🏗 SaaS-платформа</h2>
+    <span class="note">то, что делает продукт мультитенантным</span>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="top"><h3>Мультитенантность и автосоздание ботов</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Инвайты → онбординг владельца; бот через Bot API 9.6 (managed) или ручной токен; токены в Fernet.</p></div>
+    <div class="card"><div class="top"><h3>Хостинг ботов (runner)</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Диспетчер на тенанта; polling и webhook; hot-reload — сверка БД с живым пулом без рестарта.</p></div>
+    <div class="card"><div class="top"><h3>Тарифы и квоты</h3><span class="badge high"><span class="dots">●●●</span></span></div>
+      <p>Free-trial / подписки / пакеты; иерархия списания, грейс-период, напоминания о продлении.</p></div>
+    <div class="card"><div class="top"><h3>Платежи и выплаты</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Провайдеры (Stars в проде; Cloudpayments/Cryptobot — заглушки), расчёт выплат тенанту с комиссией.</p></div>
+  </div>
+
+  <div class="sect-head">
+    <h2>⚙️ Инфраструктура</h2>
+    <span class="note">техническая основа</span>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="top"><h3>Аутентификация</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Magic-link по email + JWT (+ refresh), Telegram-идентичность, суперадмин.</p></div>
+    <div class="card"><div class="top"><h3>i18n платформы</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Базовые строки + оверрайды тенанта по языкам, Redis-кэш с инвалидацией.</p></div>
+    <div class="card"><div class="top"><h3>Фоновые задачи (arq)</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>Воркер на Redis: генерации (blueprint/qa/транзит/daily), провижининг; крон (рассылка, биллинг).</p></div>
+    <div class="card"><div class="top"><h3>БД и бутстрап</h3><span class="badge med"><span class="dots">●●○</span></span></div>
+      <p>22 таблицы (SQLModel/PostgreSQL), миграции, идемпотентный бутстрап платформы.</p></div>
+  </div>
+
+  <div class="panel">
+    <h4>Внешние интеграции</h4>
+    <div class="tags">
+      <span class="tag">astronomy (эфемериды)</span><span class="tag">OpenAI / LLM</span>
+      <span class="tag">Nominatim</span><span class="tag">timezonefinder</span>
+      <span class="tag">Telegram / aiogram</span><span class="tag">PostgreSQL</span>
+      <span class="tag">Redis (arq · FSM · кэш)</span><span class="tag">Fernet</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h4>Чего пока нет</h4>
+    <p>Stripe / Cloudpayments / Cryptobot (только схема) · синастрия / композиты / прогрессии · матрица ролей сложнее <code>owner|admin</code>.</p>
+  </div>
+
+  <footer>Сгенерировано по фактическому коду · сложность — оценка реализации, не приоритет.</footer>
+
+</div>
+</body>
+</html>
