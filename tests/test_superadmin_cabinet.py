@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
-from quantuum.db.models import Account, AccountIdentity
+from sqlmodel import select
+
+from quantuum.db.models import Account, AccountIdentity, AuditLog, Tenant, TenantBot
 
 from .conftest import build_translator
 
@@ -106,3 +108,86 @@ async def test_admin_denied_for_non_superadmin(session, default_tenant, monkeypa
     text, markup = msg.answers[0]
     assert markup is None  # no menu
     assert "прав" in text or "authoriz" in text.lower()
+
+
+async def _make_tenant_with_bot(session, *, slug, status="active"):
+    t = Tenant(slug=slug, display_name=slug.upper(), status=status)
+    session.add(t)
+    await session.flush()
+    bot = TenantBot(
+        tenant_id=t.id, bot_token_enc=b"x", webhook_secret_path=f"wh-{slug}",
+        status="paused" if status == "suspended" else "active",
+    )
+    session.add(bot)
+    await session.commit()
+    await session.refresh(t)
+    await session.refresh(bot)
+    return t, bot
+
+
+async def _audit_rows(session, tenant_id, action):
+    rows = await session.execute(
+        select(AuditLog).where(AuditLog.tenant_id == tenant_id, AuditLog.action == action)
+    )
+    return list(rows.scalars().all())
+
+
+async def test_tenants_list_lists_tenants(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, _bot = await _make_tenant_with_bot(session, slug="acme")
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenants(q, SuperAdminCb(action="tenants"), i18n=i18n)
+
+    _, markup = q.message.answers[0]
+    cbs = [SuperAdminCb.unpack(b.callback_data) for b in _inline(markup)]
+    tenant_ids = {cb.tenant_id for cb in cbs if cb.action == "tenant"}
+    assert t.id in tenant_ids
+
+
+async def test_tenant_suspend_then_resume(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, bot = await _make_tenant_with_bot(session, slug="beta")
+    i18n = await build_translator(session, default_tenant.id)
+
+    q1 = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant_suspend(q1, SuperAdminCb(action="suspend", tenant_id=t.id), i18n=i18n)
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "suspended"
+    assert bot.status == "paused"
+    assert len(await _audit_rows(session, t.id, "tenant.pause")) == 1
+
+    q2 = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant_resume(q2, SuperAdminCb(action="resume", tenant_id=t.id), i18n=i18n)
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "active"
+    assert bot.status == "active"
+    assert len(await _audit_rows(session, t.id, "tenant.resume")) == 1
+
+
+async def test_tenant_suspend_denied_for_non_superadmin(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    t, _bot = await _make_tenant_with_bot(session, slug="gamma")
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=PLAIN_TG)  # not a superadmin
+    await sa.on_tenant_suspend(q, SuperAdminCb(action="suspend", tenant_id=t.id), i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # unchanged
+    assert await _audit_rows(session, t.id, "tenant.pause") == []
+    assert q.answers and q.answers[-1][1].get("show_alert") is True
