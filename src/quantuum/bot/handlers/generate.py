@@ -36,6 +36,7 @@ async def request_blueprint_for_account(
     account: Account,
     chat_id: int,
     enqueue: Callable[[int, int | None, int | None], Awaitable[None]],
+    lang: str | None = None,
 ) -> tuple[str, int | None]:
     profile = await get_natal_profile(session, account.id)
     if profile is None:
@@ -46,7 +47,8 @@ async def request_blueprint_for_account(
         return "no_quota", None
 
     blueprint = await create_blueprint(
-        session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id
+        session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id,
+        lang=lang,
     )
     request = await create_request(
         session,
@@ -64,7 +66,7 @@ async def run_generate(
 ) -> None:
     async with get_sessionmaker()() as session:
         status, _ = await request_blueprint_for_account(
-            session, account=account, chat_id=chat_id, enqueue=enqueue_blueprint
+            session, account=account, chat_id=chat_id, enqueue=enqueue_blueprint, lang=i18n.lang
         )
     if status == "no_profile":
         await message.answer(

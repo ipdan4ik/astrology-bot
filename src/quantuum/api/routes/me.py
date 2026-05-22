@@ -121,8 +121,15 @@ async def create_blueprint_route(
     except InsufficientFundsError as exc:
         raise HTTPException(status_code=402, detail="no quota; buy a plan") from exc
 
+    lang = await resolve_lang(
+        session,
+        tenant_id=account.tenant_id,
+        preferred_lang=account.preferred_lang,
+        tg_language_code=None,
+    )
     blueprint = await create_blueprint(
-        session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id
+        session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id,
+        lang=lang,
     )
     request = await create_request(
         session,
