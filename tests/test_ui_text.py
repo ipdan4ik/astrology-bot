@@ -36,8 +36,9 @@ async def test_render_profile_contains_fields_ru(session, default_tenant):
     assert "Дата рождения: 1980-06-24" in rendered
     assert "Время: 10:00" in rendered
     assert "Место: Moscow" in rendered
-    assert "Координаты: 55.7558, 37.6173" in rendered
-    assert "Таймзона: Europe/Moscow" in rendered
+    # Coordinates and timezone are no longer shown.
+    assert "55.7558" not in rendered
+    assert "Europe/Moscow" not in rendered
 
 
 async def test_render_profile_uses_lang(session, default_tenant):
@@ -45,7 +46,7 @@ async def test_render_profile_uses_lang(session, default_tenant):
     rendered = await text.render_profile(i18n, _Profile())
     assert "👤 Your profile:" in rendered
     assert "Name: Anna" in rendered
-    assert "Timezone: Europe/Moscow" in rendered
+    assert "Europe/Moscow" not in rendered  # timezone hidden
 
 
 async def test_render_history_label(session, default_tenant):
