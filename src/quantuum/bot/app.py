@@ -22,6 +22,7 @@ def create_dispatcher() -> Dispatcher:
         daily,
         generate,
         history,
+        language,
         menu,
         onboarding,
         profile,
@@ -31,6 +32,7 @@ def create_dispatcher() -> Dispatcher:
     )
 
     dp.include_router(start.router)
+    dp.include_router(language.router)
     dp.include_router(buy.router)
     dp.include_router(qa.router)
     dp.include_router(transits.router)
