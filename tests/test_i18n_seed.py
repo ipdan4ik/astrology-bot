@@ -141,5 +141,6 @@ def test_place_edit_strings_present_and_obsolete_removed():
         "profile.prompt.timezone",
         "profile.error.coords_invalid",
         "profile.error.timezone_invalid",
+        "profile.error.place_empty",
     ]:
         assert key not in BASE_STRINGS, f"obsolete key still present: {key}"

@@ -219,3 +219,17 @@ async def test_place_retry_returns_to_awaiting_place(session, default_tenant, mo
     await pr.on_place_retry(query, ProfileCb(action="place_retry"), state, i18n=i18n)
 
     assert state.state == pr.ProfileEdit.awaiting_place
+
+
+async def test_edit_place_other_reprompts(session, default_tenant):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import quantuum.bot.handlers.profile as pr
+
+    i18n = await build_translator(session, default_tenant.id)
+    message = SimpleNamespace(location=None, text=None, answer=AsyncMock())
+
+    await pr.on_edit_place_other(message, i18n=i18n)
+
+    message.answer.assert_awaited_once()

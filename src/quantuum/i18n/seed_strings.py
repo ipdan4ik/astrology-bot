@@ -212,10 +212,6 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Имя не может быть пустым.",
         "en": "Name cannot be empty.",
     },
-    "profile.error.place_empty": {
-        "ru": "Место не может быть пустым.",
-        "en": "Place cannot be empty.",
-    },
     "profile.error.birth_date_invalid": {
         "ru": "Не понял дату. Формат ГГГГ-ММ-ДД.",
         "en": "Could not parse date. Format YYYY-MM-DD.",
