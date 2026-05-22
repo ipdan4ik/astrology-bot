@@ -472,3 +472,12 @@ async def test_delete_by_customer_403(client, customer_headers, default_tenant):
         headers=customer_headers,
     )
     assert r.status_code == 403
+
+
+async def test_delete_missing_tenant_404(client, sa_headers):
+    r = await client.post(
+        "/admin/tenants/999999/delete",
+        json={"confirm_slug": "whatever"},
+        headers=sa_headers,
+    )
+    assert r.status_code == 404
