@@ -179,3 +179,33 @@ def test_owner_delete_strings_present():
     ]:
         assert key in BASE_STRINGS, f"missing {key}"
         assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key], f"{key} missing ru/en"
+
+
+def test_superadmin_cabinet_strings_present():
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+
+    for key in [
+        "admin.denied",
+        "admin.menu.title",
+        "admin.menu.kb.tenants",
+        "admin.menu.kb.invites",
+        "admin.tenants.title",
+        "admin.tenants.empty",
+        "admin.tenant.title",
+        "admin.tenant.kb.stats",
+        "admin.tenant.kb.suspend",
+        "admin.tenant.kb.resume",
+        "admin.tenant.kb.delete",
+        "admin.kb.back",
+        "admin.tenant.suspended",
+        "admin.tenant.resumed",
+        "admin.invites.title",
+        "admin.invites.empty",
+        "admin.invites.kb.new",
+        "admin.invite.kb.revoke",
+        "admin.invite.created",
+        "admin.invite.revoked",
+        "admin.stale",
+    ]:
+        assert key in BASE_STRINGS, f"missing {key}"
+        assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key], f"{key} missing ru/en"

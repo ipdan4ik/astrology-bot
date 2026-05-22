@@ -679,6 +679,91 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Нельзя удалить платформенный тенант",
         "en": "The platform tenant cannot be deleted",
     },
+    # Superadmin cabinet (SP1, master bot /admin)
+    "admin.denied": {
+        "ru": "Недостаточно прав.",
+        "en": "Not authorized.",
+    },
+    "admin.menu.title": {
+        "ru": "🛠 Панель суперадмина",
+        "en": "🛠 Superadmin panel",
+    },
+    "admin.menu.kb.tenants": {
+        "ru": "🏢 Боты",
+        "en": "🏢 Bots",
+    },
+    "admin.menu.kb.invites": {
+        "ru": "🎟 Инвайты",
+        "en": "🎟 Invites",
+    },
+    "admin.tenants.title": {
+        "ru": "Все боты:",
+        "en": "All bots:",
+    },
+    "admin.tenants.empty": {
+        "ru": "Ботов пока нет.",
+        "en": "No bots yet.",
+    },
+    "admin.tenant.title": {
+        "ru": "Бот: {display_name} (/{slug}) — {status}",
+        "en": "Bot: {display_name} (/{slug}) — {status}",
+    },
+    "admin.tenant.kb.stats": {
+        "ru": "📊 Статистика",
+        "en": "📊 Stats",
+    },
+    "admin.tenant.kb.suspend": {
+        "ru": "⏸ Приостановить",
+        "en": "⏸ Suspend",
+    },
+    "admin.tenant.kb.resume": {
+        "ru": "▶️ Возобновить",
+        "en": "▶️ Resume",
+    },
+    "admin.tenant.kb.delete": {
+        "ru": "🗑 Удалить",
+        "en": "🗑 Delete",
+    },
+    "admin.kb.back": {
+        "ru": "⬅️ Назад",
+        "en": "⬅️ Back",
+    },
+    "admin.tenant.suspended": {
+        "ru": "⏸ Бот приостановлен.",
+        "en": "⏸ Bot suspended.",
+    },
+    "admin.tenant.resumed": {
+        "ru": "▶️ Бот возобновлён.",
+        "en": "▶️ Bot resumed.",
+    },
+    "admin.invites.title": {
+        "ru": "Активные инвайты:",
+        "en": "Active invites:",
+    },
+    "admin.invites.empty": {
+        "ru": "Активных инвайтов нет.",
+        "en": "No active invites.",
+    },
+    "admin.invites.kb.new": {
+        "ru": "➕ Новый инвайт",
+        "en": "➕ New invite",
+    },
+    "admin.invite.kb.revoke": {
+        "ru": "🗑 Отозвать",
+        "en": "🗑 Revoke",
+    },
+    "admin.invite.created": {
+        "ru": "Инвайт создан:\n{link}",
+        "en": "Invite created:\n{link}",
+    },
+    "admin.invite.revoked": {
+        "ru": "Инвайт отозван.",
+        "en": "Invite revoked.",
+    },
+    "admin.stale": {
+        "ru": "Не найдено — список обновлён.",
+        "en": "Not found — list refreshed.",
+    },
     # /transfer
     "owner.transfer.usage": {
         "ru": "Использование: /transfer <slug>",
