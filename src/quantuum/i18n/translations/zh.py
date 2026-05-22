@@ -271,4 +271,34 @@ TRANSLATIONS = {
         "出生地点：发送位置（📎 → 位置，可在地图上标记）或输入城市/部分地址："
     ),
     "onb.done": "完成！档案已保存。使用 /blueprint 命令生成您的解读。",
+    # Owner console — user management
+    "owner.manage.kb.users": "👥 用户",
+    "owner.users.header": "{display_name} 的用户：",
+    "owner.users.empty": "暂无用户。",
+    "owner.users.row": "{name} · {credits}💎",
+    "owner.users.unnamed": "用户 #{id}",
+    "owner.users.nav.prev": "◀️",
+    "owner.users.nav.next": "▶️",
+    "owner.user.card": (
+        "👤 {name}\nTelegram ID: {tg_id}\n余额: {credits}💎\n"
+        "订阅: {subscription}\n状态: {status}"
+    ),
+    "owner.user.card.banned": "🚫 已封禁。原因：{reason}",
+    "owner.user.status.active": "正常",
+    "owner.user.status.banned": "已封禁",
+    "owner.user.not_found": "未找到该用户。",
+    "owner.user.kb.grant": "💎 调整余额",
+    "owner.user.kb.ban": "🚫 封禁",
+    "owner.user.kb.unban": "✅ 解封",
+    "owner.user.kb.back": "⬅️ 返回列表",
+    "owner.user.grant.prompt": "请输入要调整的余额数值（可为负数，例如 -3）：",
+    "owner.user.grant.invalid": "输入无效。请输入整数，例如 5 或 -2。",
+    "owner.user.grant.done": "操作成功。新余额：{credits}💎。",
+    "owner.user.ban.prompt": "请输入封禁原因：",
+    "owner.user.ban.invalid": "原因不能为空。请输入原因：",
+    "owner.user.ban.done": "用户已封禁。",
+    "owner.user.ban.staff_blocked": "无法封禁所有者或管理员。",
+    "owner.user.unban.done": "用户已解封。",
+    "owner.user.cancelled": "已取消。",
+    "account.banned.notice": "🚫 您的机器人访问权限已被限制。原因：{reason}",
 }

@@ -272,4 +272,34 @@ TRANSLATIONS = {
         "veya şehir / adresin bir bölümünü yazın:"
     ),
     "onb.done": "Hazır! Profiliniz kaydedildi. /blueprint komutu yorumunuzu oluşturacak.",
+    # Owner console — user management
+    "owner.manage.kb.users": "👥 Kullanıcılar",
+    "owner.users.header": "{display_name} kullanıcıları:",
+    "owner.users.empty": "Henüz kullanıcı yok.",
+    "owner.users.row": "{name} · {credits}💎",
+    "owner.users.unnamed": "kullanıcı #{id}",
+    "owner.users.nav.prev": "◀️",
+    "owner.users.nav.next": "▶️",
+    "owner.user.card": (
+        "👤 {name}\nTelegram ID: {tg_id}\nKredi: {credits}💎\n"
+        "Abonelik: {subscription}\nDurum: {status}"
+    ),
+    "owner.user.card.banned": "🚫 Yasaklandı. Neden: {reason}",
+    "owner.user.status.active": "aktif",
+    "owner.user.status.banned": "yasaklı",
+    "owner.user.not_found": "Kullanıcı bulunamadı.",
+    "owner.user.kb.grant": "💎 Kredi ayarla",
+    "owner.user.kb.ban": "🚫 Yasakla",
+    "owner.user.kb.unban": "✅ Yasağı kaldır",
+    "owner.user.kb.back": "⬅️ Listeye dön",
+    "owner.user.grant.prompt": "Kredi sayısını girin (negatif olabilir, örn. -3):",
+    "owner.user.grant.invalid": "Anlaşılamadı. Tam sayı girin, örn. 5 veya -2.",
+    "owner.user.grant.done": "Tamam. Yeni bakiye: {credits}💎.",
+    "owner.user.ban.prompt": "Yasak gerekçesini girin:",
+    "owner.user.ban.invalid": "Gerekçe boş olamaz. Bir gerekçe girin:",
+    "owner.user.ban.done": "Kullanıcı yasaklandı.",
+    "owner.user.ban.staff_blocked": "Bir sahibi veya yöneticiyi yasaklayamazsınız.",
+    "owner.user.unban.done": "Kullanıcının yasağı kaldırıldı.",
+    "owner.user.cancelled": "İptal edildi.",
+    "account.banned.notice": "🚫 Bota erişiminiz kısıtlandı. Neden: {reason}",
 }

@@ -861,6 +861,68 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Готово! Профиль сохранён. Команда /blueprint сгенерирует твой разбор.",
         "en": "Done! Your profile is saved. The /blueprint command will generate your reading.",
     },
+    # -------------------------------------------------------------------------
+    # Owner console — user management (list / credits / ban)
+    # -------------------------------------------------------------------------
+    "owner.manage.kb.users": {"ru": "👥 Пользователи", "en": "👥 Users"},
+    "owner.users.header": {
+        "ru": "Пользователи бота {display_name}:",
+        "en": "Users of {display_name}:",
+    },
+    "owner.users.empty": {"ru": "Пока нет пользователей.", "en": "No users yet."},
+    "owner.users.row": {"ru": "{name} · {credits}💎", "en": "{name} · {credits}💎"},
+    "owner.users.unnamed": {"ru": "пользователь #{id}", "en": "user #{id}"},
+    "owner.users.nav.prev": {"ru": "◀️", "en": "◀️"},
+    "owner.users.nav.next": {"ru": "▶️", "en": "▶️"},
+    "owner.user.card": {
+        "ru": (
+            "👤 {name}\nTelegram ID: {tg_id}\nКредиты: {credits}💎\n"
+            "Подписка: {subscription}\nСтатус: {status}"
+        ),
+        "en": (
+            "👤 {name}\nTelegram ID: {tg_id}\nCredits: {credits}💎\n"
+            "Subscription: {subscription}\nStatus: {status}"
+        ),
+    },
+    "owner.user.card.banned": {
+        "ru": "🚫 Забанен. Причина: {reason}",
+        "en": "🚫 Banned. Reason: {reason}",
+    },
+    "owner.user.status.active": {"ru": "активен", "en": "active"},
+    "owner.user.status.banned": {"ru": "забанен", "en": "banned"},
+    "owner.user.not_found": {"ru": "Пользователь не найден.", "en": "User not found."},
+    "owner.user.kb.grant": {"ru": "💎 Изменить кредиты", "en": "💎 Adjust credits"},
+    "owner.user.kb.ban": {"ru": "🚫 Забанить", "en": "🚫 Ban"},
+    "owner.user.kb.unban": {"ru": "✅ Разбанить", "en": "✅ Unban"},
+    "owner.user.kb.back": {"ru": "⬅️ К списку", "en": "⬅️ To list"},
+    "owner.user.grant.prompt": {
+        "ru": "Введите число кредитов (можно отрицательное, напр. -3):",
+        "en": "Enter the number of credits (can be negative, e.g. -3):",
+    },
+    "owner.user.grant.invalid": {
+        "ru": "Не понял. Введите целое число, напр. 5 или -2.",
+        "en": "I didn't get that. Enter a whole number, e.g. 5 or -2.",
+    },
+    "owner.user.grant.done": {
+        "ru": "Готово. Новый баланс: {credits}💎.",
+        "en": "Done. New balance: {credits}💎.",
+    },
+    "owner.user.ban.prompt": {"ru": "Укажите причину бана:", "en": "Enter the ban reason:"},
+    "owner.user.ban.invalid": {
+        "ru": "Причина не может быть пустой. Укажите причину:",
+        "en": "The reason can't be empty. Enter a reason:",
+    },
+    "owner.user.ban.done": {"ru": "Пользователь забанен.", "en": "User banned."},
+    "owner.user.ban.staff_blocked": {
+        "ru": "Нельзя забанить владельца или администратора.",
+        "en": "You can't ban an owner or admin.",
+    },
+    "owner.user.unban.done": {"ru": "Пользователь разбанен.", "en": "User unbanned."},
+    "owner.user.cancelled": {"ru": "Отменено.", "en": "Cancelled."},
+    "account.banned.notice": {
+        "ru": "🚫 Доступ к боту ограничен. Причина: {reason}",
+        "en": "🚫 Your access to the bot is restricted. Reason: {reason}",
+    },
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that

@@ -272,4 +272,34 @@ TRANSLATIONS = {
         "या शहर / पते का हिस्सा लिखें:"
     ),
     "onb.done": "हो गया! आपकी प्रोफ़ाइल सहेजी गई। /blueprint कमांड से आपका विश्लेषण तैयार होगा।",
+    # Owner console — user management
+    "owner.manage.kb.users": "👥 उपयोगकर्ता",
+    "owner.users.header": "{display_name} के उपयोगकर्ता:",
+    "owner.users.empty": "अभी कोई उपयोगकर्ता नहीं है।",
+    "owner.users.row": "{name} · {credits}💎",
+    "owner.users.unnamed": "उपयोगकर्ता #{id}",
+    "owner.users.nav.prev": "◀️",
+    "owner.users.nav.next": "▶️",
+    "owner.user.card": (
+        "👤 {name}\nTelegram ID: {tg_id}\nक्रेडिट: {credits}💎\n"
+        "सदस्यता: {subscription}\nस्थिति: {status}"
+    ),
+    "owner.user.card.banned": "🚫 प्रतिबंधित। कारण: {reason}",
+    "owner.user.status.active": "सक्रिय",
+    "owner.user.status.banned": "प्रतिबंधित",
+    "owner.user.not_found": "उपयोगकर्ता नहीं मिला।",
+    "owner.user.kb.grant": "💎 क्रेडिट समायोजित करें",
+    "owner.user.kb.ban": "🚫 प्रतिबंधित करें",
+    "owner.user.kb.unban": "✅ प्रतिबंध हटाएँ",
+    "owner.user.kb.back": "⬅️ सूची पर जाएँ",
+    "owner.user.grant.prompt": "क्रेडिट की संख्या दर्ज करें (ऋणात्मक भी हो सकती है, उदा. -3):",
+    "owner.user.grant.invalid": "समझ नहीं आया। एक पूर्ण संख्या दर्ज करें, उदा. 5 या -2।",
+    "owner.user.grant.done": "हो गया। नई शेष राशि: {credits}💎।",
+    "owner.user.ban.prompt": "प्रतिबंध का कारण दर्ज करें:",
+    "owner.user.ban.invalid": "कारण खाली नहीं हो सकता। कृपया कारण दर्ज करें:",
+    "owner.user.ban.done": "उपयोगकर्ता को प्रतिबंधित कर दिया गया।",
+    "owner.user.ban.staff_blocked": "आप किसी स्वामी या व्यवस्थापक को प्रतिबंधित नहीं कर सकते।",
+    "owner.user.unban.done": "उपयोगकर्ता का प्रतिबंध हटा दिया गया।",
+    "owner.user.cancelled": "रद्द किया गया।",
+    "account.banned.notice": "🚫 बॉट तक आपकी पहुँच प्रतिबंधित है। कारण: {reason}",
 }
