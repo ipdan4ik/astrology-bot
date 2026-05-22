@@ -116,10 +116,6 @@ async def create_blueprint_route(
     profile = await get_natal_profile(session, account.id)
     if profile is None:
         raise HTTPException(status_code=409, detail="natal profile required")
-    try:
-        charged = await consume_quota(session, account.id, "blueprint")
-    except InsufficientFundsError as exc:
-        raise HTTPException(status_code=402, detail="no quota; buy a plan") from exc
 
     lang = await resolve_lang(
         session,
@@ -127,6 +123,12 @@ async def create_blueprint_route(
         preferred_lang=account.preferred_lang,
         tg_language_code=None,
     )
+
+    try:
+        charged = await consume_quota(session, account.id, "blueprint")
+    except InsufficientFundsError as exc:
+        raise HTTPException(status_code=402, detail="no quota; buy a plan") from exc
+
     blueprint = await create_blueprint(
         session, tenant_id=account.tenant_id, account_id=account.id, natal_profile_id=profile.id,
         lang=lang,
