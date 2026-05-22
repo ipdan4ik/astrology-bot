@@ -121,3 +121,70 @@ async def test_open_not_found(session, default_tenant, monkeypatch):
     await ou.on_user_open(query, OwnerUserCb(action="open", tenant_id=default_tenant.id, account_id=987654), i18n)
     assert query.answers[-1][1] is True  # not_found alert
     assert query.message.answers == []
+
+
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import StorageKey
+from aiogram.fsm.storage.memory import MemoryStorage
+
+from quantuum.db.models import AccountBalance
+
+
+def _fsm():
+    return FSMContext(storage=MemoryStorage(), key=StorageKey(bot_id=1, chat_id=1, user_id=1))
+
+
+async def test_grant_adds_credits(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery()
+    await ou.on_user_grant_start(query, OwnerUserCb(action="grant", tenant_id=default_tenant.id, account_id=target.id), state, i18n)
+    assert (await state.get_data())["account_id"] == target.id
+
+    msg = FakeMessage(text="5")
+    await ou.on_user_grant_amount(msg, state, i18n)
+    bal = await session.get(AccountBalance, target.id)
+    assert bal.package_credits == 5
+    assert await state.get_state() is None
+
+
+async def test_grant_deduct_clamps(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+    await state.update_data(tenant_id=default_tenant.id, account_id=target.id)
+    await state.set_state(ou.OwnerUserAdmin.awaiting_credit_amount)
+
+    await ou.on_user_grant_amount(FakeMessage(text="-3"), state, i18n)
+    bal = await session.get(AccountBalance, target.id)
+    assert bal.package_credits == 0
+
+
+async def test_grant_invalid_stays_in_state(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+    await state.update_data(tenant_id=default_tenant.id, account_id=target.id)
+    await state.set_state(ou.OwnerUserAdmin.awaiting_credit_amount)
+
+    msg = FakeMessage(text="abc")
+    await ou.on_user_grant_amount(msg, state, i18n)
+    assert "число" in msg.answers[0][0] or "number" in msg.answers[0][0]
+    assert await state.get_state() == ou.OwnerUserAdmin.awaiting_credit_amount.state

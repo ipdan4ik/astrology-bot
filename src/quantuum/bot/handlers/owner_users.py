@@ -1,5 +1,8 @@
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from quantuum.bot.ui.callbacks import OwnerUserCb
@@ -7,15 +10,22 @@ from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.accounts import (
     CustomerCard,
+    adjust_package_credits,
     count_tenant_customers,
     get_customer_card,
     list_tenant_customers,
 )
+from quantuum.domain.audit import record_audit
 from quantuum.domain.owner_console import authorize_tenant_action
 from quantuum.i18n import Translator
 
 router = Router()
 PAGE_SIZE = 8
+
+
+class OwnerUserAdmin(StatesGroup):
+    awaiting_credit_amount = State()
+    awaiting_ban_reason = State()
 
 
 @router.callback_query(OwnerUserCb.filter(F.action == "list"))
@@ -154,3 +164,65 @@ async def on_user_open(
         reply_markup=await _card_markup(card, tenant_id, i18n),
     )
     await query.answer()
+
+
+@router.callback_query(OwnerUserCb.filter(F.action == "grant"))
+async def on_user_grant_start(
+    query: CallbackQuery, callback_data: OwnerUserCb, state: FSMContext, i18n: Translator
+) -> None:
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=str(query.from_user.id), tenant_id=callback_data.tenant_id
+        )
+        if actor is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+    await state.set_state(OwnerUserAdmin.awaiting_credit_amount)
+    await state.update_data(tenant_id=callback_data.tenant_id, account_id=callback_data.account_id)
+    await query.message.answer(await i18n("owner.user.grant.prompt"))
+    await query.answer()
+
+
+@router.message(Command("cancel"), OwnerUserAdmin.awaiting_credit_amount)
+async def on_grant_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await state.clear()
+    await message.answer(await i18n("owner.user.cancelled"))
+
+
+@router.message(OwnerUserAdmin.awaiting_credit_amount)
+async def on_user_grant_amount(message: Message, state: FSMContext, i18n: Translator) -> None:
+    try:
+        delta = int((message.text or "").strip())
+    except ValueError:
+        await message.answer(await i18n("owner.user.grant.invalid"))
+        return
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
+    account_id = data["account_id"]
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+        )
+        if actor is None:
+            await message.answer(await i18n("owner.no_rights"))
+            await state.clear()
+            return
+        card = await get_customer_card(session, tenant_id, account_id)
+        if card is None:
+            await message.answer(await i18n("owner.user.not_found"))
+            await state.clear()
+            return
+        before = card.package_credits
+        after = await adjust_package_credits(session, account_id, delta)
+        await record_audit(
+            session,
+            tenant_id=tenant_id,
+            actor_account_id=actor,
+            action="account.credits_adjust",
+            entity_type="account",
+            entity_id=account_id,
+            payload={"delta": delta, "before": before, "after": after},
+        )
+        await session.commit()
+    await state.clear()
+    await message.answer(await i18n("owner.user.grant.done", credits=after))
