@@ -164,3 +164,18 @@ def test_place_edit_strings_present_and_obsolete_removed():
         "profile.error.place_empty",
     ]:
         assert key not in BASE_STRINGS, f"obsolete key still present: {key}"
+
+
+def test_owner_delete_strings_present():
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+
+    for key in [
+        "owner.manage.kb.delete",
+        "owner.delete.prompt",
+        "owner.delete.mismatch",
+        "owner.delete.done",
+        "owner.delete.cancelled",
+        "owner.delete.platform_blocked",
+    ]:
+        assert key in BASE_STRINGS, f"missing {key}"
+        assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key], f"{key} missing ru/en"

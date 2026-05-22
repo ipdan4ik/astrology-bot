@@ -648,6 +648,37 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "▶️ Возобновлено.",
         "en": "▶️ Resumed.",
     },
+    # Owner console — delete (SP2)
+    "owner.manage.kb.delete": {
+        "ru": "🗑 Удалить",
+        "en": "🗑 Delete",
+    },
+    "owner.delete.prompt": {
+        "ru": (
+            "⚠️ Это навсегда удалит бота и скроет тенант. "
+            "Чтобы подтвердить, отправь слаг: {slug}\n(или /cancel)"
+        ),
+        "en": (
+            "⚠️ This permanently deletes the bot and hides the tenant. "
+            "To confirm, send the slug: {slug}\n(or /cancel)"
+        ),
+    },
+    "owner.delete.mismatch": {
+        "ru": "Слаг не совпадает. Отправь {slug} ещё раз или /cancel.",
+        "en": "Slug doesn't match. Send {slug} again or /cancel.",
+    },
+    "owner.delete.done": {
+        "ru": "🗑 Бот удалён.",
+        "en": "🗑 Bot deleted.",
+    },
+    "owner.delete.cancelled": {
+        "ru": "Отменено.",
+        "en": "Cancelled.",
+    },
+    "owner.delete.platform_blocked": {
+        "ru": "Нельзя удалить платформенный тенант",
+        "en": "The platform tenant cannot be deleted",
+    },
     # /transfer
     "owner.transfer.usage": {
         "ru": "Использование: /transfer <slug>",
