@@ -40,10 +40,10 @@ async def test_profile_kb_with_profile_has_field_edit_buttons(session, default_t
     i18n = await build_translator(session, default_tenant.id)
     kb = await profile_kb(has_profile=True, i18n=i18n)
     fields = {ProfileCb.unpack(b.callback_data).field for b in _inline(kb)}
-    assert {"name", "birth_date", "birth_time", "birth_place", "coords", "timezone"} <= fields
-    # Labels resolved via i18n (ru)
+    assert fields == {"name", "birth_date", "birth_time", "birth_place"}
     labels = {b.text for b in _inline(kb)}
-    assert "✏️ Имя" in labels and "✏️ Таймзона" in labels
+    assert "✏️ Имя" in labels
+    assert "✏️ Таймзона" not in labels  # timezone no longer editable
 
 
 async def test_profile_kb_without_profile_has_fill_button(session, default_tenant):
