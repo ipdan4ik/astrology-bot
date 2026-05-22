@@ -324,3 +324,66 @@ async def test_delete_platform_tenant_blocked(session, default_tenant, monkeypat
     assert t.status == "active"  # NOT archived
     assert state.state is None  # FSM not entered
     assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
+async def test_new_invite_returns_deeplink(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+    from quantuum.settings import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("MASTER_BOT_USERNAME", "quantuum_master_bot")
+    get_settings.cache_clear()
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_new_invite(q, SuperAdminCb(action="newinvite"), i18n=i18n)
+
+    text = q.message.answers[0][0]
+    assert "t.me/quantuum_master_bot?start=" in text
+    get_settings.cache_clear()
+
+
+async def test_invites_list_and_revoke(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+    from quantuum.domain.invites import create_invite
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    inv = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    # list shows the invite with a revoke button
+    q1 = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_invites(q1, SuperAdminCb(action="invites"), i18n=i18n)
+    _, markup = q1.message.answers[0]
+    revoke_ids = {
+        SuperAdminCb.unpack(b.callback_data).invite_id
+        for b in _inline(markup)
+        if SuperAdminCb.unpack(b.callback_data).action == "revoke"
+    }
+    assert inv.id in revoke_ids
+
+    # revoke it
+    q2 = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_revoke_invite(q2, SuperAdminCb(action="revoke", invite_id=inv.id), i18n=i18n)
+    await session.refresh(inv)
+    assert inv.status == "revoked"
+
+
+async def test_new_invite_denied_for_non_superadmin(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=PLAIN_TG)
+    await sa.on_new_invite(q, SuperAdminCb(action="newinvite"), i18n=i18n)
+
+    assert q.answers and q.answers[-1][1].get("show_alert") is True

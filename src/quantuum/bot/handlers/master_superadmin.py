@@ -10,9 +10,11 @@ from quantuum.bot.ui.callbacks import SuperAdminCb
 from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
+from quantuum.domain.invites import create_invite, list_invites, revoke_invite
 from quantuum.domain.stats import tenant_stats
 from quantuum.domain.tenants import archive_tenant, list_all_tenants, set_tenant_status
 from quantuum.i18n import Translator
+from quantuum.settings import get_settings
 
 router = Router()
 
@@ -158,6 +160,83 @@ async def on_tenant_resume(query: CallbackQuery, callback_data: SuperAdminCb, i1
         )
         await session.commit()
     await query.message.answer(await i18n("admin.tenant.resumed"))
+    await query.answer()
+
+
+async def _invites_kb(invites, i18n: Translator):
+    b = InlineKeyboardBuilder()
+    for inv in invites:
+        b.button(
+            text=f"{inv.code} · {inv.tier} · {inv.used_count}/{inv.max_uses}",
+            callback_data=SuperAdminCb(action="revoke", invite_id=inv.id),
+        )
+    b.button(text=await i18n("admin.invites.kb.new"), callback_data=SuperAdminCb(action="newinvite"))
+    b.button(text=await i18n("admin.kb.back"), callback_data=SuperAdminCb(action="menu"))
+    b.adjust(1)
+    return b.as_markup()
+
+
+def _invite_deeplink(code: str) -> str:
+    return f"https://t.me/{get_settings().master_bot_username}?start={code}"
+
+
+@router.callback_query(SuperAdminCb.filter(F.action == "invites"))
+async def on_invites(query: CallbackQuery, callback_data: SuperAdminCb, i18n: Translator) -> None:
+    async with get_sessionmaker()() as session:
+        if await find_superadmin_by_tg(session, str(query.from_user.id)) is None:
+            await query.answer(await i18n("admin.denied"), show_alert=True)
+            return
+        invites = [i for i in await list_invites(session) if i.status == "active"]
+    if not invites:
+        await query.message.answer(
+            await i18n("admin.invites.empty"), reply_markup=await _invites_kb([], i18n)
+        )
+        await query.answer()
+        return
+    await query.message.answer(
+        await i18n("admin.invites.title"), reply_markup=await _invites_kb(invites, i18n)
+    )
+    await query.answer()
+
+
+@router.callback_query(SuperAdminCb.filter(F.action == "newinvite"))
+async def on_new_invite(query: CallbackQuery, callback_data: SuperAdminCb, i18n: Translator) -> None:
+    async with get_sessionmaker()() as session:
+        sa = await find_superadmin_by_tg(session, str(query.from_user.id))
+        if sa is None:
+            await query.answer(await i18n("admin.denied"), show_alert=True)
+            return
+        invite = await create_invite(session, created_by_account_id=sa.id)
+        code = invite.code
+        inv_id = invite.id
+        await record_audit(
+            session, tenant_id=None, actor_account_id=sa.id,
+            action="platform.invite.create", entity_type="tenant_invite", entity_id=inv_id,
+        )
+        await session.commit()
+    await query.message.answer(
+        await i18n("admin.invite.created", link=_invite_deeplink(code))
+    )
+    await query.answer()
+
+
+@router.callback_query(SuperAdminCb.filter(F.action == "revoke"))
+async def on_revoke_invite(query: CallbackQuery, callback_data: SuperAdminCb, i18n: Translator) -> None:
+    async with get_sessionmaker()() as session:
+        sa = await find_superadmin_by_tg(session, str(query.from_user.id))
+        if sa is None:
+            await query.answer(await i18n("admin.denied"), show_alert=True)
+            return
+        revoked = await revoke_invite(session, callback_data.invite_id)
+        if revoked is None:
+            await query.answer(await i18n("admin.stale"), show_alert=True)
+            return
+        await record_audit(
+            session, tenant_id=None, actor_account_id=sa.id,
+            action="platform.invite.revoke", entity_type="tenant_invite", entity_id=callback_data.invite_id,
+        )
+        await session.commit()
+    await query.message.answer(await i18n("admin.invite.revoked"))
     await query.answer()
 
 
