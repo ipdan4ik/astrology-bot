@@ -1,10 +1,18 @@
+from datetime import date, time
+from decimal import Decimal
+
+from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.db.models import Account, AccountBalance
 from quantuum.domain.accounts import (
     adjust_package_credits,
     clear_account_ban,
+    count_tenant_customers,
+    get_customer_card,
     is_tenant_staff,
+    list_tenant_customers,
     set_account_ban,
 )
+from quantuum.domain.natal_profiles import upsert_natal_profile
 from quantuum.domain.tenants import grant_role
 
 
@@ -53,18 +61,6 @@ async def test_is_tenant_staff(session, default_tenant):
     await session.commit()
     assert await is_tenant_staff(session, tenant_id=default_tenant.id, account_id=owner.id) is True
     assert await is_tenant_staff(session, tenant_id=default_tenant.id, account_id=customer.id) is False
-
-
-from datetime import date, time
-from decimal import Decimal
-
-from quantuum.auth.identity import find_or_create_account_by_tg
-from quantuum.domain.accounts import (
-    count_tenant_customers,
-    get_customer_card,
-    list_tenant_customers,
-)
-from quantuum.domain.natal_profiles import upsert_natal_profile
 
 
 async def test_list_and_count_with_pagination(session, default_tenant):

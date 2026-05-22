@@ -1,9 +1,12 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import StorageKey
+from aiogram.fsm.storage.memory import MemoryStorage
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.bot.ui.callbacks import OwnerUserCb
-from quantuum.db.models import Account, AccountIdentity
+from quantuum.db.models import Account, AccountBalance, AccountIdentity
 from quantuum.domain.accounts import set_account_ban
 from quantuum.domain.tenants import grant_role
 
@@ -121,13 +124,6 @@ async def test_open_not_found(session, default_tenant, monkeypatch):
     await ou.on_user_open(query, OwnerUserCb(action="open", tenant_id=default_tenant.id, account_id=987654), i18n)
     assert query.answers[-1][1] is True  # not_found alert
     assert query.message.answers == []
-
-
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import StorageKey
-from aiogram.fsm.storage.memory import MemoryStorage
-
-from quantuum.db.models import AccountBalance
 
 
 def _fsm():
