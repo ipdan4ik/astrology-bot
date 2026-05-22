@@ -160,3 +160,20 @@ async def test_manage_missing_args(session, default_tenant, monkeypatch):
     await oc.on_manage(msg, SimpleNamespace(args=""), i18n=i18n)
 
     assert "Использование" in msg.answers[0][0]
+
+
+async def test_manage_shows_delete_button(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t = await _make_tenant(session, "epsilon", "Epsilon", status="active")
+    await _seed_account_with_role(session, tenant=t, role="owner")
+    i18n = await build_translator(session, t.id)
+
+    msg = FakeMessage()
+    await oc.on_manage(msg, SimpleNamespace(args="epsilon"), i18n=i18n)
+
+    _, markup = msg.answers[0]
+    actions = {OwnerManageCb.unpack(b.callback_data).action for b in _inline(markup)}
+    assert "delete" in actions

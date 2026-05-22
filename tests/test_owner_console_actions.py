@@ -393,3 +393,105 @@ async def test_transfer_cancel(session, default_tenant, monkeypatch):
     assert state.state is None
     assert await state.get_data() == {}
     assert "Отменено" in msg.answers[0][0]
+
+
+async def test_delete_flow_success(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    # step 1: tap Delete → prompt, state set
+    q = FakeCallbackQuery(from_user_id=OWNER_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+    assert state.state == oc.OwnerDelete.awaiting_confirm
+    assert (await state.get_data())["slug"] == t.slug
+
+    # step 2: type the slug → archived + audit + done
+    msg = FakeMessage(from_user_id=OWNER_TG, text=t.slug)
+    await oc.on_delete_confirm(msg, state, i18n=i18n)
+
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "archived"
+    assert t.slug.endswith(f"__del{t.id}")
+    assert bot.status == "archived"
+    assert len(await _audit_rows(session, t.id, "tenant.delete")) == 1
+    assert state.state is None
+
+
+async def test_delete_slug_mismatch_keeps_tenant(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=OWNER_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    msg = FakeMessage(from_user_id=OWNER_TG, text="WRONG")
+    await oc.on_delete_confirm(msg, state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # unchanged
+    assert await _audit_rows(session, t.id, "tenant.delete") == []
+    assert state.state == oc.OwnerDelete.awaiting_confirm  # stays to retry
+
+
+async def test_delete_cancel(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeState({"tenant_id": 1, "slug": "x"})
+    state.state = oc.OwnerDelete.awaiting_confirm
+
+    msg = FakeMessage(from_user_id=OWNER_TG)
+    await oc.on_delete_cancel(msg, state, i18n=i18n)
+
+    assert state.state is None
+    assert await state.get_data() == {}
+    assert "Отменено" in msg.answers[0][0]
+
+
+async def test_delete_platform_blocked(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t = await _make_tenant(session, "platform", "Platform", is_platform=True)
+    await _seed_bot(session, t.id)
+    await _seed_account(session, tenant=t, tg=OWNER_TG, role="owner")
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=OWNER_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # unchanged
+    assert state.state is None  # FSM not entered
+    assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
+async def test_delete_by_non_owner_denied(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=CUSTOMER_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    assert state.state is None  # FSM not entered
+    assert q.answers and q.answers[-1][0] == "Нет прав"
+    assert q.answers[-1][1].get("show_alert") is True

@@ -16,7 +16,7 @@ from quantuum.domain.owner_console import (
     resolve_managed_tenant_by_slug,
 )
 from quantuum.domain.stats import tenant_stats
-from quantuum.domain.tenants import set_tenant_status, transfer_ownership
+from quantuum.domain.tenants import archive_tenant, set_tenant_status, transfer_ownership
 from quantuum.i18n import Translator
 
 router = Router()
@@ -82,6 +82,12 @@ async def on_manage(message: Message, command: CommandObject, i18n: Translator) 
         InlineKeyboardButton(
             text=await i18n("owner.manage.kb.transfer"),
             callback_data=OwnerManageCb(action="transfer", tenant_id=tenant.id).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.manage.kb.delete"),
+            callback_data=OwnerManageCb(action="delete", tenant_id=tenant.id).pack(),
         )
     )
     await message.answer(
@@ -276,3 +282,70 @@ async def on_transfer_target(message: Message, state: FSMContext, i18n: Translat
         await session.commit()
     await state.clear()
     await message.answer(await i18n("owner.transfer.done"))
+
+
+# ── SP2: /manage → 🗑 Delete (type-the-slug confirm) ────────────────────────────
+
+
+class OwnerDelete(StatesGroup):
+    awaiting_confirm = State()
+
+
+@router.callback_query(OwnerManageCb.filter(F.action == "delete"))
+async def on_manage_delete(
+    query: CallbackQuery, callback_data: OwnerManageCb, state: FSMContext, i18n: Translator
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        tenant = await session.get(Tenant, callback_data.tenant_id)
+        if tenant is not None and tenant.is_platform:
+            await query.answer(await i18n("owner.delete.platform_blocked"), show_alert=True)
+            return
+        slug = tenant.slug if tenant is not None else ""
+    await state.set_state(OwnerDelete.awaiting_confirm)
+    await state.update_data(tenant_id=callback_data.tenant_id, slug=slug)
+    await query.message.answer(await i18n("owner.delete.prompt", slug=slug))
+    await query.answer()
+
+
+@router.message(Command("cancel"), OwnerDelete.awaiting_confirm)
+async def on_delete_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await state.clear()
+    await message.answer(await i18n("owner.delete.cancelled"))
+
+
+@router.message(OwnerDelete.awaiting_confirm)
+async def on_delete_confirm(message: Message, state: FSMContext, i18n: Translator) -> None:
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
+    expected_slug = data["slug"]
+    if (message.text or "").strip() != expected_slug:
+        await message.answer(await i18n("owner.delete.mismatch", slug=expected_slug))
+        return  # stay in state to retry
+    async with get_sessionmaker()() as session:
+        # Re-authorize at apply time (the role may have changed since the tap).
+        actor = await authorize_tenant_action(
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+        )
+        if actor is None:
+            await message.answer(await i18n("owner.no_rights"))
+            await state.clear()
+            return
+        await archive_tenant(session, tenant_id)
+        await record_audit(
+            session,
+            tenant_id=tenant_id,
+            actor_account_id=actor,
+            action="tenant.delete",
+            entity_type="tenant",
+            entity_id=tenant_id,
+        )
+        await session.commit()
+    await state.clear()
+    await message.answer(await i18n("owner.delete.done"))

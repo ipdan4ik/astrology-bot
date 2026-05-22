@@ -26,7 +26,7 @@ class OwnerOnboardCb(CallbackData, prefix="own"):
 
 
 class OwnerManageCb(CallbackData, prefix="omng"):
-    action: str  # stats | pause | resume | transfer
+    action: str  # stats | pause | resume | transfer | delete
     tenant_id: int = 0
 
 
