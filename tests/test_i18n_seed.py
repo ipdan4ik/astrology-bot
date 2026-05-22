@@ -115,3 +115,31 @@ async def test_platform_tenant_default_language_seeded(session):
         f"Expected exactly 1 default language for platform tenant, got {len(defaults)}"
     )
     assert defaults[0].lang == "ru"
+
+
+def test_place_edit_strings_present_and_obsolete_removed():
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+
+    for key in [
+        "profile.place.confirm",
+        "profile.place.not_found",
+        "profile.kb.place_confirm",
+        "profile.kb.place_retry",
+    ]:
+        assert key in BASE_STRINGS, f"missing {key}"
+        assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key]
+
+    # The repurposed place prompt now mentions geolocation.
+    assert "геопозиц" in BASE_STRINGS["profile.prompt.birth_place"]["ru"].lower()
+
+    for key in [
+        "profile.coords",
+        "profile.timezone",
+        "profile.kb.edit_coords",
+        "profile.kb.edit_timezone",
+        "profile.prompt.coords",
+        "profile.prompt.timezone",
+        "profile.error.coords_invalid",
+        "profile.error.timezone_invalid",
+    ]:
+        assert key not in BASE_STRINGS, f"obsolete key still present: {key}"

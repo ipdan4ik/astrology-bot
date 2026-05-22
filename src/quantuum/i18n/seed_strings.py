@@ -11,8 +11,6 @@ Placeholder variables per key:
     profile.birth_date      — {birth_date}
     profile.birth_time      — {birth_time}
     profile.place           — {place}
-    profile.coords          — {lat}, {lon}
-    profile.timezone        — {timezone}
     history.label           — {date}, {status}
     history.detail_header   — {id}
     history.detail_status   — {status}
@@ -144,14 +142,6 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Место: {place}",
         "en": "Place: {place}",
     },
-    "profile.coords": {
-        "ru": "Координаты: {lat}, {lon}",
-        "en": "Coordinates: {lat}, {lon}",
-    },
-    "profile.timezone": {
-        "ru": "Таймзона: {timezone}",
-        "en": "Timezone: {timezone}",
-    },
     # -------------------------------------------------------------------------
     # Profile screen messages
     # -------------------------------------------------------------------------
@@ -162,6 +152,14 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "profile.not_found": {
         "ru": "Профиль не найден.",
         "en": "Profile not found.",
+    },
+    "profile.place.confirm": {
+        "ru": "Нашёл: {place}\n\nВерно?",
+        "en": "Found: {place}\n\nCorrect?",
+    },
+    "profile.place.not_found": {
+        "ru": "Не нашёл это место. Уточни город / адрес или пришли геопозицию:",
+        "en": "Couldn't find that place. Refine the city / address or send a location:",
     },
     # -------------------------------------------------------------------------
     # Profile keyboard labels
@@ -186,14 +184,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "✏️ Место",
         "en": "✏️ Place",
     },
-    "profile.kb.edit_coords": {
-        "ru": "✏️ Координаты",
-        "en": "✏️ Coordinates",
-    },
-    "profile.kb.edit_timezone": {
-        "ru": "✏️ Таймзона",
-        "en": "✏️ Timezone",
-    },
+    "profile.kb.place_confirm": {"ru": "✅ Да", "en": "✅ Yes"},
+    "profile.kb.place_retry": {"ru": "✏️ Другой адрес", "en": "✏️ Different address"},
     # -------------------------------------------------------------------------
     # Profile field prompts (edit flow)
     # -------------------------------------------------------------------------
@@ -210,16 +202,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "en": "Time of birth HH:MM (e.g. 10:00):",
     },
     "profile.prompt.birth_place": {
-        "ru": "Город рождения:",
-        "en": "City of birth:",
-    },
-    "profile.prompt.coords": {
-        "ru": "Координаты «широта, долгота» (например 55.7558, 37.6173):",
-        "en": "Coordinates «latitude, longitude» (e.g. 55.7558, 37.6173):",
-    },
-    "profile.prompt.timezone": {
-        "ru": "Таймзона IANA (например Europe/Moscow):",
-        "en": "IANA timezone (e.g. Europe/Moscow):",
+        "ru": "Пришли геопозицию (📎 → Геопозиция) или напиши город / адрес:",
+        "en": "Send your location (📎 → Location) or type a city / address:",
     },
     # -------------------------------------------------------------------------
     # Profile field validation errors
@@ -239,14 +223,6 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "profile.error.birth_time_invalid": {
         "ru": "Не понял время. Формат ЧЧ:ММ.",
         "en": "Could not parse time. Format HH:MM.",
-    },
-    "profile.error.coords_invalid": {
-        "ru": "Не понял координаты. Формат «55.7558, 37.6173».",
-        "en": "Could not parse coordinates. Format «55.7558, 37.6173».",
-    },
-    "profile.error.timezone_invalid": {
-        "ru": "Не понял таймзону. Например Europe/Moscow.",
-        "en": "Could not parse timezone. E.g. Europe/Moscow.",
     },
     "profile.error.unknown_field": {
         "ru": "Неизвестное поле.",
