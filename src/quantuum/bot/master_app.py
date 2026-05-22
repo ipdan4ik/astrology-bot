@@ -13,9 +13,15 @@ def create_master_dispatcher() -> Dispatcher:
     dp.message.middleware(AccountMiddleware())
     dp.callback_query.middleware(TenantMiddleware())
     dp.callback_query.middleware(AccountMiddleware())
-    from quantuum.bot.handlers import master_onboarding, master_superadmin, owner_console
+    from quantuum.bot.handlers import (
+        master_onboarding,
+        master_superadmin,
+        owner_console,
+        owner_users,
+    )
 
     dp.include_router(master_onboarding.router)
     dp.include_router(owner_console.router)
+    dp.include_router(owner_users.router)
     dp.include_router(master_superadmin.router)
     return dp

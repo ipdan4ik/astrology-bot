@@ -50,3 +50,10 @@ class SuperAdminCb(CallbackData, prefix="sa"):
     action: str  # menu | tenants | tenant | suspend | resume | delete | invites | newinvite | revoke
     tenant_id: int = 0
     invite_id: int = 0
+
+
+class OwnerUserCb(CallbackData, prefix="ousr"):
+    action: str  # list | open | grant | ban | unban
+    tenant_id: int = 0
+    account_id: int = 0
+    page: int = 0
