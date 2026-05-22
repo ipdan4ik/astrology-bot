@@ -439,6 +439,12 @@ class AccountDetailOut(BaseModel):
     package_credits: int
     subscription_active_until: datetime | None
     free_trial_used: bool
+    status: str
+    ban_reason: str | None
+
+
+class BanIn(BaseModel):
+    reason: str
 
 
 class BlueprintSummaryOut(BaseModel):

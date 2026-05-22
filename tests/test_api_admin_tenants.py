@@ -481,3 +481,64 @@ async def test_delete_missing_tenant_404(client, sa_headers):
         headers=sa_headers,
     )
     assert r.status_code == 404
+
+
+async def _make_customer(session, tenant_id):
+    acc = Account(tenant_id=tenant_id)
+    session.add(acc)
+    await session.commit()
+    await session.refresh(acc)
+    return acc
+
+
+async def test_ban_unban_happy_path(client, owner_headers, default_tenant, session):
+    target = await _make_customer(session, default_tenant.id)
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/accounts/{target.id}/ban",
+        headers=owner_headers,
+        json={"reason": "abuse"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "disabled"
+    assert body["ban_reason"] == "abuse"
+
+    r2 = await client.post(
+        f"/admin/tenants/{default_tenant.id}/accounts/{target.id}/unban",
+        headers=owner_headers,
+    )
+    assert r2.status_code == 200
+    assert r2.json()["status"] == "active"
+    assert r2.json()["ban_reason"] is None
+
+
+async def test_ban_forbidden_for_customer(client, customer_headers, default_tenant, session):
+    target = await _make_customer(session, default_tenant.id)
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/accounts/{target.id}/ban",
+        headers=customer_headers,
+        json={"reason": "x"},
+    )
+    assert r.status_code == 403
+
+
+async def test_ban_staff_conflict(client, owner_headers, default_tenant, session):
+    # The owner account created by owner_headers holds the owner role → cannot be banned.
+    owner_acc = (
+        await session.execute(select(Account).where(Account.tenant_id == default_tenant.id))
+    ).scalars().first()
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/accounts/{owner_acc.id}/ban",
+        headers=owner_headers,
+        json={"reason": "x"},
+    )
+    assert r.status_code == 409
+
+
+async def test_ban_unknown_account_404(client, owner_headers, default_tenant):
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/accounts/987654/ban",
+        headers=owner_headers,
+        json={"reason": "x"},
+    )
+    assert r.status_code == 404
