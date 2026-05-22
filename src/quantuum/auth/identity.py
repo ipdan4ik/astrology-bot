@@ -59,6 +59,27 @@ async def find_superadmin_by_email(session, email: str) -> Account | None:
     return await session.get(Account, identity.account_id)
 
 
+async def find_superadmin_by_tg(session, tg_user_id: str) -> Account | None:
+    """Resolve the superadmin Account linked to a Telegram user id.
+
+    Filters on Account.is_superadmin, so a coexisting platform-scoped tg_chat
+    identity with the same id (created by the master-bot middleware) is ignored.
+    """
+    result = await session.execute(
+        select(AccountIdentity)
+        .join(Account, Account.id == AccountIdentity.account_id)
+        .where(
+            AccountIdentity.provider == "tg_chat",
+            AccountIdentity.provider_user_id == str(tg_user_id),
+            Account.is_superadmin == True,  # noqa: E712
+        )
+    )
+    identity = result.scalar_one_or_none()
+    if identity is None:
+        return None
+    return await session.get(Account, identity.account_id)
+
+
 async def find_or_create_account_by_tg(session, *, tenant_id: int, tg_user_id: str) -> Account:
     result = await session.execute(
         select(AccountIdentity)

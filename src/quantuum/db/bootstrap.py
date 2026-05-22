@@ -89,26 +89,51 @@ async def ensure_master_bot(session) -> None:
 
 
 async def ensure_superadmin(session) -> None:
-    """Create the bootstrap superadmin account from env (idempotent, env-gated)."""
+    """Create the bootstrap superadmin from env and idempotently link its Telegram
+    identity (both env-gated, idempotent across restarts)."""
     settings = get_settings()
     email = settings.bootstrap_superadmin_email
     if not email:
         return
+
     existing = await session.execute(
         select(AccountIdentity).where(
             AccountIdentity.provider == "magic_link", AccountIdentity.email == email
         )
     )
-    if existing.scalar_one_or_none() is not None:
-        return
-    account = Account(tenant_id=None, is_superadmin=True)
-    session.add(account)
-    await session.flush()
-    session.add(
-        AccountIdentity(
-            account_id=account.id, provider="magic_link", email=email, verified_at=utcnow()
+    identity = existing.scalar_one_or_none()
+    if identity is not None:
+        account_id = identity.account_id
+    else:
+        account = Account(tenant_id=None, is_superadmin=True)
+        session.add(account)
+        await session.flush()
+        session.add(
+            AccountIdentity(
+                account_id=account.id, provider="magic_link", email=email, verified_at=utcnow()
+            )
         )
-    )
+        account_id = account.id
+
+    tg_id = settings.bootstrap_superadmin_tg_id
+    if tg_id:
+        tg_existing = await session.execute(
+            select(AccountIdentity).where(
+                AccountIdentity.provider == "tg_chat",
+                AccountIdentity.provider_user_id == tg_id,
+                AccountIdentity.account_id == account_id,
+            )
+        )
+        if tg_existing.scalar_one_or_none() is None:
+            session.add(
+                AccountIdentity(
+                    account_id=account_id,
+                    provider="tg_chat",
+                    provider_user_id=tg_id,
+                    verified_at=utcnow(),
+                )
+            )
+
     await session.commit()
 
 

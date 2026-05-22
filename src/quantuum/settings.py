@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     master_bot_username: str = ""
     bot_reload_interval_seconds: float = 10.0
     bootstrap_superadmin_email: str = ""
+    bootstrap_superadmin_tg_id: str = ""
     platform_tenant_slug: str = "platform"
     platform_tenant_name: str = "Quantuum Platform"
     platform_fee_pct: int = 30
