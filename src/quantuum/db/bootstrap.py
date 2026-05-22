@@ -221,6 +221,7 @@ async def ensure_tenant_default_language(
     * each lang in extra_langs gets is_default=False, enabled=True.
     * Never creates duplicate rows.
     """
+    extra_langs = tuple(lang for lang in extra_langs if lang != default_lang)
     result = await session.execute(
         select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
     )

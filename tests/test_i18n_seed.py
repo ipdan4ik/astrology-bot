@@ -196,6 +196,27 @@ def test_owner_delete_strings_present():
         assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key], f"{key} missing ru/en"
 
 
+async def test_ensure_tenant_default_language_dedups_default_in_extra(session, default_tenant):
+    """Passing default_lang that also appears in extra_langs must not double-insert."""
+    from quantuum.db.bootstrap import ensure_tenant_default_language
+
+    tenant_id = default_tenant.id
+    # 'ru' appears as both the default and in extra_langs — must not crash or duplicate.
+    await ensure_tenant_default_language(
+        session, tenant_id, default_lang="ru", extra_langs=("ru", "en")
+    )
+
+    result = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
+    )
+    rows = list(result.scalars())
+    langs = [r.lang for r in rows]
+    assert langs.count("ru") == 1, "ru must be inserted exactly once"
+    defaults = [r for r in rows if r.is_default]
+    assert len(defaults) == 1 and defaults[0].lang == "ru"
+    assert sorted(langs) == ["en", "ru"]
+
+
 def test_superadmin_cabinet_strings_present():
     from quantuum.i18n.seed_strings import BASE_STRINGS
 
