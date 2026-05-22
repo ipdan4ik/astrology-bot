@@ -28,3 +28,10 @@ def test_bot_reload_interval_default():
     from quantuum.settings import Settings
 
     assert Settings.model_fields["bot_reload_interval_seconds"].default == 10.0
+
+
+def test_geocoder_settings_defaults():
+    from quantuum.settings import Settings
+
+    assert Settings.model_fields["geocoder_url"].default == "https://nominatim.openstreetmap.org"
+    assert Settings.model_fields["geocoder_user_agent"].default == "quantuum-bot (onboarding geocoder)"

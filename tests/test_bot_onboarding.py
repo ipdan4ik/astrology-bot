@@ -2,7 +2,7 @@ from datetime import date, time
 from decimal import Decimal
 
 from quantuum.auth.identity import find_or_create_account_by_tg
-from quantuum.bot.handlers.onboarding import parse_coords, parse_birth_date, parse_birth_time
+from quantuum.bot.handlers.onboarding import parse_birth_date, parse_birth_time
 
 
 def test_parse_birth_date_valid():
@@ -15,14 +15,6 @@ def test_parse_birth_date_invalid():
 
 def test_parse_birth_time_valid():
     assert parse_birth_time("10:00") == time(10, 0)
-
-
-def test_parse_coords_valid():
-    assert parse_coords("55.7558, 37.6173") == (Decimal("55.7558"), Decimal("37.6173"))
-
-
-def test_parse_coords_invalid():
-    assert parse_coords("abc") is None
 
 
 async def test_finish_onboarding_saves_profile(session, default_tenant):
@@ -66,49 +58,11 @@ def test_build_profile_data_roundtrips_isoformat_time():
     assert data["timezone"] == "Europe/Moscow"
 
 
-def test_is_valid_timezone():
-    from quantuum.bot.handlers.onboarding import is_valid_timezone
-
-    assert is_valid_timezone("Europe/Moscow")
-    assert is_valid_timezone("Asia/Irkutsk")
-    assert not is_valid_timezone("/blueprint")
-    assert not is_valid_timezone("Mars/Phobos")
-
-
-def test_is_valid_timezone_rejects_directory_only_zone():
-    # Regression: ZoneInfo("Europe") raises IsADirectoryError (an OSError), which the old
-    # validator's (ZoneInfoNotFoundError, ValueError) tuple did not catch — so entering a
-    # bare region crashed the timezone step instead of being rejected.
-    from quantuum.bot.handlers.onboarding import is_valid_timezone
-
-    assert not is_valid_timezone("Europe")
-    assert not is_valid_timezone("America")
-    assert not is_valid_timezone("Asia")
-
-
-def test_is_valid_timezone_handles_blank_and_none():
-    from quantuum.bot.handlers.onboarding import is_valid_timezone
-
-    assert not is_valid_timezone("")
-    assert not is_valid_timezone("   ")
-    assert not is_valid_timezone(None)
-    assert is_valid_timezone("  Europe/Moscow  ")  # surrounding whitespace tolerated
-
-
-def test_parse_coords_rejects_out_of_range():
-    assert parse_coords("91, 0") is None  # latitude > 90
-    assert parse_coords("-91, 0") is None
-    assert parse_coords("0, 181") is None  # longitude > 180
-    assert parse_coords("0, -181") is None
-    assert parse_coords("-90, -180") == (Decimal("-90"), Decimal("-180"))  # boundaries ok
-
-
 def test_parsers_tolerate_none_text():
     # Non-text messages (stickers, photos, voice) arrive with message.text == None;
     # parsers must reject, not crash.
     assert parse_birth_date(None) is None
     assert parse_birth_time(None) is None
-    assert parse_coords(None) is None
 
 
 def test_parse_required_text():
@@ -120,42 +74,175 @@ def test_parse_required_text():
     assert parse_required_text(None) is None
 
 
-async def test_on_timezone_invalid_is_not_recorded(default_tenant, monkeypatch):
-    """The user's example: an invalid timezone must NOT be saved. The handler rejects it,
-    keeps the user on the timezone step, and never calls save_collected_profile."""
+class _State:
+    def __init__(self, data):
+        self._data = dict(data)
+        self.state = None
+
+    async def get_data(self):
+        return dict(self._data)
+
+    async def update_data(self, **kw):
+        self._data.update(kw)
+
+    async def set_state(self, s):
+        self.state = s
+
+    async def clear(self):
+        self._data = {}
+        self.state = None
+
+
+def _patch_sessionmaker(monkeypatch, mod):
+    class _Maker:
+        def __call__(self):
+            return _Ctx()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return None
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(mod, "get_sessionmaker", lambda: _Maker())
+
+
+_BASE = {"full_name": "Anna", "birth_date": "1980-06-24", "birth_time": "10:00"}
+
+
+async def test_birth_place_location_saves_with_derived_tz(default_tenant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+    from quantuum.geocoding import GeoResult
+
+    _patch_sessionmaker(monkeypatch, ob)
+    saved = AsyncMock()
+    monkeypatch.setattr(ob, "save_collected_profile", saved)
+    monkeypatch.setattr(ob, "coords_to_timezone", lambda lat, lon: "Europe/Moscow")
+    monkeypatch.setattr(ob, "reverse", AsyncMock(return_value=GeoResult(55.75, 37.62, "Moscow, Russia")))
+
+    state = _State(_BASE)
+    state.state = ob.Onboarding.birth_place
+    message = SimpleNamespace(
+        location=SimpleNamespace(latitude=55.75, longitude=37.62), answer=AsyncMock()
+    )
+    account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
+
+    await ob.on_birth_place_location(message, state, account=account)
+
+    saved.assert_awaited_once()
+    data = saved.await_args.kwargs["data"]
+    assert data["timezone"] == "Europe/Moscow"
+    assert str(data["latitude"]) == "55.75"
+    assert state.state is None  # cleared
+
+
+async def test_birth_place_location_falls_back_when_reverse_fails(default_tenant, monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
     from quantuum.bot.handlers import onboarding as ob
 
+    _patch_sessionmaker(monkeypatch, ob)
+    saved = AsyncMock()
+    monkeypatch.setattr(ob, "save_collected_profile", saved)
+    monkeypatch.setattr(ob, "coords_to_timezone", lambda lat, lon: "Europe/Moscow")
+    monkeypatch.setattr(ob, "reverse", AsyncMock(return_value=None))  # reverse-geocode failed
+
+    state = _State(_BASE)
+    state.state = ob.Onboarding.birth_place
+    message = SimpleNamespace(
+        location=SimpleNamespace(latitude=55.75, longitude=37.62), answer=AsyncMock()
+    )
+    account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
+
+    await ob.on_birth_place_location(message, state, account=account)
+
+    saved.assert_awaited_once()
+    assert saved.await_args.kwargs["data"]["birth_place"] == "📍 55.7500, 37.6200"
+
+
+async def test_birth_place_text_geocodes_then_confirms(default_tenant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+    from quantuum.geocoding import GeoResult
+
+    monkeypatch.setattr(
+        ob, "geocode", AsyncMock(return_value=[GeoResult(56.13, 101.61, "Bratsk, Russia")])
+    )
+    monkeypatch.setattr(ob, "coords_to_timezone", lambda lat, lon: "Asia/Irkutsk")
+
+    state = _State(_BASE)
+    state.state = ob.Onboarding.birth_place
+    message = SimpleNamespace(text="Bratsk", answer=AsyncMock())
+
+    await ob.on_birth_place_text(message, state)
+
+    assert state.state == ob.Onboarding.birth_place_confirm
+    assert (await state.get_data())["timezone"] == "Asia/Irkutsk"
+    text = message.answer.await_args.args[0]
+    assert "Bratsk" in text and "Asia/Irkutsk" in text
+
+
+async def test_birth_place_text_not_found_reprompts(default_tenant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+
+    monkeypatch.setattr(ob, "geocode", AsyncMock(return_value=[]))
+
+    state = _State(_BASE)
+    state.state = ob.Onboarding.birth_place
+    message = SimpleNamespace(text="asdfghjkl", answer=AsyncMock())
+
+    await ob.on_birth_place_text(message, state)
+
+    assert state.state == ob.Onboarding.birth_place  # unchanged, re-prompt
+    message.answer.assert_awaited()
+
+
+async def test_geo_confirm_saves(default_tenant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+    from quantuum.bot.ui.callbacks import OnboardCb
+
+    _patch_sessionmaker(monkeypatch, ob)
     saved = AsyncMock()
     monkeypatch.setattr(ob, "save_collected_profile", saved)
 
-    class _State:
-        def __init__(self, data):
-            self._data = dict(data)
-            self.state = ob.Onboarding.timezone
-
-        async def get_data(self):
-            return dict(self._data)
-
-        async def set_state(self, s):
-            self.state = s
-
-        async def clear(self):
-            self.state = None
-
     state = _State(
-        {
-            "full_name": "Anna", "birth_date": "1980-06-24", "birth_time": "10:00",
-            "birth_place": "Moscow", "latitude": "55.75", "longitude": "37.61",
-        }
+        {**_BASE, "birth_place": "Bratsk, Russia", "latitude": "56.13",
+         "longitude": "101.61", "timezone": "Asia/Irkutsk"}
     )
-    message = SimpleNamespace(text="Europe", answer=AsyncMock())
+    state.state = ob.Onboarding.birth_place_confirm
+    query = SimpleNamespace(message=SimpleNamespace(answer=AsyncMock()), answer=AsyncMock())
     account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
 
-    await ob.on_timezone(message, state, account=account)
+    await ob.on_geo_confirm(query, OnboardCb(action="geo_confirm"), state, account=account)
 
-    saved.assert_not_awaited()  # invalid tz never persisted
-    assert state.state == ob.Onboarding.timezone  # still awaiting a valid tz
-    message.answer.assert_awaited()
+    saved.assert_awaited_once()
+    assert state.state is None
+
+
+async def test_geo_retry_returns_to_birth_place(default_tenant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+    from quantuum.bot.ui.callbacks import OnboardCb
+
+    state = _State({**_BASE})
+    state.state = ob.Onboarding.birth_place_confirm
+    query = SimpleNamespace(message=SimpleNamespace(answer=AsyncMock()), answer=AsyncMock())
+
+    await ob.on_geo_retry(query, OnboardCb(action="geo_retry"), state)
+
+    assert state.state == ob.Onboarding.birth_place
