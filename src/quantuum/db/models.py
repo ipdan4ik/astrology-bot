@@ -92,6 +92,7 @@ class Account(SQLModel, table=True):
     tenant_id: int | None = Field(default=None, foreign_key="tenants.id", index=True)
     is_superadmin: bool = False
     status: str = "active"  # active|disabled
+    ban_reason: str | None = None
     preferred_lang: str | None = None
     last_seen_at: datetime | None = _dt_field(default=None)
     created_at: datetime = _dt_field(default_factory=utcnow)
