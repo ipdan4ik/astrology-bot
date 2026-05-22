@@ -6,6 +6,7 @@ from quantuum.bot.ui.callbacks import LangCb
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
 from quantuum.i18n import Translator
+from quantuum.i18n.strings import get_enabled_langs
 
 router = Router()
 
@@ -17,6 +18,11 @@ async def on_set_language(
     lang = callback_data.lang
     # Persist on a fresh session — the middleware-injected `account` is detached.
     async with get_sessionmaker()() as session:
+        # The picker only offers enabled langs; defensively ignore a stale or
+        # hand-crafted callback for a lang the tenant doesn't enable.
+        if lang not in await get_enabled_langs(session, account.tenant_id):
+            await query.answer()
+            return
         acc = await session.get(Account, account.id)
         if acc is None:
             await query.answer()
