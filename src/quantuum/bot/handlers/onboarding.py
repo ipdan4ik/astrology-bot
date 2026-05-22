@@ -1,18 +1,18 @@
 from datetime import date, datetime, time
-from decimal import Decimal, InvalidOperation
-from functools import lru_cache
-from zoneinfo import available_timezones
+from decimal import Decimal
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from quantuum.bot.ui.callbacks import OnboardCb
 from quantuum.bot.ui.keyboards import cancel_kb
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.natal_profiles import upsert_natal_profile
+from quantuum.geocoding import coords_to_timezone, geocode, reverse
 
 router = Router()
 
@@ -22,8 +22,7 @@ class Onboarding(StatesGroup):
     birth_date = State()
     birth_time = State()
     birth_place = State()
-    coords = State()
-    timezone = State()
+    birth_place_confirm = State()
 
 
 def parse_required_text(text: str | None) -> str | None:
@@ -44,36 +43,6 @@ def parse_birth_time(text: str | None) -> time | None:
         return datetime.strptime((text or "").strip(), "%H:%M").time()
     except ValueError:
         return None
-
-
-def parse_coords(text: str | None) -> tuple[Decimal, Decimal] | None:
-    parts = (text or "").replace(" ", "").split(",")
-    if len(parts) != 2:
-        return None
-    try:
-        lat, lon = Decimal(parts[0]), Decimal(parts[1])
-    except (InvalidOperation, ValueError):
-        return None
-    if not (Decimal("-90") <= lat <= Decimal("90")):
-        return None
-    if not (Decimal("-180") <= lon <= Decimal("180")):
-        return None
-    return lat, lon
-
-
-@lru_cache(maxsize=1)
-def _valid_timezones() -> frozenset[str]:
-    return frozenset(available_timezones())
-
-
-def is_valid_timezone(text: str | None) -> bool:
-    """True only for a full IANA zone key (e.g. Europe/Moscow).
-
-    Membership in available_timezones() is the authoritative check: it rejects bare regions
-    like "Europe" (which would otherwise make ZoneInfo raise IsADirectoryError on the tzdata
-    package layout) as well as unknown zones, blanks, and non-text messages.
-    """
-    return (text or "").strip() in _valid_timezones()
 
 
 def build_profile_data(raw: dict, timezone: str) -> dict:
@@ -149,42 +118,89 @@ async def on_birth_time(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(birth_time=parsed.isoformat())
     await state.set_state(Onboarding.birth_place)
-    await message.answer("Город рождения (например Moscow):")
+    await message.answer(
+        "Место рождения: пришли геопозицию (📎 → Геопозиция, можно поставить точку на карте) "
+        "или напиши город / часть адреса:"
+    )
 
 
-@router.message(Onboarding.birth_place)
-async def on_birth_place(message: Message, state: FSMContext) -> None:
-    place = parse_required_text(message.text)
-    if place is None:
-        await message.answer("Не понял город. Введи город рождения текстом (например Moscow):")
-        return
-    await state.update_data(birth_place=place)
-    await state.set_state(Onboarding.coords)
-    await message.answer("Координаты «широта, долгота» (например 55.7558, 37.6173):")
-
-
-@router.message(Onboarding.coords)
-async def on_coords(message: Message, state: FSMContext) -> None:
-    parsed = parse_coords(message.text)
-    if parsed is None:
-        await message.answer("Не понял координаты. Формат «55.7558, 37.6173»:")
-        return
-    lat, lon = parsed
-    await state.update_data(latitude=str(lat), longitude=str(lon))
-    await state.set_state(Onboarding.timezone)
-    await message.answer("Таймзона IANA (например Europe/Moscow):")
-
-
-@router.message(Onboarding.timezone)
-async def on_timezone(message: Message, state: FSMContext, account: Account) -> None:
-    if not is_valid_timezone(message.text):
-        await message.answer(
-            "Не понял таймзону. Нужна IANA-зона, например Europe/Moscow или Asia/Irkutsk:"
+async def geo_confirm_kb():
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Да", callback_data=OnboardCb(action="geo_confirm").pack())
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="✏️ Другой адрес", callback_data=OnboardCb(action="geo_retry").pack()
         )
-        return
+    )
+    return builder.as_markup()
+
+
+async def _finalize_profile(state: FSMContext, account: Account) -> None:
     raw = await state.get_data()
-    data = build_profile_data(raw, message.text)
+    data = build_profile_data(raw, raw["timezone"])
     async with get_sessionmaker()() as session:
         await save_collected_profile(session, account=account, data=data)
     await state.clear()
-    await message.answer("Готово! Профиль сохранён. Команда /blueprint сгенерирует твой разбор.")
+
+
+_DONE_MSG = "Готово! Профиль сохранён. Команда /blueprint сгенерирует твой разбор."
+
+
+@router.message(Onboarding.birth_place, F.location)
+async def on_birth_place_location(message: Message, state: FSMContext, account: Account) -> None:
+    lat = message.location.latitude
+    lon = message.location.longitude
+    tz = coords_to_timezone(lat, lon)
+    geo = await reverse(lat, lon)
+    display = geo.display_name if geo is not None else f"📍 {lat:.4f}, {lon:.4f}"
+    await state.update_data(
+        birth_place=display, latitude=str(lat), longitude=str(lon), timezone=tz
+    )
+    await _finalize_profile(state, account)
+    await message.answer(_DONE_MSG)
+
+
+@router.message(Onboarding.birth_place, F.text)
+async def on_birth_place_text(message: Message, state: FSMContext) -> None:
+    results = await geocode((message.text or "").strip())
+    if not results:
+        await message.answer("Не нашёл это место. Уточни город/адрес или пришли геопозицию:")
+        return
+    top = results[0]
+    tz = coords_to_timezone(top.lat, top.lon)
+    await state.update_data(
+        birth_place=top.display_name,
+        latitude=str(top.lat),
+        longitude=str(top.lon),
+        timezone=tz,
+    )
+    await state.set_state(Onboarding.birth_place_confirm)
+    await message.answer(
+        f"Нашёл: {top.display_name}\nЧасовой пояс: {tz}\n\nВерно?",
+        reply_markup=await geo_confirm_kb(),
+    )
+
+
+@router.message(Onboarding.birth_place)
+async def on_birth_place_other(message: Message, state: FSMContext) -> None:
+    await message.answer(
+        "Пришли геопозицию (📎 → Геопозиция) или напиши город / адрес текстом:"
+    )
+
+
+@router.callback_query(OnboardCb.filter(F.action == "geo_confirm"), Onboarding.birth_place_confirm)
+async def on_geo_confirm(
+    query: CallbackQuery, callback_data: OnboardCb, state: FSMContext, account: Account
+) -> None:
+    await _finalize_profile(state, account)
+    await query.message.answer(_DONE_MSG)
+    await query.answer()
+
+
+@router.callback_query(OnboardCb.filter(F.action == "geo_retry"))
+async def on_geo_retry(query: CallbackQuery, callback_data: OnboardCb, state: FSMContext) -> None:
+    await state.set_state(Onboarding.birth_place)
+    await query.message.answer("Пришли геопозицию или другой город / адрес:")
+    await query.answer()
