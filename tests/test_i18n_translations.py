@@ -28,3 +28,13 @@ def test_translation_placeholder_parity():
             assert _tokens(text) == _tokens(BASE_STRINGS[key]["en"]), (
                 f"{lang}/{key}: placeholder tokens differ from English source"
             )
+
+
+def test_every_key_has_all_platform_langs():
+    from quantuum.i18n.langs import PLATFORM_LANGS
+
+    expected = set(PLATFORM_LANGS)
+    for key, langs in BASE_STRINGS.items():
+        assert set(langs) == expected, (
+            f"{key}: languages {set(langs)} != platform set {expected}"
+        )
