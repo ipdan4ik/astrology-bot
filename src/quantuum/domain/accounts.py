@@ -1,8 +1,39 @@
+from dataclasses import dataclass
+from datetime import datetime
+
+from sqlalchemy import func
 from sqlmodel import select
 
 from quantuum.common.datetime import utcnow
-from quantuum.db.models import Account, AccountBalance, AccountIdentity
+from quantuum.db.models import (
+    Account,
+    AccountBalance,
+    AccountIdentity,
+    NatalProfile,
+)
 from quantuum.domain.tenants import account_has_role
+
+
+@dataclass
+class CustomerRow:
+    account_id: int
+    full_name: str | None
+    tg_user_id: str | None
+    package_credits: int
+    status: str
+
+
+@dataclass
+class CustomerCard:
+    account_id: int
+    full_name: str | None
+    tg_user_id: str | None
+    package_credits: int
+    subscription_active_until: datetime | None
+    free_trial_used: bool
+    status: str
+    ban_reason: str | None
+    last_seen_at: datetime | None
 
 
 async def touch_last_seen(session, account_id: int) -> None:
@@ -68,4 +99,84 @@ async def is_tenant_staff(session, *, tenant_id: int, account_id: int) -> bool:
         session, tenant_id=tenant_id, account_id=account_id, role="owner"
     ) or await account_has_role(
         session, tenant_id=tenant_id, account_id=account_id, role="admin"
+    )
+
+
+async def count_tenant_customers(session, tenant_id: int) -> int:
+    result = await session.execute(
+        select(func.count()).select_from(Account).where(Account.tenant_id == tenant_id)
+    )
+    return int(result.scalar_one())
+
+
+async def list_tenant_customers(
+    session, tenant_id: int, *, limit: int, offset: int
+) -> list[CustomerRow]:
+    """One page of a tenant's accounts, ordered by id, with name / tg id / credits.
+
+    Left-joins so accounts without a balance, profile, or tg identity still appear.
+    The provider filter sits in the JOIN ``ON`` (not WHERE) to keep those rows.
+    """
+    result = await session.execute(
+        select(
+            Account.id,
+            Account.status,
+            NatalProfile.full_name,
+            AccountBalance.package_credits,
+            AccountIdentity.provider_user_id,
+        )
+        .outerjoin(AccountBalance, AccountBalance.account_id == Account.id)
+        .outerjoin(NatalProfile, NatalProfile.account_id == Account.id)
+        .outerjoin(
+            AccountIdentity,
+            (AccountIdentity.account_id == Account.id)
+            & (AccountIdentity.provider == "tg_chat"),
+        )
+        .where(Account.tenant_id == tenant_id)
+        .order_by(Account.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return [
+        CustomerRow(
+            account_id=row[0],
+            status=row[1],
+            full_name=row[2],
+            package_credits=row[3] or 0,
+            tg_user_id=row[4],
+        )
+        for row in result.all()
+    ]
+
+
+async def get_customer_card(
+    session, tenant_id: int, account_id: int
+) -> CustomerCard | None:
+    acc = await session.get(Account, account_id)
+    if acc is None or acc.tenant_id != tenant_id:
+        return None
+    bal = await session.get(AccountBalance, account_id)
+    full_name = (
+        await session.execute(
+            select(NatalProfile.full_name).where(NatalProfile.account_id == account_id)
+        )
+    ).scalars().first()
+    tg_user_id = (
+        await session.execute(
+            select(AccountIdentity.provider_user_id).where(
+                AccountIdentity.account_id == account_id,
+                AccountIdentity.provider == "tg_chat",
+            )
+        )
+    ).scalars().first()
+    return CustomerCard(
+        account_id=acc.id,
+        full_name=full_name,
+        tg_user_id=tg_user_id,
+        package_credits=bal.package_credits if bal is not None else 0,
+        subscription_active_until=bal.subscription_active_until if bal is not None else None,
+        free_trial_used=bal.free_trial_used if bal is not None else False,
+        status=acc.status,
+        ban_reason=acc.ban_reason,
+        last_seen_at=acc.last_seen_at,
     )

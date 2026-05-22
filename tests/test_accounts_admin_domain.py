@@ -53,3 +53,61 @@ async def test_is_tenant_staff(session, default_tenant):
     await session.commit()
     assert await is_tenant_staff(session, tenant_id=default_tenant.id, account_id=owner.id) is True
     assert await is_tenant_staff(session, tenant_id=default_tenant.id, account_id=customer.id) is False
+
+
+from datetime import date, time
+from decimal import Decimal
+
+from quantuum.auth.identity import find_or_create_account_by_tg
+from quantuum.domain.accounts import (
+    count_tenant_customers,
+    get_customer_card,
+    list_tenant_customers,
+)
+from quantuum.domain.natal_profiles import upsert_natal_profile
+
+
+async def test_list_and_count_with_pagination(session, default_tenant):
+    for i in range(3):
+        await find_or_create_account_by_tg(
+            session, tenant_id=default_tenant.id, tg_user_id=str(1000 + i)
+        )
+    assert await count_tenant_customers(session, default_tenant.id) == 3
+
+    page = await list_tenant_customers(session, default_tenant.id, limit=2, offset=0)
+    assert len(page) == 2
+    assert page[0].tg_user_id == "1000"
+    assert page[0].package_credits == 0
+    assert page[0].full_name is None
+
+    page2 = await list_tenant_customers(session, default_tenant.id, limit=2, offset=2)
+    assert len(page2) == 1
+
+
+async def test_card_maps_name_credits_and_ban(session, default_tenant):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="2000"
+    )
+    await upsert_natal_profile(
+        session, tenant_id=default_tenant.id, account_id=acc.id, full_name="Anna",
+        birth_date=date(1980, 6, 24), birth_time=time(10, 0), birth_place="Moscow",
+        latitude=Decimal("55.7558"), longitude=Decimal("37.6173"), timezone="Europe/Moscow",
+    )
+    await adjust_package_credits(session, acc.id, 7)
+    await set_account_ban(session, acc.id, reason="spam")
+    await session.commit()
+
+    card = await get_customer_card(session, default_tenant.id, acc.id)
+    assert card.full_name == "Anna"
+    assert card.tg_user_id == "2000"
+    assert card.package_credits == 7
+    assert card.status == "disabled"
+    assert card.ban_reason == "spam"
+
+
+async def test_card_none_for_wrong_tenant(session, default_tenant):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="2001"
+    )
+    await session.commit()
+    assert await get_customer_card(session, 999999, acc.id) is None
