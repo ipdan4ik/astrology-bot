@@ -1,0 +1,276 @@
+"""German (de) UI translations. Keys mirror BASE_STRINGS."""
+
+TRANSLATIONS = {
+    # -------------------------------------------------------------------------
+    # Main-menu button labels
+    # -------------------------------------------------------------------------
+    "btn.generate": "🔮 Analyse",
+    "btn.profile": "👤 Profil",
+    "btn.history": "📜 Verlauf",
+    "btn.help": "ℹ️ Hilfe",
+    "btn.ask": "❓ Astrologen fragen",
+    "btn.transits": "🌌 Transite",
+    "btn.daily": "🔔 Tageshoroskop",
+    "btn.language": "🌐 Sprache",
+    # -------------------------------------------------------------------------
+    # Blueprint status words
+    # -------------------------------------------------------------------------
+    "status.pending": "in der Warteschlange",
+    "status.calculating": "berechne",
+    "status.generating": "generiere",
+    "status.done": "fertig",
+    "status.failed": "Fehler",
+    "status.refunded": "erstattet",
+    # -------------------------------------------------------------------------
+    # Help text
+    # -------------------------------------------------------------------------
+    "help.text": (
+        "Ich erstelle eine persönliche astrologische Analyse (Quantuum Blueprint) anhand deiner "
+        "Geburtsdaten.\n\n"
+        "Unteres Menü:\n"
+        "🔮 Analyse — Analyse erstellen\n"
+        "👤 Profil — Geburtsdaten anzeigen und bearbeiten\n"
+        "📜 Verlauf — vergangene Analysen\n\n"
+        "Befehle: /start /profile /blueprint\n"
+        "Support: @quantuum_support"
+    ),
+    # -------------------------------------------------------------------------
+    # Profile display
+    # -------------------------------------------------------------------------
+    "profile.title": "👤 Dein Profil:",
+    "profile.name": "Name: {name}",
+    "profile.birth_date": "Geburtsdatum: {birth_date}",
+    "profile.birth_time": "Uhrzeit: {birth_time}",
+    "profile.place": "Ort: {place}",
+    # -------------------------------------------------------------------------
+    # Profile screen messages
+    # -------------------------------------------------------------------------
+    "profile.empty": "Profil nicht ausgefüllt.",
+    "profile.not_found": "Profil nicht gefunden.",
+    "profile.place.confirm": "Gefunden: {place}\n\nKorrekt?",
+    "profile.place.not_found": "Diesen Ort konnte ich nicht finden. Bitte präzisiere Stadt / Adresse oder sende deinen Standort:",
+    # -------------------------------------------------------------------------
+    # Profile keyboard labels
+    # -------------------------------------------------------------------------
+    "profile.kb.fill": "📝 Profil ausfüllen",
+    "profile.kb.edit_name": "✏️ Name",
+    "profile.kb.edit_birth_date": "✏️ Datum",
+    "profile.kb.edit_birth_time": "✏️ Uhrzeit",
+    "profile.kb.edit_birth_place": "✏️ Ort",
+    "profile.kb.place_confirm": "✅ Ja",
+    "profile.kb.place_retry": "✏️ Andere Adresse",
+    # -------------------------------------------------------------------------
+    # Profile field prompts (edit flow)
+    # -------------------------------------------------------------------------
+    "profile.prompt.name": "Gib deinen Namen ein:",
+    "profile.prompt.birth_date": "Geburtsdatum JJJJ-MM-TT (z. B. 1980-06-24):",
+    "profile.prompt.birth_time": "Geburtszeit HH:MM (z. B. 10:00):",
+    "profile.prompt.birth_place": "Sende deinen Standort (📎 → Standort) oder gib eine Stadt / Adresse ein:",
+    # -------------------------------------------------------------------------
+    # Profile field validation errors
+    # -------------------------------------------------------------------------
+    "profile.error.name_empty": "Der Name darf nicht leer sein.",
+    "profile.error.birth_date_invalid": "Datum nicht erkannt. Format JJJJ-MM-TT.",
+    "profile.error.birth_time_invalid": "Uhrzeit nicht erkannt. Format HH:MM.",
+    "profile.error.unknown_field": "Unbekanntes Feld.",
+    "profile.field_edit_error": "{err}\nBitte erneut versuchen:",
+    # -------------------------------------------------------------------------
+    # Start / welcome
+    # -------------------------------------------------------------------------
+    "start.welcome": "Hallo! Ich erstelle deine astrologische Analyse ✨",
+    # -------------------------------------------------------------------------
+    # Main menu
+    # -------------------------------------------------------------------------
+    "menu.title": "Hauptmenü:",
+    "menu.cancelled": "Abgebrochen.",
+    # -------------------------------------------------------------------------
+    # Generate (blueprint request)
+    # -------------------------------------------------------------------------
+    "generate.no_profile": "Bitte fülle zuerst dein Profil aus:",
+    "generate.no_quota": "Deine kostenlose Analyse wurde bereits verwendet. Kaufe ein Paket oder ein Abonnement:",
+    "generate.queued": "Ich erstelle deine Analyse, das dauert etwa eine Minute…",
+    # -------------------------------------------------------------------------
+    # Q&A astrologer
+    # -------------------------------------------------------------------------
+    "qa.ask_prompt": "Sende deine Frage an den Astrologen:",
+    "qa.thinking": "Ich denke über die Antwort nach… ⏳",
+    "qa.no_profile": "Fülle zuerst dein Geburtshoroskop-Profil aus (/profile).",
+    "qa.no_quota": "Dein Guthaben ist aufgebraucht. Kaufe ein Paket oder Abonnement, um den Astrologen zu fragen:",
+    "qa.too_long": "Die Frage ist zu lang (max. 1000 Zeichen).",
+    "qa.empty": "Leere Frage. Bitte gib deine Frage ein:",
+    # -------------------------------------------------------------------------
+    # Transits
+    # -------------------------------------------------------------------------
+    "transit.thinking": "Ich berechne deine Transite… ⏳",
+    "transit.no_profile": "Fülle zuerst dein Geburtshoroskop-Profil aus (/profile).",
+    "transit.no_quota": "Dein Guthaben ist aufgebraucht. Kaufe ein Paket oder Abonnement, um deine Transite zu sehen:",
+    "transit.failed": "Transite konnten nicht berechnet werden. Versuche es später erneut.",
+    # -------------------------------------------------------------------------
+    # Daily horoscope
+    # -------------------------------------------------------------------------
+    "daily.header": "🌟 Heutiges Horoskop",
+    "daily.status_on": "Tageshoroskop ist AN. Lieferzeit: {hour}:00 (deine Zeitzone).",
+    "daily.status_off": "Tageshoroskop ist AUS.",
+    "daily.not_subscriber": "Das Tageshoroskop ist ein Abonnement-Feature. Abonniere, um es jeden Morgen zu erhalten:",
+    "daily.no_profile": "Fülle zuerst dein Geburtshoroskop-Profil aus (/profile).",
+    "daily.enabled": "Tageshoroskop aktiviert ✅",
+    "daily.disabled": "Tageshoroskop deaktiviert.",
+    "daily.hour_set": "Lieferzeit: {hour}:00 ✅",
+    "daily.kb.turn_on": "🔔 Aktivieren",
+    "daily.kb.turn_off": "🔕 Deaktivieren",
+    # -------------------------------------------------------------------------
+    # History
+    # -------------------------------------------------------------------------
+    "history.empty": "Noch keine Analysen. Tippe auf «🔮 Analyse», um deine erste zu erstellen.",
+    "history.title": "📜 Analyseverlauf:",
+    "history.label": "🔮 {date} · {status}",
+    "history.detail_header": "🔮 Analyse #{id}",
+    "history.detail_status": "Status: {status}",
+    "history.detail_created": "Erstellt: {created_at}",
+    "history.detail_ready": "Fertig: {completed_at}",
+    "history.not_found": "Nicht gefunden",
+    # -------------------------------------------------------------------------
+    # History / blueprint detail keyboard labels
+    # -------------------------------------------------------------------------
+    "history.kb.download": "📥 .md herunterladen",
+    "history.kb.preview": "👁 Vorschau",
+    "history.kb.back": "← Zurück",
+    "history.kb.prev_page": "← Zurück",
+    "history.kb.next_page": "Weiter →",
+    "history.unavailable": "Nicht verfügbar",
+    # -------------------------------------------------------------------------
+    # Buy / payments
+    # -------------------------------------------------------------------------
+    "buy.menu_title": "Was möchtest du kaufen? (Zahlung per Telegram Stars ★):",
+    "buy.no_plans": "Noch keine Pläne verfügbar. Schau später vorbei.",
+    "buy.plan_subscription": "⭐ {name} — {price}★",
+    "buy.plan_package": "⭐ {name} · {count} Analysen — {price}★",
+    "buy.invoice_subscription": "Abonnement für {period_days} Tage",
+    "buy.invoice_package": "Paket: {count} Analysen",
+    "buy.plan_unavailable": "Dieser Plan ist nicht mehr verfügbar.",
+    "buy.payment_success": "Zahlung eingegangen! Zugang aktiviert. ✨",
+    "buy.payment_already_credited": "Diese Zahlung wurde bereits gutgeschrieben.",
+    "buy.kb.open": "💳 Analysen kaufen",
+    # -------------------------------------------------------------------------
+    # Shared / generic
+    # -------------------------------------------------------------------------
+    "kb.cancel": "✖️ Abbrechen",
+    # -------------------------------------------------------------------------
+    # Master bot — owner onboarding
+    # -------------------------------------------------------------------------
+    "master.onboard.invite_invalid": "Die Einladung ist ungültig oder abgelaufen.",
+    "master.onboard.slug_prompt": "Willkommen! Lass uns einen Bot erstellen. Gib den Tenant-Slug ein (lateinische Buchstaben, keine Leerzeichen){prefill}:",
+    "master.onboard.slug_prefill": " (Vorschlag: {slug})",
+    "master.onboard.plain_start": "Dies ist der Plattform-Onboarding-Bot. Öffne einen Einladungslink, um deinen eigenen Bot zu erstellen.",
+    "master.onboard.slug_invalid": "Der Slug darf nicht leer sein oder Leerzeichen enthalten. Bitte erneut versuchen:",
+    "master.onboard.slug_taken": "Dieser Slug ist bereits vergeben. Gib einen anderen ein:",
+    "master.onboard.display_name_prompt": "Anzeigename des Produkts (z. B. «Acme Astro»):",
+    "master.onboard.display_name_empty": "Der Name darf nicht leer sein. Bitte erneut eingeben:",
+    "master.onboard.lang_prompt": "Standardsprache (zweistelliger Code, z. B. ru oder en):",
+    "master.onboard.lang_invalid": "Ein zweistelliger Sprachcode ist erforderlich, z. B. ru. Bitte erneut eingeben:",
+    "master.onboard.confirm": (
+        "Daten prüfen:\nslug: {slug}\nName: {display_name}\nSprache: {language}\n\n"
+        "Bot erstellen?"
+    ),
+    "master.onboard.invite_gone": "Die Einladung ist nicht mehr gültig.",
+    "master.onboard.creating": "Tenant wird erstellt… Prüfe, ob der Bot automatisch angelegt werden kann.",
+    "master.onboard.cancelled": "Onboarding abgebrochen.",
+    "master.onboard.token_invalid": "Das sieht nicht wie ein gültiger Bot-Token aus. Sende den Token von @BotFather erneut:",
+    "master.onboard.done": "Fertig! Bot @{username} ist aktiviert. Er wird nach dem Neustart des Workers verfügbar.",
+    "master.kb.cancel": "Abbrechen",
+    "master.kb.create_bot": "Bot erstellen",
+    # -------------------------------------------------------------------------
+    # Master bot — owner console
+    # -------------------------------------------------------------------------
+    "owner.tenants.empty": "Du hast noch keine Tenants. Erstelle einen Bot über einen Einladungslink.",
+    "owner.tenants.header": "Deine Tenants:",
+    "owner.tenants.line": "• {display_name} (/{slug}) — {status}",
+    "owner.tenants.hint": "\nVerwaltung: /manage <slug>",
+    "owner.manage.usage": "Verwendung: /manage <slug>",
+    "owner.manage.not_found": "Tenant nicht gefunden oder keine Berechtigung.",
+    "owner.manage.title": "Verwaltung: {display_name} (/{slug}) — {status}",
+    "owner.manage.kb.stats": "📊 Statistik",
+    "owner.manage.kb.pause": "⏸ Pausieren",
+    "owner.manage.kb.resume": "▶️ Fortsetzen",
+    "owner.manage.kb.transfer": "🔁 Eigentümer übertragen",
+    "owner.stats.text": (
+        "📊 Statistik (letzte {period_days} Tage)\n"
+        "Aktiv: {active_customers}, zahlend: {paid_customers}\n"
+        "DAU/WAU/MAU: {dau}/{wau}/{mau}\n"
+        "Umsatz: {revenue_cents}, MRR: {mrr_cents}\n"
+        "Anfragen: {requests_by_kind}"
+    ),
+    "owner.no_rights": "Keine Berechtigung",
+    "owner.pause.platform_blocked": "Der Plattform-Tenant kann nicht pausiert werden",
+    "owner.pause.done": "⏸ Pausiert.",
+    "owner.resume.done": "▶️ Fortgesetzt.",
+    "owner.manage.kb.delete": "🗑 Löschen",
+    "owner.delete.prompt": (
+        "⚠️ Dadurch wird der Bot dauerhaft gelöscht und der Tenant ausgeblendet. "
+        "Zur Bestätigung sende den Slug: {slug}\n(oder /cancel)"
+    ),
+    "owner.delete.mismatch": "Slug stimmt nicht überein. Sende {slug} erneut oder /cancel.",
+    "owner.delete.done": "🗑 Bot gelöscht.",
+    "owner.delete.cancelled": "Abgebrochen.",
+    "owner.delete.platform_blocked": "Der Plattform-Tenant kann nicht gelöscht werden",
+    # -------------------------------------------------------------------------
+    # Superadmin cabinet
+    # -------------------------------------------------------------------------
+    "admin.denied": "Keine Berechtigung.",
+    "admin.menu.title": "🛠 Superadmin-Panel",
+    "admin.menu.kb.tenants": "🏢 Bots",
+    "admin.menu.kb.invites": "🎟 Einladungen",
+    "admin.tenants.title": "Alle Bots:",
+    "admin.tenants.empty": "Noch keine Bots.",
+    "admin.tenant.title": "Bot: {display_name} (/{slug}) — {status}",
+    "admin.tenant.kb.stats": "📊 Stats",
+    "admin.tenant.kb.suspend": "⏸ Sperren",
+    "admin.tenant.kb.resume": "▶️ Fortsetzen",
+    "admin.tenant.kb.delete": "🗑 Löschen",
+    "admin.kb.back": "⬅️ Zurück",
+    "admin.tenant.suspended": "⏸ Bot gesperrt.",
+    "admin.tenant.resumed": "▶️ Bot fortgesetzt.",
+    "admin.invites.title": "Aktive Einladungen:",
+    "admin.invites.empty": "Keine aktiven Einladungen.",
+    "admin.invites.kb.new": "➕ Neue Einladung",
+    "admin.invite.kb.revoke": "🗑 Widerrufen",
+    "admin.invite.created": "Einladung erstellt:\n{link}",
+    "admin.invite.revoked": "Einladung widerrufen.",
+    "admin.stale": "Nicht gefunden — Liste aktualisiert.",
+    # -------------------------------------------------------------------------
+    # Transfer ownership
+    # -------------------------------------------------------------------------
+    "owner.transfer.usage": "Verwendung: /transfer <slug>",
+    "owner.transfer.not_owner": "Tenant nicht gefunden oder du bist nicht der Eigentümer.",
+    "owner.transfer.prompt": (
+        "Sende die Telegram-ID des neuen Eigentümers (eine Zahl). "
+        "Er muss bereits ein Konto in diesem Tenant haben (deinen Bot gestartet haben)."
+    ),
+    "owner.transfer.cancelled": "Abgebrochen.",
+    "owner.transfer.target_invalid": "Eine numerische Telegram-ID ist erforderlich. Erneut versuchen oder /cancel.",
+    "owner.transfer.no_rights_anymore": "Du hast keine Berechtigung mehr zur Übertragung.",
+    "owner.transfer.no_account": (
+        "Dieser Nutzer hat kein Konto im Tenant. "
+        "Er muss zuerst deinen Bot starten."
+    ),
+    "owner.transfer.done": "✅ Fertig. Eigentümerschaft übertragen.",
+    # -------------------------------------------------------------------------
+    # Language selection
+    # -------------------------------------------------------------------------
+    "lang.prompt": "Wähle deine Sprache:",
+    "lang.changed": "Sprache aktualisiert.",
+    # -------------------------------------------------------------------------
+    # Onboarding flow
+    # -------------------------------------------------------------------------
+    "onb.prompt.full_name": "Gib deinen vollständigen Namen ein (wie in der Geburtsurkunde):",
+    "onb.error.full_name": "Name nicht erkannt. Gib deinen vollständigen Namen als Text ein:",
+    "onb.prompt.birth_date": "Geburtsdatum im Format JJJJ-MM-TT (z. B. 1980-06-24):",
+    "onb.error.birth_date": "Datum nicht erkannt. Format JJJJ-MM-TT:",
+    "onb.prompt.birth_time": "Geburtszeit HH:MM (z. B. 10:00):",
+    "onb.error.birth_time": "Uhrzeit nicht erkannt. Format HH:MM:",
+    "onb.prompt.birth_place": (
+        "Geburtsort: Sende deinen Standort (📎 → Standort, du kannst eine Markierung auf der "
+        "Karte setzen) oder gib eine Stadt / Teil einer Adresse ein:"
+    ),
+    "onb.done": "Fertig! Dein Profil ist gespeichert. Der Befehl /blueprint erstellt deine Analyse.",
+}
