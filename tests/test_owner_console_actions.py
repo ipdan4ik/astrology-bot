@@ -495,3 +495,40 @@ async def test_delete_by_non_owner_denied(session, monkeypatch):
     assert state.state is None  # FSM not entered
     assert q.answers and q.answers[-1][0] == "Нет прав"
     assert q.answers[-1][1].get("show_alert") is True
+
+
+async def test_delete_reauthorizes_at_apply_time(session, monkeypatch):
+    """If the owner's role is revoked after tapping Delete but before typing the
+    slug, on_delete_confirm must refuse: reply no-rights, clear state, no archive."""
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    # step 1: tap Delete → state set
+    q = FakeCallbackQuery(from_user_id=OWNER_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+    assert state.state == oc.OwnerDelete.awaiting_confirm
+
+    # revoke the owner's role before the confirm step
+    result = await session.execute(
+        select(TenantRole).where(
+            TenantRole.tenant_id == t.id,
+            TenantRole.account_id == owner.id,
+            TenantRole.role == "owner",
+        )
+    )
+    await session.delete(result.scalar_one())
+    await session.commit()
+
+    # step 2: type the CORRECT slug — must still be refused (role gone)
+    msg = FakeMessage(from_user_id=OWNER_TG, text=t.slug)
+    await oc.on_delete_confirm(msg, state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # NOT archived
+    assert await _audit_rows(session, t.id, "tenant.delete") == []
+    assert state.state is None  # cleared
