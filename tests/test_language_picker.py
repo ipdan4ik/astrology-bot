@@ -35,3 +35,12 @@ async def test_picker_uses_action(session, default_tenant):
     markup = await language_picker_kb(default_tenant.id, action="set")
     actions = {LangCb.unpack(b.callback_data).action for b in _inline(markup)}
     assert actions == {"set"}
+
+
+def test_lang_labels_cover_all_platform_langs():
+    from quantuum.bot.ui.keyboards import LANG_LABELS
+    from quantuum.i18n.langs import PLATFORM_LANGS
+
+    for code in PLATFORM_LANGS:
+        assert code in LANG_LABELS, f"LANG_LABELS missing native name for {code!r}"
+        assert LANG_LABELS[code].strip(), f"LANG_LABELS[{code!r}] is empty"

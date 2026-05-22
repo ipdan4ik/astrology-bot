@@ -20,6 +20,14 @@ _PROFILE_FIELDS = [
 LANG_LABELS = {
     "ru": "🇷🇺 Русский",
     "en": "🇬🇧 English",
+    "es": "🇪🇸 Español",
+    "fr": "🇫🇷 Français",
+    "pt": "🇵🇹 Português",
+    "it": "🇮🇹 Italiano",
+    "de": "🇩🇪 Deutsch",
+    "tr": "🇹🇷 Türkçe",
+    "zh": "🇨🇳 中文",
+    "hi": "🇮🇳 हिन्दी",
 }
 
 
@@ -67,7 +75,7 @@ async def language_picker_kb(tenant_id: int, *, action: str) -> InlineKeyboardMa
             text=LANG_LABELS.get(code, code.upper()),
             callback_data=LangCb(action=action, lang=code),
         )
-    b.adjust(1)
+    b.adjust(2)
     return b.as_markup()
 
 
