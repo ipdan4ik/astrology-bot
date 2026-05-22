@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     default_tenant_name: str = "Quantuum"
     magic_link_ttl_seconds: int = 900
     log_json: bool = True
+    geocoder_url: str = "https://nominatim.openstreetmap.org"
+    geocoder_user_agent: str = "quantuum-bot (onboarding geocoder)"
     llm_provider: str = "openai"
     llm_api_key: str = ""
     llm_model: str = "gpt-4o"
