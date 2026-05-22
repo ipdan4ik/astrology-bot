@@ -53,5 +53,12 @@ async def test_set_language_menu_change_confirms(session, default_tenant):
         query, LangCb(action="set", lang="en"), acc, i18n
     )
 
+    # Persisted to the DB
+    row = (
+        await session.execute(select(Account).where(Account.id == acc.id))
+    ).scalar_one()
+    await session.refresh(row)
+    assert row.preferred_lang == "en"
+
     # "set" → confirmation text (English), not the welcome
     assert msg.answer.await_args_list[0].args[0] == "Language updated."

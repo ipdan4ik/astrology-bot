@@ -18,9 +18,11 @@ async def on_set_language(
     # Persist on a fresh session — the middleware-injected `account` is detached.
     async with get_sessionmaker()() as session:
         acc = await session.get(Account, account.id)
-        if acc is not None:
-            acc.preferred_lang = lang
-            await session.commit()
+        if acc is None:
+            await query.answer()
+            return
+        acc.preferred_lang = lang
+        await session.commit()
     # The injected i18n still carries the old language; build one for the new lang.
     new_i18n = Translator(tenant_id=account.tenant_id, lang=lang)
     if callback_data.action == "setup":
