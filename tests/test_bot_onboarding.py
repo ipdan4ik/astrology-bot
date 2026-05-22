@@ -140,6 +140,31 @@ async def test_birth_place_location_saves_with_derived_tz(default_tenant, monkey
     assert state.state is None  # cleared
 
 
+async def test_birth_place_location_falls_back_when_reverse_fails(default_tenant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+
+    _patch_sessionmaker(monkeypatch, ob)
+    saved = AsyncMock()
+    monkeypatch.setattr(ob, "save_collected_profile", saved)
+    monkeypatch.setattr(ob, "coords_to_timezone", lambda lat, lon: "Europe/Moscow")
+    monkeypatch.setattr(ob, "reverse", AsyncMock(return_value=None))  # reverse-geocode failed
+
+    state = _State(_BASE)
+    state.state = ob.Onboarding.birth_place
+    message = SimpleNamespace(
+        location=SimpleNamespace(latitude=55.75, longitude=37.62), answer=AsyncMock()
+    )
+    account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
+
+    await ob.on_birth_place_location(message, state, account=account)
+
+    saved.assert_awaited_once()
+    assert saved.await_args.kwargs["data"]["birth_place"] == "📍 55.7500, 37.6200"
+
+
 async def test_birth_place_text_geocodes_then_confirms(default_tenant, monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock

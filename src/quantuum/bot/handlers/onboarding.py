@@ -199,7 +199,7 @@ async def on_geo_confirm(
     await query.answer()
 
 
-@router.callback_query(OnboardCb.filter(F.action == "geo_retry"))
+@router.callback_query(OnboardCb.filter(F.action == "geo_retry"), Onboarding.birth_place_confirm)
 async def on_geo_retry(query: CallbackQuery, callback_data: OnboardCb, state: FSMContext) -> None:
     await state.set_state(Onboarding.birth_place)
     await query.message.answer("Пришли геопозицию или другой город / адрес:")

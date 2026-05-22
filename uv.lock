@@ -1438,6 +1438,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "email-validator" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "lunar-python" },
     { name = "openai" },
     { name = "pydantic-settings" },
@@ -1452,7 +1453,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -1469,6 +1469,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=48.0.0" },
     { name = "email-validator", specifier = ">=2.0" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "lunar-python", specifier = ">=1.4.4" },
     { name = "openai", specifier = ">=2.37.0" },
     { name = "pydantic-settings", specifier = ">=2.6" },
@@ -1483,7 +1484,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.8" },
