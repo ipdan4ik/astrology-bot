@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 
+from sqlmodel import select
+
 from quantuum.api.routes import admin_payouts, admin_platform, admin_tenants, auth, billing, health, me, webhook
 from quantuum.db.bootstrap import (
     ensure_base_strings,
@@ -15,8 +17,8 @@ from quantuum.db.bootstrap import (
     ensure_superadmin,
     ensure_tenant_default_language,
 )
+from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
-from quantuum.domain.tenants import get_default_tenant_id
 from quantuum.logging_setup import bind_request_id, configure_logging
 
 
@@ -25,15 +27,17 @@ async def _lifespan(app: FastAPI):
     async with get_sessionmaker()() as session:
         await ensure_default_tenant(session)
         await ensure_default_tenant_bot(session)
-        platform = await ensure_platform_tenant(session)
+        await ensure_platform_tenant(session)
         await ensure_master_bot(session)
         await ensure_superadmin(session)
         await ensure_global_plans(session)
         await ensure_platform_stars_provider(session)
         await ensure_base_strings(session)
-        default_tenant_id = await get_default_tenant_id(session)
-        await ensure_tenant_default_language(session, default_tenant_id)
-        await ensure_tenant_default_language(session, platform.id, default_lang="ru")
+        # Enable all platform languages for every tenant (idempotent backfill of
+        # existing tenants; new tenants inherit the new default via provisioning).
+        tenant_ids = (await session.execute(select(Tenant.id))).scalars().all()
+        for tid in tenant_ids:
+            await ensure_tenant_default_language(session, tid)
     yield
 
 

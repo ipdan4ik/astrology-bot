@@ -6,9 +6,9 @@ def _inline(markup):
 
 
 async def test_picker_lists_enabled_langs_default_first(session, default_tenant):
-    # Seed ru (default) + en for the tenant.
     from quantuum.db.bootstrap import ensure_tenant_default_language
     from quantuum.bot.ui.keyboards import language_picker_kb
+    from quantuum.i18n.langs import PLATFORM_LANGS
 
     await ensure_tenant_default_language(session, default_tenant.id)
     await session.commit()
@@ -16,11 +16,10 @@ async def test_picker_lists_enabled_langs_default_first(session, default_tenant)
     markup = await language_picker_kb(default_tenant.id, action="setup")
     buttons = _inline(markup)
 
-    labels = [b.text for b in buttons]
-    assert labels == ["🇷🇺 Русский", "🇬🇧 English"]  # default (ru) first, then sorted
-
     codes = [LangCb.unpack(b.callback_data).lang for b in buttons]
-    assert codes == ["ru", "en"]
+    assert codes[0] == "ru", "default language must be first"
+    assert set(codes) == set(PLATFORM_LANGS), "picker lists all enabled languages"
+    assert codes[1:] == sorted(codes[1:]), "non-default languages are sorted"
     actions = {LangCb.unpack(b.callback_data).action for b in buttons}
     assert actions == {"setup"}
 

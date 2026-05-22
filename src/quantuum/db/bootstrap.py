@@ -4,6 +4,7 @@ from quantuum.common.crypto import encrypt_token
 from quantuum.common.datetime import utcnow
 from quantuum.db.models import Account, AccountIdentity, PackagePlan, PlatformString, SubscriptionPlan, Tenant, TenantBot, TenantLanguage
 from quantuum.domain.tenants import get_default_tenant_id
+from quantuum.i18n.langs import EXTRA_LANGS
 from quantuum.settings import get_settings
 
 
@@ -210,20 +211,24 @@ async def ensure_tenant_default_language(
     session,
     tenant_id: int,
     default_lang: str = "ru",
-    extra_langs: tuple[str, ...] = ("en",),
+    extra_langs: tuple[str, ...] = EXTRA_LANGS,
 ) -> None:
     """Idempotently ensure TenantLanguage rows for *tenant_id*.
 
-    * default_lang gets is_default=True, enabled=True.
+    * default_lang gets is_default=True, enabled=True — BUT only if the tenant
+      does not already have a default language (never creates a second default,
+      never flips an existing one).
     * each lang in extra_langs gets is_default=False, enabled=True.
-    * Never creates duplicate rows; never flips an already-set default.
+    * Never creates duplicate rows.
     """
     result = await session.execute(
         select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
     )
     existing: dict[str, TenantLanguage] = {row.lang: row for row in result.scalars()}
+    has_default = any(row.is_default for row in existing.values())
 
-    all_langs = [(default_lang, True)] + [(lang, False) for lang in extra_langs]
+    # The configured default is only marked default when no default exists yet.
+    all_langs = [(default_lang, not has_default)] + [(lang, False) for lang in extra_langs]
     added = False
     for lang, is_default in all_langs:
         if lang not in existing:

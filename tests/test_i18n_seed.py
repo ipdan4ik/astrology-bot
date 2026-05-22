@@ -60,8 +60,9 @@ async def test_ensure_base_strings_idempotent(session):
 
 
 async def test_ensure_tenant_default_language(session, default_tenant):
-    """ensure_tenant_default_language seeds ru (default) + en (extra) idempotently."""
+    """Seeds ru (default) + all extra langs idempotently, with exactly one default."""
     from quantuum.db.bootstrap import ensure_tenant_default_language
+    from quantuum.i18n.langs import PLATFORM_LANGS
 
     tenant_id = default_tenant.id
 
@@ -72,28 +73,42 @@ async def test_ensure_tenant_default_language(session, default_tenant):
     )
     rows = {row.lang: row for row in result.scalars()}
 
-    assert "ru" in rows, "ru language row missing"
-    assert rows["ru"].is_default is True, "ru must be the default language"
-    assert rows["ru"].enabled is True
-
-    assert "en" in rows, "en language row missing"
-    assert rows["en"].is_default is False, "en must NOT be the default"
-    assert rows["en"].enabled is True
-
-    # Exactly one default row
+    assert set(rows) == set(PLATFORM_LANGS), "all platform languages must be seeded"
+    assert rows["ru"].is_default is True and rows["ru"].enabled is True
+    assert rows["en"].is_default is False and rows["en"].enabled is True
     defaults = [r for r in rows.values() if r.is_default]
-    assert len(defaults) == 1, f"Expected exactly 1 default language, got {len(defaults)}"
+    assert len(defaults) == 1, f"Expected exactly 1 default, got {len(defaults)}"
 
-    # --- Idempotency: run again; no error, no duplicates, no default flip ---
+    # Idempotency: run again; no duplicates, no default flip.
     await ensure_tenant_default_language(session, tenant_id)
-
     result2 = await session.execute(
         select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
     )
     rows2 = list(result2.scalars())
-    assert len(rows2) == 2, f"Expected 2 language rows after re-run, got {len(rows2)}"
+    assert len(rows2) == len(PLATFORM_LANGS)
     defaults2 = [r for r in rows2 if r.is_default]
     assert len(defaults2) == 1 and defaults2[0].lang == "ru"
+
+
+async def test_ensure_tenant_default_language_no_second_default(session, default_tenant):
+    """A tenant whose default is already 'en' must not gain a second default when
+    backfilled with default_lang='ru'."""
+    from quantuum.db.bootstrap import ensure_tenant_default_language
+
+    tenant_id = default_tenant.id
+    # Pre-existing 'en' default (mimics an onboarded tenant with a non-ru default).
+    session.add(TenantLanguage(tenant_id=tenant_id, lang="en", enabled=True, is_default=True))
+    await session.commit()
+
+    await ensure_tenant_default_language(session, tenant_id)  # default_lang='ru'
+
+    result = await session.execute(
+        select(TenantLanguage).where(TenantLanguage.tenant_id == tenant_id)
+    )
+    rows = list(result.scalars())
+    defaults = [r for r in rows if r.is_default]
+    assert len(defaults) == 1 and defaults[0].lang == "en", "must keep the original default"
+    assert any(r.lang == "ru" and not r.is_default for r in rows), "ru added as non-default"
 
 
 async def test_platform_tenant_default_language_seeded(session):
