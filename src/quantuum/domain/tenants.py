@@ -54,6 +54,16 @@ async def archive_tenant(session, tenant_id: int) -> Tenant | None:
     return tenant
 
 
+async def list_all_tenants(session) -> list[Tenant]:
+    """All non-archived, non-platform tenants, ordered by id (superadmin cabinet)."""
+    result = await session.execute(
+        select(Tenant)
+        .where(Tenant.status != "archived", Tenant.is_platform == False)  # noqa: E712
+        .order_by(Tenant.id)
+    )
+    return list(result.scalars().all())
+
+
 async def get_default_tenant_id(session) -> int:
     settings = get_settings()
     result = await session.execute(select(Tenant).where(Tenant.slug == settings.default_tenant_slug))

@@ -44,3 +44,9 @@ class DailyCb(CallbackData, prefix="daily"):
 class LangCb(CallbackData, prefix="lang"):
     action: str  # setup | set
     lang: str = ""
+
+
+class SuperAdminCb(CallbackData, prefix="sa"):
+    action: str  # menu | tenants | tenant | suspend | resume | delete | invites | newinvite | revoke
+    tenant_id: int = 0
+    invite_id: int = 0
