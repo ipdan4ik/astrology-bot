@@ -39,3 +39,8 @@ class BuyCb(CallbackData, prefix="buy"):
 class DailyCb(CallbackData, prefix="daily"):
     action: str  # toggle | set_hour
     value: int = 0  # hour for set_hour
+
+
+class LangCb(CallbackData, prefix="lang"):
+    action: str  # setup | set
+    lang: str = ""
