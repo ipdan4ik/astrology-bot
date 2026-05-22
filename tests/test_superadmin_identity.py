@@ -76,3 +76,37 @@ async def test_ensure_superadmin_links_tg_idempotently(session, monkeypatch):
     assert len(rows) == 1  # idempotent
 
     get_settings.cache_clear()
+
+
+async def test_ensure_superadmin_tg_rotation_revokes_old(session, monkeypatch):
+    from quantuum.db import bootstrap as bs
+    from quantuum.settings import get_settings
+    from quantuum.auth.identity import find_superadmin_by_tg
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("BOOTSTRAP_SUPERADMIN_EMAIL", "boss2@example.com")
+    monkeypatch.setenv("BOOTSTRAP_SUPERADMIN_TG_ID", "1000")
+    get_settings.cache_clear()
+    await bs.ensure_superadmin(session)
+    assert await find_superadmin_by_tg(session, "1000") is not None
+
+    # rotate the env var to a new tg id
+    monkeypatch.setenv("BOOTSTRAP_SUPERADMIN_TG_ID", "2000")
+    get_settings.cache_clear()
+    await bs.ensure_superadmin(session)
+
+    assert await find_superadmin_by_tg(session, "2000") is not None  # new linked
+    assert await find_superadmin_by_tg(session, "1000") is None      # old revoked
+    get_settings.cache_clear()
+
+
+async def test_find_superadmin_by_tg_none_when_only_plain(session):
+    from quantuum.auth.identity import find_superadmin_by_tg
+
+    plain = Account(tenant_id=None, is_superadmin=False)
+    session.add(plain)
+    await session.flush()
+    session.add(AccountIdentity(account_id=plain.id, provider="tg_chat", provider_user_id="3030"))
+    await session.commit()
+
+    assert await find_superadmin_by_tg(session, "3030") is None

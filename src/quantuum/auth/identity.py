@@ -64,6 +64,8 @@ async def find_superadmin_by_tg(session, tg_user_id: str) -> Account | None:
 
     Filters on Account.is_superadmin, so a coexisting platform-scoped tg_chat
     identity with the same id (created by the master-bot middleware) is ignored.
+    Assumes at most one superadmin account is linked to a given Telegram id
+    (bootstrap enforces this); two would make the underlying query raise.
     """
     result = await session.execute(
         select(AccountIdentity)

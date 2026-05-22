@@ -117,14 +117,25 @@ async def ensure_superadmin(session) -> None:
 
     tg_id = settings.bootstrap_superadmin_tg_id
     if tg_id:
-        tg_existing = await session.execute(
-            select(AccountIdentity).where(
-                AccountIdentity.provider == "tg_chat",
-                AccountIdentity.provider_user_id == tg_id,
-                AccountIdentity.account_id == account_id,
+        # The env var is authoritative for the superadmin's Telegram identity:
+        # drop any previously-linked tg_chat identities that don't match (so
+        # rotating BOOTSTRAP_SUPERADMIN_TG_ID revokes the old one), then ensure
+        # the configured one exists. Idempotent across restarts.
+        rows = (
+            await session.execute(
+                select(AccountIdentity).where(
+                    AccountIdentity.provider == "tg_chat",
+                    AccountIdentity.account_id == account_id,
+                )
             )
-        )
-        if tg_existing.scalar_one_or_none() is None:
+        ).scalars().all()
+        has_current = False
+        for row in rows:
+            if row.provider_user_id == tg_id:
+                has_current = True
+            else:
+                await session.delete(row)
+        if not has_current:
             session.add(
                 AccountIdentity(
                     account_id=account_id,
