@@ -117,6 +117,26 @@ async def test_platform_tenant_default_language_seeded(session):
     assert defaults[0].lang == "ru"
 
 
+def test_language_selection_strings_present():
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+
+    for key in [
+        "lang.prompt",
+        "lang.changed",
+        "btn.language",
+        "onb.prompt.full_name",
+        "onb.error.full_name",
+        "onb.prompt.birth_date",
+        "onb.error.birth_date",
+        "onb.prompt.birth_time",
+        "onb.error.birth_time",
+        "onb.prompt.birth_place",
+        "onb.done",
+    ]:
+        assert key in BASE_STRINGS, f"missing {key}"
+        assert "ru" in BASE_STRINGS[key] and "en" in BASE_STRINGS[key]
+
+
 def test_place_edit_strings_present_and_obsolete_removed():
     from quantuum.i18n.seed_strings import BASE_STRINGS
 

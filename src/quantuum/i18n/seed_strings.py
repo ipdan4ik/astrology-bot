@@ -66,6 +66,11 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "🔔 Ежедневный гороскоп",
         "en": "🔔 Daily horoscope",
     },
+    # Language selection (picker + menu button)
+    "btn.language": {
+        "ru": "🌐 Язык",
+        "en": "🌐 Language",
+    },
     # -------------------------------------------------------------------------
     # Blueprint status words (used in history labels & detail views)
     # -------------------------------------------------------------------------
@@ -687,5 +692,54 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "owner.transfer.done": {
         "ru": "✅ Готово. Владение передано.",
         "en": "✅ Done. Ownership transferred.",
+    },
+    "lang.prompt": {
+        "ru": "Выбери язык:",
+        "en": "Choose your language:",
+    },
+    "lang.changed": {
+        "ru": "Язык изменён.",
+        "en": "Language updated.",
+    },
+    # -------------------------------------------------------------------------
+    # Onboarding flow (onboarding.py) — RU values are the exact pre-i18n literals
+    # -------------------------------------------------------------------------
+    "onb.prompt.full_name": {
+        "ru": "Введи полное имя (как в свидетельстве о рождении):",
+        "en": "Enter your full name (as on your birth certificate):",
+    },
+    "onb.error.full_name": {
+        "ru": "Не понял имя. Введи полное имя текстом:",
+        "en": "Couldn't read the name. Enter your full name as text:",
+    },
+    "onb.prompt.birth_date": {
+        "ru": "Дата рождения в формате ГГГГ-ММ-ДД (например 1980-06-24):",
+        "en": "Date of birth in YYYY-MM-DD format (e.g. 1980-06-24):",
+    },
+    "onb.error.birth_date": {
+        "ru": "Не понял дату. Формат ГГГГ-ММ-ДД:",
+        "en": "Couldn't read the date. Format YYYY-MM-DD:",
+    },
+    "onb.prompt.birth_time": {
+        "ru": "Время рождения ЧЧ:ММ (например 10:00):",
+        "en": "Time of birth HH:MM (e.g. 10:00):",
+    },
+    "onb.error.birth_time": {
+        "ru": "Не понял время. Формат ЧЧ:ММ:",
+        "en": "Couldn't read the time. Format HH:MM:",
+    },
+    "onb.prompt.birth_place": {
+        "ru": (
+            "Место рождения: пришли геопозицию (📎 → Геопозиция, можно поставить точку "
+            "на карте) или напиши город / часть адреса:"
+        ),
+        "en": (
+            "Place of birth: send your location (📎 → Location, you can drop a pin on the "
+            "map) or type a city / part of an address:"
+        ),
+    },
+    "onb.done": {
+        "ru": "Готово! Профиль сохранён. Команда /blueprint сгенерирует твой разбор.",
+        "en": "Done! Your profile is saved. The /blueprint command will generate your reading.",
     },
 }
