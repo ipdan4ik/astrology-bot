@@ -3,6 +3,18 @@ from decimal import Decimal
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.bot.handlers.onboarding import parse_birth_date, parse_birth_time
+from quantuum.i18n.resolver import safe_format
+from quantuum.i18n.seed_strings import BASE_STRINGS
+
+
+class FakeI18n:
+    """Returns the seeded RU string for a key, formatted with vars (no DB)."""
+
+    lang = "ru"
+
+    async def __call__(self, key, default=None, **vars):
+        template = BASE_STRINGS.get(key, {}).get("ru", default if default is not None else key)
+        return safe_format(template, vars)
 
 
 def test_parse_birth_date_valid():
@@ -131,7 +143,7 @@ async def test_birth_place_location_saves_with_derived_tz(default_tenant, monkey
     )
     account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
 
-    await ob.on_birth_place_location(message, state, account=account)
+    await ob.on_birth_place_location(message, state, account=account, i18n=FakeI18n())
 
     saved.assert_awaited_once()
     data = saved.await_args.kwargs["data"]
@@ -159,7 +171,7 @@ async def test_birth_place_location_falls_back_when_reverse_fails(default_tenant
     )
     account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
 
-    await ob.on_birth_place_location(message, state, account=account)
+    await ob.on_birth_place_location(message, state, account=account, i18n=FakeI18n())
 
     saved.assert_awaited_once()
     assert saved.await_args.kwargs["data"]["birth_place"] == "📍 55.7500, 37.6200"
@@ -181,12 +193,13 @@ async def test_birth_place_text_geocodes_then_confirms(default_tenant, monkeypat
     state.state = ob.Onboarding.birth_place
     message = SimpleNamespace(text="Bratsk", answer=AsyncMock())
 
-    await ob.on_birth_place_text(message, state)
+    await ob.on_birth_place_text(message, state, i18n=FakeI18n())
 
     assert state.state == ob.Onboarding.birth_place_confirm
     assert (await state.get_data())["timezone"] == "Asia/Irkutsk"
     text = message.answer.await_args.args[0]
-    assert "Bratsk" in text and "Asia/Irkutsk" in text
+    assert "Bratsk" in text
+    assert "Asia/Irkutsk" not in text  # tz line dropped (matches profile place-only flow)
 
 
 async def test_birth_place_text_not_found_reprompts(default_tenant, monkeypatch):
@@ -201,7 +214,7 @@ async def test_birth_place_text_not_found_reprompts(default_tenant, monkeypatch)
     state.state = ob.Onboarding.birth_place
     message = SimpleNamespace(text="asdfghjkl", answer=AsyncMock())
 
-    await ob.on_birth_place_text(message, state)
+    await ob.on_birth_place_text(message, state, i18n=FakeI18n())
 
     assert state.state == ob.Onboarding.birth_place  # unchanged, re-prompt
     message.answer.assert_awaited()
@@ -226,7 +239,7 @@ async def test_geo_confirm_saves(default_tenant, monkeypatch):
     query = SimpleNamespace(message=SimpleNamespace(answer=AsyncMock()), answer=AsyncMock())
     account = SimpleNamespace(id=1, tenant_id=default_tenant.id)
 
-    await ob.on_geo_confirm(query, OnboardCb(action="geo_confirm"), state, account=account)
+    await ob.on_geo_confirm(query, OnboardCb(action="geo_confirm"), state, account=account, i18n=FakeI18n())
 
     saved.assert_awaited_once()
     assert state.state is None
@@ -243,6 +256,41 @@ async def test_geo_retry_returns_to_birth_place(default_tenant, monkeypatch):
     state.state = ob.Onboarding.birth_place_confirm
     query = SimpleNamespace(message=SimpleNamespace(answer=AsyncMock()), answer=AsyncMock())
 
-    await ob.on_geo_retry(query, OnboardCb(action="geo_retry"), state)
+    await ob.on_geo_retry(query, OnboardCb(action="geo_retry"), state, i18n=FakeI18n())
 
     assert state.state == ob.Onboarding.birth_place
+
+
+async def test_on_full_name_invalid_localised(default_tenant):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+
+    state = _State({})
+    state.state = ob.Onboarding.full_name
+    message = SimpleNamespace(text="   ", answer=AsyncMock())
+
+    await ob.on_full_name(message, state, i18n=FakeI18n())
+
+    assert message.answer.await_args.args[0] == BASE_STRINGS["onb.error.full_name"]["ru"]
+
+
+async def test_on_birth_date_prompt_localised_en(session, default_tenant):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from quantuum.bot.handlers import onboarding as ob
+
+    from .conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id, lang="en")
+    state = _State({})
+    state.state = ob.Onboarding.full_name
+    message = SimpleNamespace(text="Anna", answer=AsyncMock())
+
+    await ob.on_full_name(message, state, i18n=i18n)
+
+    # advancing to birth_date prompts the EN string
+    assert message.answer.await_args.args[0] == BASE_STRINGS["onb.prompt.birth_date"]["en"]
+    assert state.state == ob.Onboarding.birth_date

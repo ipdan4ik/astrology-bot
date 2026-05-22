@@ -13,6 +13,7 @@ from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.natal_profiles import upsert_natal_profile
 from quantuum.geocoding import coords_to_timezone, geocode, reverse
+from quantuum.i18n import Translator
 
 router = Router()
 
@@ -79,59 +80,18 @@ async def save_collected_profile(session, *, account: Account, data: dict):
     )
 
 
-@router.callback_query(OnboardCb.filter(F.action == "start"))
-async def start_onboarding(query: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(Onboarding.full_name)
-    await query.message.answer(
-        "Введи полное имя (как в свидетельстве о рождении):", reply_markup=await cancel_kb()
-    )
-    await query.answer()
-
-
-@router.message(Onboarding.full_name)
-async def on_full_name(message: Message, state: FSMContext) -> None:
-    name = parse_required_text(message.text)
-    if name is None:
-        await message.answer("Не понял имя. Введи полное имя текстом:")
-        return
-    await state.update_data(full_name=name)
-    await state.set_state(Onboarding.birth_date)
-    await message.answer("Дата рождения в формате ГГГГ-ММ-ДД (например 1980-06-24):")
-
-
-@router.message(Onboarding.birth_date)
-async def on_birth_date(message: Message, state: FSMContext) -> None:
-    parsed = parse_birth_date(message.text)
-    if parsed is None:
-        await message.answer("Не понял дату. Формат ГГГГ-ММ-ДД:")
-        return
-    await state.update_data(birth_date=parsed.isoformat())
-    await state.set_state(Onboarding.birth_time)
-    await message.answer("Время рождения ЧЧ:ММ (например 10:00):")
-
-
-@router.message(Onboarding.birth_time)
-async def on_birth_time(message: Message, state: FSMContext) -> None:
-    parsed = parse_birth_time(message.text)
-    if parsed is None:
-        await message.answer("Не понял время. Формат ЧЧ:ММ:")
-        return
-    await state.update_data(birth_time=parsed.isoformat())
-    await state.set_state(Onboarding.birth_place)
-    await message.answer(
-        "Место рождения: пришли геопозицию (📎 → Геопозиция, можно поставить точку на карте) "
-        "или напиши город / часть адреса:"
-    )
-
-
-async def geo_confirm_kb():
+async def geo_confirm_kb(i18n: Translator):
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="✅ Да", callback_data=OnboardCb(action="geo_confirm").pack())
+        InlineKeyboardButton(
+            text=await i18n("profile.kb.place_confirm"),
+            callback_data=OnboardCb(action="geo_confirm").pack(),
+        )
     )
     builder.row(
         InlineKeyboardButton(
-            text="✏️ Другой адрес", callback_data=OnboardCb(action="geo_retry").pack()
+            text=await i18n("profile.kb.place_retry"),
+            callback_data=OnboardCb(action="geo_retry").pack(),
         )
     )
     return builder.as_markup()
@@ -145,11 +105,52 @@ async def _finalize_profile(state: FSMContext, account: Account) -> None:
     await state.clear()
 
 
-_DONE_MSG = "Готово! Профиль сохранён. Команда /blueprint сгенерирует твой разбор."
+@router.callback_query(OnboardCb.filter(F.action == "start"))
+async def start_onboarding(query: CallbackQuery, state: FSMContext, i18n: Translator) -> None:
+    await state.set_state(Onboarding.full_name)
+    await query.message.answer(
+        await i18n("onb.prompt.full_name"), reply_markup=await cancel_kb(i18n)
+    )
+    await query.answer()
+
+
+@router.message(Onboarding.full_name)
+async def on_full_name(message: Message, state: FSMContext, i18n: Translator) -> None:
+    name = parse_required_text(message.text)
+    if name is None:
+        await message.answer(await i18n("onb.error.full_name"))
+        return
+    await state.update_data(full_name=name)
+    await state.set_state(Onboarding.birth_date)
+    await message.answer(await i18n("onb.prompt.birth_date"))
+
+
+@router.message(Onboarding.birth_date)
+async def on_birth_date(message: Message, state: FSMContext, i18n: Translator) -> None:
+    parsed = parse_birth_date(message.text)
+    if parsed is None:
+        await message.answer(await i18n("onb.error.birth_date"))
+        return
+    await state.update_data(birth_date=parsed.isoformat())
+    await state.set_state(Onboarding.birth_time)
+    await message.answer(await i18n("onb.prompt.birth_time"))
+
+
+@router.message(Onboarding.birth_time)
+async def on_birth_time(message: Message, state: FSMContext, i18n: Translator) -> None:
+    parsed = parse_birth_time(message.text)
+    if parsed is None:
+        await message.answer(await i18n("onb.error.birth_time"))
+        return
+    await state.update_data(birth_time=parsed.isoformat())
+    await state.set_state(Onboarding.birth_place)
+    await message.answer(await i18n("onb.prompt.birth_place"))
 
 
 @router.message(Onboarding.birth_place, F.location)
-async def on_birth_place_location(message: Message, state: FSMContext, account: Account) -> None:
+async def on_birth_place_location(
+    message: Message, state: FSMContext, account: Account, i18n: Translator
+) -> None:
     lat = message.location.latitude
     lon = message.location.longitude
     tz = coords_to_timezone(lat, lon)
@@ -159,14 +160,14 @@ async def on_birth_place_location(message: Message, state: FSMContext, account: 
         birth_place=display, latitude=str(lat), longitude=str(lon), timezone=tz
     )
     await _finalize_profile(state, account)
-    await message.answer(_DONE_MSG)
+    await message.answer(await i18n("onb.done"))
 
 
 @router.message(Onboarding.birth_place, F.text)
-async def on_birth_place_text(message: Message, state: FSMContext) -> None:
+async def on_birth_place_text(message: Message, state: FSMContext, i18n: Translator) -> None:
     results = await geocode((message.text or "").strip())
     if not results:
-        await message.answer("Не нашёл это место. Уточни город/адрес или пришли геопозицию:")
+        await message.answer(await i18n("profile.place.not_found"))
         return
     top = results[0]
     tz = coords_to_timezone(top.lat, top.lon)
@@ -178,29 +179,30 @@ async def on_birth_place_text(message: Message, state: FSMContext) -> None:
     )
     await state.set_state(Onboarding.birth_place_confirm)
     await message.answer(
-        f"Нашёл: {top.display_name}\nЧасовой пояс: {tz}\n\nВерно?",
-        reply_markup=await geo_confirm_kb(),
+        await i18n("profile.place.confirm", place=top.display_name),
+        reply_markup=await geo_confirm_kb(i18n),
     )
 
 
 @router.message(Onboarding.birth_place)
-async def on_birth_place_other(message: Message, state: FSMContext) -> None:
-    await message.answer(
-        "Пришли геопозицию (📎 → Геопозиция) или напиши город / адрес текстом:"
-    )
+async def on_birth_place_other(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await message.answer(await i18n("profile.prompt.birth_place"))
 
 
 @router.callback_query(OnboardCb.filter(F.action == "geo_confirm"), Onboarding.birth_place_confirm)
 async def on_geo_confirm(
-    query: CallbackQuery, callback_data: OnboardCb, state: FSMContext, account: Account
+    query: CallbackQuery, callback_data: OnboardCb, state: FSMContext,
+    account: Account, i18n: Translator,
 ) -> None:
     await _finalize_profile(state, account)
-    await query.message.answer(_DONE_MSG)
+    await query.message.answer(await i18n("onb.done"))
     await query.answer()
 
 
 @router.callback_query(OnboardCb.filter(F.action == "geo_retry"), Onboarding.birth_place_confirm)
-async def on_geo_retry(query: CallbackQuery, callback_data: OnboardCb, state: FSMContext) -> None:
+async def on_geo_retry(
+    query: CallbackQuery, callback_data: OnboardCb, state: FSMContext, i18n: Translator
+) -> None:
     await state.set_state(Onboarding.birth_place)
-    await query.message.answer("Пришли геопозицию или другой город / адрес:")
+    await query.message.answer(await i18n("profile.prompt.birth_place"))
     await query.answer()
