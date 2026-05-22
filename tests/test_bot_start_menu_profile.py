@@ -52,10 +52,14 @@ def _fsm():
     return FSMContext(storage=storage, key=key)
 
 
-async def test_on_start_sends_welcome_and_menu(session, default_tenant):
+async def test_on_start_with_lang_set_sends_welcome_and_menu(session, default_tenant):
     i18n = await build_translator(session, default_tenant.id)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="600"
+    )
+    acc.preferred_lang = "ru"  # already chosen → no picker
     msg = FakeMessage("/start")
-    await start.on_start(msg, i18n)
+    await start.on_start(msg, acc, default_tenant.id, i18n)
 
     welcome = msg.answers[0][0]
     assert welcome == "Привет! Я построю твой астрологический разбор ✨"
@@ -63,8 +67,28 @@ async def test_on_start_sends_welcome_and_menu(session, default_tenant):
     assert menu_text == "Главное меню:"
     assert set(_reply_texts(menu_markup)) == {
         "🔮 Разбор", "❓ Спросить астролога", "🌌 Транзиты", "🔔 Ежедневный гороскоп",
-        "👤 Профиль", "📜 История", "ℹ️ Помощь"
+        "👤 Профиль", "📜 История", "ℹ️ Помощь", "🌐 Язык",
     }
+
+
+async def test_on_start_first_time_shows_language_picker(session, default_tenant):
+    from quantuum.db.bootstrap import ensure_tenant_default_language
+    from quantuum.bot.ui.callbacks import LangCb
+
+    await ensure_tenant_default_language(session, default_tenant.id)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="601"
+    )  # preferred_lang is None → picker
+    msg = FakeMessage("/start")
+    await start.on_start(msg, acc, default_tenant.id, i18n)
+
+    assert len(msg.answers) == 1  # picker only, no welcome/menu yet
+    prompt, markup = msg.answers[0]
+    assert prompt == "Выбери язык:"
+    codes = {LangCb.unpack(b.callback_data).lang for row in markup.inline_keyboard for b in row}
+    assert codes == {"ru", "en"}
 
 
 async def test_on_help_btn_sends_help_text(session, default_tenant):
