@@ -43,6 +43,7 @@ from quantuum.domain.qa import create_qa, get_qa, list_qa
 from quantuum.domain.transits import create_transit, get_transit, list_transits
 from quantuum.domain.daily import get_settings, is_subscriber, list_horoscopes, upsert_settings
 from quantuum.domain.quota import consume_quota, refund_quota
+from quantuum.i18n import resolve_lang
 from quantuum.domain.requests import create_request
 from quantuum.tasks import enqueue
 
@@ -220,7 +221,12 @@ async def create_qa_route(
     if len(question) > 1000:
         question = question[:1000]
 
-    lang = account.preferred_lang or "ru"
+    lang = await resolve_lang(
+        session,
+        tenant_id=account.tenant_id,
+        preferred_lang=account.preferred_lang,
+        tg_language_code=None,
+    )
 
     try:
         charged = await consume_quota(session, account.id, "qa")
@@ -299,7 +305,12 @@ async def create_transit_route(
     if profile is None:
         raise HTTPException(status_code=404, detail="natal profile required")
 
-    lang = account.preferred_lang or "ru"
+    lang = await resolve_lang(
+        session,
+        tenant_id=account.tenant_id,
+        preferred_lang=account.preferred_lang,
+        tg_language_code=None,
+    )
 
     try:
         charged = await consume_quota(session, account.id, "transit")

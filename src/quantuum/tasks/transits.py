@@ -4,6 +4,7 @@ from quantuum.domain.llm_config import get_llm_config
 from quantuum.domain.quota import refund_quota
 from quantuum.domain.requests import complete_request
 from quantuum.domain.transits import get_transit, resolve_natal, set_transit_status
+from quantuum.i18n import resolve_lang
 from quantuum.llm.transit_report import transit_report
 from quantuum.logging_setup import get_logger
 from quantuum.tasks.delivery import deliver_via_tenant_bot
@@ -50,7 +51,12 @@ async def transit_generate(
                 llm_client,
                 natal_md,
                 transit_md,
-                lang=row.lang or "ru",
+                lang=await resolve_lang(
+                    session,
+                    tenant_id=row.tenant_id,
+                    preferred_lang=row.lang,
+                    tg_language_code=None,
+                ),
                 model=cfg["model"],
                 temperature=cfg["temperature"],
                 max_tokens=cfg["max_tokens"],

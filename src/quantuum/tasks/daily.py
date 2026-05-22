@@ -20,7 +20,7 @@ from quantuum.tasks.enqueue import enqueue_daily
 from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.tenants import get_active_tenant_bot
 from quantuum.domain.transits import resolve_natal
-from quantuum.i18n import Translator
+from quantuum.i18n import Translator, resolve_lang
 from quantuum.llm.daily_horoscope import daily_horoscope
 from quantuum.logging_setup import get_logger
 
@@ -62,7 +62,12 @@ async def daily_generate(ctx, account_id: int) -> None:
             return
 
         local_date = utcnow().astimezone(ZoneInfo(profile.timezone)).date()
-        lang = account.preferred_lang or "ru"
+        lang = await resolve_lang(
+            session,
+            tenant_id=account.tenant_id,
+            preferred_lang=account.preferred_lang,
+            tg_language_code=None,
+        )
         row = await claim_horoscope(
             session, tenant_id=account.tenant_id, account_id=account_id,
             natal_profile_id=profile.id, local_date=local_date, lang=lang,

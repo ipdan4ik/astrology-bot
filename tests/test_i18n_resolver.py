@@ -111,3 +111,24 @@ async def test_t_safe_format_in_result(session, default_tenant):
     # 'greet' override is "Hey {name}" — call without providing `name`
     result = await t(session, "greet", "en", tenant_id=default_tenant.id)
     assert result == "Hey {name}"
+
+
+@pytest.mark.asyncio
+async def test_resolve_lang_falls_back_to_tenant_default(session):
+    from quantuum.db.bootstrap import ensure_tenant_default_language
+    from quantuum.db.models import Tenant
+    from quantuum.i18n.resolver import resolve_lang
+
+    # An English-default tenant.
+    tenant = Tenant(slug="en-tenant", display_name="EN")
+    session.add(tenant)
+    await session.commit()
+    await session.refresh(tenant)
+    await ensure_tenant_default_language(session, tenant.id, default_lang="en", extra_langs=())
+    await session.commit()
+
+    # No preference and no Telegram hint → the tenant default (en), NOT hardcoded ru.
+    lang = await resolve_lang(
+        session, tenant_id=tenant.id, preferred_lang=None, tg_language_code=None
+    )
+    assert lang == "en"
