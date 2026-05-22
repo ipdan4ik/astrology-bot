@@ -68,3 +68,24 @@ async def test_natal_profile_upsert(session, default_tenant):
     )
     assert p1.id == p2.id
     assert p2.full_name == "Anna B"
+
+
+async def test_create_blueprint_stores_lang(session, default_tenant):
+    from datetime import date, time
+    from decimal import Decimal
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.domain.blueprints import create_blueprint, get_blueprint
+    from quantuum.domain.natal_profiles import upsert_natal_profile
+
+    acc = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="42")
+    profile = await upsert_natal_profile(
+        session, tenant_id=default_tenant.id, account_id=acc.id, full_name="A",
+        birth_date=date(1990, 1, 1), birth_time=time(12, 0), birth_place="Moscow",
+        latitude=Decimal("55"), longitude=Decimal("37"), timezone="Europe/Moscow",
+    )
+    bp = await create_blueprint(
+        session, tenant_id=default_tenant.id, account_id=acc.id,
+        natal_profile_id=profile.id, lang="es",
+    )
+    reloaded = await get_blueprint(session, bp.id)
+    assert reloaded.lang == "es"

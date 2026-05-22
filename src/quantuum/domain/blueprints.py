@@ -6,12 +6,13 @@ _TERMINAL = {"done", "failed"}
 
 
 async def create_blueprint(
-    session, *, tenant_id: int, account_id: int, natal_profile_id: int
+    session, *, tenant_id: int, account_id: int, natal_profile_id: int, lang: str | None = None
 ) -> Blueprint:
     blueprint = Blueprint(
         tenant_id=tenant_id,
         account_id=account_id,
         natal_profile_id=natal_profile_id,
+        lang=lang,
         status="pending",
     )
     session.add(blueprint)

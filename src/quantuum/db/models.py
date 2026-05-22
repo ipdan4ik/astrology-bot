@@ -146,6 +146,7 @@ class Blueprint(SQLModel, table=True):
     account_id: int = Field(foreign_key="accounts.id", index=True)
     natal_profile_id: int = Field(foreign_key="natal_profiles.id")
     status: str = "pending"  # pending|calculating|generating|done|failed
+    lang: str | None = None
     calc_md: str | None = None
     llm_md: str | None = None
     llm_provider: str | None = None
