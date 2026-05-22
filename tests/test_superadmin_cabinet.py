@@ -191,3 +191,83 @@ async def test_tenant_suspend_denied_for_non_superadmin(session, default_tenant,
     assert t.status == "active"  # unchanged
     assert await _audit_rows(session, t.id, "tenant.pause") == []
     assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
+async def test_delete_flow_success(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, bot = await _make_tenant_with_bot(session, slug="delme")
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant_delete(q, SuperAdminCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+    assert state.state == sa.SuperAdminDelete.awaiting_confirm
+    assert (await state.get_data())["slug"] == t.slug
+
+    msg = FakeMessage(from_user_id=SA_TG, text=t.slug)
+    await sa.on_delete_confirm(msg, state, i18n=i18n)
+
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "archived"
+    assert t.slug.endswith(f"__del{t.id}")
+    assert bot.status == "archived"
+    assert len(await _audit_rows(session, t.id, "tenant.delete")) == 1
+    assert state.state is None
+
+
+async def test_delete_slug_mismatch_keeps_tenant(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, _bot = await _make_tenant_with_bot(session, slug="keepme")
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant_delete(q, SuperAdminCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    msg = FakeMessage(from_user_id=SA_TG, text="WRONG")
+    await sa.on_delete_confirm(msg, state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"
+    assert await _audit_rows(session, t.id, "tenant.delete") == []
+    assert state.state == sa.SuperAdminDelete.awaiting_confirm  # stays to retry
+
+
+async def test_delete_cancel(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeState({"tenant_id": 1, "slug": "x"})
+    state.state = sa.SuperAdminDelete.awaiting_confirm
+
+    msg = FakeMessage(from_user_id=SA_TG)
+    await sa.on_delete_cancel(msg, state, i18n=i18n)
+
+    assert state.state is None
+    assert await state.get_data() == {}
+
+
+async def test_delete_request_denied_for_non_superadmin(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    t, _bot = await _make_tenant_with_bot(session, slug="safe")
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=PLAIN_TG)
+    await sa.on_tenant_delete(q, SuperAdminCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    assert state.state is None
+    assert q.answers and q.answers[-1][1].get("show_alert") is True

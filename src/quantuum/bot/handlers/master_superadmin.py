@@ -1,5 +1,7 @@
 from aiogram import F, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -9,7 +11,7 @@ from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
 from quantuum.domain.stats import tenant_stats
-from quantuum.domain.tenants import list_all_tenants, set_tenant_status
+from quantuum.domain.tenants import archive_tenant, list_all_tenants, set_tenant_status
 from quantuum.i18n import Translator
 
 router = Router()
@@ -153,3 +155,55 @@ async def on_tenant_resume(query: CallbackQuery, callback_data: SuperAdminCb, i1
         await session.commit()
     await query.message.answer(await i18n("admin.tenant.resumed"))
     await query.answer()
+
+
+class SuperAdminDelete(StatesGroup):
+    awaiting_confirm = State()
+
+
+@router.callback_query(SuperAdminCb.filter(F.action == "delete"))
+async def on_tenant_delete(
+    query: CallbackQuery, callback_data: SuperAdminCb, state: FSMContext, i18n: Translator
+) -> None:
+    async with get_sessionmaker()() as session:
+        if await find_superadmin_by_tg(session, str(query.from_user.id)) is None:
+            await query.answer(await i18n("admin.denied"), show_alert=True)
+            return
+        tenant = await session.get(Tenant, callback_data.tenant_id)
+    if tenant is None:
+        await query.answer(await i18n("admin.stale"), show_alert=True)
+        return
+    await state.set_state(SuperAdminDelete.awaiting_confirm)
+    await state.update_data(tenant_id=callback_data.tenant_id, slug=tenant.slug)
+    await query.message.answer(await i18n("owner.delete.prompt", slug=tenant.slug))
+    await query.answer()
+
+
+@router.message(Command("cancel"), SuperAdminDelete.awaiting_confirm)
+async def on_delete_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await state.clear()
+    await message.answer(await i18n("owner.delete.cancelled"))
+
+
+@router.message(SuperAdminDelete.awaiting_confirm)
+async def on_delete_confirm(message: Message, state: FSMContext, i18n: Translator) -> None:
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
+    expected_slug = data["slug"]
+    if (message.text or "").strip() != expected_slug:
+        await message.answer(await i18n("owner.delete.mismatch", slug=expected_slug))
+        return  # stay in state to retry
+    async with get_sessionmaker()() as session:
+        sa = await find_superadmin_by_tg(session, str(message.from_user.id))
+        if sa is None:
+            await message.answer(await i18n("admin.denied"))
+            await state.clear()
+            return
+        await archive_tenant(session, tenant_id)
+        await record_audit(
+            session, tenant_id=tenant_id, actor_account_id=sa.id,
+            action="tenant.delete", entity_type="tenant", entity_id=tenant_id,
+        )
+        await session.commit()
+    await state.clear()
+    await message.answer(await i18n("owner.delete.done"))
