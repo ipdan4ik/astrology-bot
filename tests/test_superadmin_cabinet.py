@@ -271,3 +271,56 @@ async def test_delete_request_denied_for_non_superadmin(session, default_tenant,
 
     assert state.state is None
     assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
+async def _make_platform_tenant(session):
+    from quantuum.db.models import Tenant, TenantBot
+
+    t = Tenant(slug="platform", display_name="Platform", is_platform=True, status="active")
+    session.add(t)
+    await session.flush()
+    bot = TenantBot(tenant_id=t.id, bot_token_enc=b"x", webhook_secret_path="wh-platform", status="active")
+    session.add(bot)
+    await session.commit()
+    await session.refresh(t)
+    await session.refresh(bot)
+    return t, bot
+
+
+async def test_suspend_platform_tenant_blocked(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, bot = await _make_platform_tenant(session)
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant_suspend(q, SuperAdminCb(action="suspend", tenant_id=t.id), i18n=i18n)
+
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "active"  # unchanged
+    assert bot.status == "active"
+    assert await _audit_rows(session, t.id, "tenant.pause") == []
+    assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
+async def test_delete_platform_tenant_blocked(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, _bot = await _make_platform_tenant(session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant_delete(q, SuperAdminCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # NOT archived
+    assert state.state is None  # FSM not entered
+    assert q.answers and q.answers[-1][1].get("show_alert") is True

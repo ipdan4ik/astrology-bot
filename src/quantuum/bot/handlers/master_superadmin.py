@@ -130,6 +130,10 @@ async def on_tenant_suspend(query: CallbackQuery, callback_data: SuperAdminCb, i
         if sa is None:
             await query.answer(await i18n("admin.denied"), show_alert=True)
             return
+        tenant = await session.get(Tenant, callback_data.tenant_id)
+        if tenant is not None and tenant.is_platform:
+            await query.answer(await i18n("owner.pause.platform_blocked"), show_alert=True)
+            return
         await set_tenant_status(session, callback_data.tenant_id, "suspended", "paused")
         await record_audit(
             session, tenant_id=callback_data.tenant_id, actor_account_id=sa.id,
@@ -172,6 +176,9 @@ async def on_tenant_delete(
         tenant = await session.get(Tenant, callback_data.tenant_id)
     if tenant is None:
         await query.answer(await i18n("admin.stale"), show_alert=True)
+        return
+    if tenant.is_platform:
+        await query.answer(await i18n("owner.delete.platform_blocked"), show_alert=True)
         return
     await state.set_state(SuperAdminDelete.awaiting_confirm)
     await state.update_data(tenant_id=callback_data.tenant_id, slug=tenant.slug)
