@@ -104,6 +104,18 @@ async def get_active_tenant_bot(session, tenant_id: int) -> TenantBot | None:
     return result.scalars().first()
 
 
+async def get_tenant_bot(session, tenant_id: int) -> TenantBot | None:
+    """First TenantBot for a tenant, regardless of status (None if none).
+
+    Unlike get_active_tenant_bot, this also returns paused/archived bots — used
+    where the bot's metadata (e.g. @username) is shown for a non-active tenant.
+    """
+    result = await session.execute(
+        select(TenantBot).where(TenantBot.tenant_id == tenant_id).limit(1)
+    )
+    return result.scalars().first()
+
+
 async def grant_role(
     session, *, tenant_id: int, account_id: int, role: str, granted_by_account_id: int | None = None
 ) -> None:

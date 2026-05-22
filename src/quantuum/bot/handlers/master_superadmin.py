@@ -12,7 +12,12 @@ from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
 from quantuum.domain.invites import create_invite, list_invites, revoke_invite
 from quantuum.domain.stats import tenant_stats
-from quantuum.domain.tenants import archive_tenant, list_all_tenants, set_tenant_status
+from quantuum.domain.tenants import (
+    archive_tenant,
+    get_tenant_bot,
+    list_all_tenants,
+    set_tenant_status,
+)
 from quantuum.i18n import Translator
 from quantuum.settings import get_settings
 
@@ -96,13 +101,16 @@ async def on_tenant(query: CallbackQuery, callback_data: SuperAdminCb, i18n: Tra
             await query.answer(await i18n("admin.denied"), show_alert=True)
             return
         tenant = await session.get(Tenant, callback_data.tenant_id)
+        bot = await get_tenant_bot(session, callback_data.tenant_id) if tenant is not None else None
     if tenant is None:
         await query.answer(await i18n("admin.stale"), show_alert=True)
         return
-    await query.message.answer(
-        await i18n("admin.tenant.title", display_name=tenant.display_name, slug=tenant.slug, status=tenant.status),
-        reply_markup=await _tenant_manage_kb(tenant, i18n),
+    title = await i18n(
+        "admin.tenant.title", display_name=tenant.display_name, slug=tenant.slug, status=tenant.status
     )
+    if bot is not None and bot.bot_username:
+        title = f"{title}\n@{bot.bot_username}"
+    await query.message.answer(title, reply_markup=await _tenant_manage_kb(tenant, i18n))
     await query.answer()
 
 

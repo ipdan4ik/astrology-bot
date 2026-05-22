@@ -150,6 +150,41 @@ async def test_tenants_list_lists_tenants(session, default_tenant, monkeypatch):
     assert t.id in tenant_ids
 
 
+async def test_tenant_detail_shows_bot_username(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, bot = await _make_tenant_with_bot(session, slug="vajupa2bot")
+    bot.bot_username = "vajupa2bot"
+    session.add(bot)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant(q, SuperAdminCb(action="tenant", tenant_id=t.id), i18n=i18n)
+
+    text = q.message.answers[0][0]
+    assert "@vajupa2bot" in text
+
+
+async def test_tenant_detail_no_username_no_at(session, default_tenant, monkeypatch):
+    # A tenant whose bot has no username must not render a bare "@".
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    t, _bot = await _make_tenant_with_bot(session, slug="nouser")  # bot_username defaults to None
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_tenant(q, SuperAdminCb(action="tenant", tenant_id=t.id), i18n=i18n)
+
+    assert "@" not in q.message.answers[0][0]
+
+
 async def test_tenant_suspend_then_resume(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import master_superadmin as sa
     from quantuum.bot.ui.callbacks import SuperAdminCb
