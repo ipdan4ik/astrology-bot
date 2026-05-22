@@ -50,6 +50,19 @@ def test_edit_timezone_invalid_returns_error_key():
     assert err_key == "profile.error.timezone_invalid"
 
 
+def test_edit_coords_out_of_range_rejected():
+    updated, err_key = apply_field_edit(_base(), "coords", "91, 0")
+    assert updated is None
+    assert err_key == "profile.error.coords_invalid"
+
+
+def test_edit_timezone_directory_zone_rejected():
+    # "Europe" is a directory in the tz database, not a zone — must be rejected, not crash.
+    updated, err_key = apply_field_edit(_base(), "timezone", "Europe")
+    assert updated is None
+    assert err_key == "profile.error.timezone_invalid"
+
+
 def test_edit_name_passthrough():
     updated, err_key = apply_field_edit(_base(), "name", "  Anna B  ")
     assert err_key is None and updated["full_name"] == "Anna B"

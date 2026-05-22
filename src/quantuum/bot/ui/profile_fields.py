@@ -1,9 +1,34 @@
-from quantuum.bot.handlers.onboarding import (
-    is_valid_timezone,
-    parse_birth_date,
-    parse_birth_time,
-    parse_coords,
-)
+from decimal import Decimal, InvalidOperation
+from functools import lru_cache
+from zoneinfo import available_timezones
+
+from quantuum.bot.handlers.onboarding import parse_birth_date, parse_birth_time
+
+
+def parse_coords(text: str | None) -> tuple[Decimal, Decimal] | None:
+    """Parse a "lat, lon" string; None if malformed or out of range."""
+    parts = (text or "").replace(" ", "").split(",")
+    if len(parts) != 2:
+        return None
+    try:
+        lat, lon = Decimal(parts[0]), Decimal(parts[1])
+    except (InvalidOperation, ValueError):
+        return None
+    if not (Decimal("-90") <= lat <= Decimal("90")):
+        return None
+    if not (Decimal("-180") <= lon <= Decimal("180")):
+        return None
+    return lat, lon
+
+
+@lru_cache(maxsize=1)
+def _valid_timezones() -> frozenset[str]:
+    return frozenset(available_timezones())
+
+
+def is_valid_timezone(text: str | None) -> bool:
+    """True only for a full IANA zone key (e.g. Europe/Moscow)."""
+    return (text or "").strip() in _valid_timezones()
 
 # field name -> i18n prompt key (resolved by the handler via the Translator).
 FIELD_PROMPT_KEYS = {
