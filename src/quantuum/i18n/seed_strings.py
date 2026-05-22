@@ -862,3 +862,12 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "en": "Done! Your profile is saved. The /blueprint command will generate your reading.",
     },
 }
+
+# Merge the per-language translation files into BASE_STRINGS. Only keys that
+# already exist in the ru/en base are populated; coverage is enforced by tests.
+from quantuum.i18n.translations import LANGUAGES as _EXTRA_LANGUAGES  # noqa: E402
+
+for _lang, _mapping in _EXTRA_LANGUAGES.items():
+    for _key, _text in _mapping.items():
+        if _key in BASE_STRINGS:
+            BASE_STRINGS[_key][_lang] = _text
