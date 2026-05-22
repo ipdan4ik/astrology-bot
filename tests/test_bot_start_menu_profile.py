@@ -100,8 +100,25 @@ async def test_on_help_btn_sends_help_text(session, default_tenant):
     assert "@quantuum_support" in help_text
     assert set(_reply_texts(markup)) == {
         "🔮 Разбор", "❓ Спросить астролога", "🌌 Транзиты", "🔔 Ежедневный гороскоп",
-        "👤 Профиль", "📜 История", "ℹ️ Помощь"
+        "👤 Профиль", "📜 История", "ℹ️ Помощь", "🌐 Язык",
     }
+
+
+async def test_language_button_opens_picker(session, default_tenant):
+    from quantuum.db.bootstrap import ensure_tenant_default_language
+    from quantuum.bot.handlers import menu as menu_mod
+    from quantuum.bot.ui.callbacks import LangCb
+
+    await ensure_tenant_default_language(session, default_tenant.id)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    msg = FakeMessage("🌐 Язык")
+    await menu_mod.on_language_btn(msg, default_tenant.id, i18n)
+
+    prompt, markup = msg.answers[0]
+    assert prompt == "Выбери язык:"
+    actions = {LangCb.unpack(b.callback_data).action for row in markup.inline_keyboard for b in row}
+    assert actions == {"set"}
 
 
 async def test_on_cancel_sends_cancelled(session, default_tenant):

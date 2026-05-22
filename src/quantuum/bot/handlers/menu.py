@@ -10,7 +10,7 @@ from quantuum.bot.handlers.transits import run_transits
 from quantuum.bot.handlers.daily import run_daily_settings
 from quantuum.bot.ui import text
 from quantuum.bot.ui.callbacks import OnboardCb
-from quantuum.bot.ui.keyboards import main_menu_kb
+from quantuum.bot.ui.keyboards import language_picker_kb, main_menu_kb
 from quantuum.db.models import Account
 from quantuum.i18n import Translator
 
@@ -25,6 +25,7 @@ _DAILY_LABELS = text.menu_button_labels("btn.daily")
 _PROFILE_LABELS = text.menu_button_labels("btn.profile")
 _HISTORY_LABELS = text.menu_button_labels("btn.history")
 _HELP_LABELS = text.menu_button_labels("btn.help")
+_LANGUAGE_LABELS = text.menu_button_labels("btn.language")
 LABELS = text.all_menu_labels()
 
 
@@ -67,6 +68,14 @@ async def on_history_btn(message: Message, account: Account, i18n: Translator) -
 @router.message(F.text.in_(_HELP_LABELS))
 async def on_help_btn(message: Message, i18n: Translator) -> None:
     await message.answer(await i18n("help.text"), reply_markup=await main_menu_kb(i18n))
+
+
+@router.message(F.text.in_(_LANGUAGE_LABELS))
+async def on_language_btn(message: Message, tenant_id: int, i18n: Translator) -> None:
+    await message.answer(
+        await i18n("lang.prompt"),
+        reply_markup=await language_picker_kb(tenant_id, action="set"),
+    )
 
 
 @router.callback_query(OnboardCb.filter(F.action == "cancel"))
