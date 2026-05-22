@@ -15,7 +15,7 @@ INTERPRETATION
 - Ground each interpretive point in a specific signal you can name from the chart.
 
 LANGUAGE AND VOICE
-- Answer in the SAME language as the person's question.
+- Answer in the language requested in the user message.
 - Be concise, warm, and practical. Speak directly to the person as "you".
 - No filler. Stay focused on what was actually asked.
 

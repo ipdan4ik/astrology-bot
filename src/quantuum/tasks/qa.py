@@ -2,6 +2,7 @@ from quantuum.domain.llm_config import get_llm_config
 from quantuum.domain.qa import get_qa, resolve_calc_md, set_qa_status
 from quantuum.domain.quota import refund_quota
 from quantuum.domain.requests import complete_request
+from quantuum.i18n.strings import get_tenant_default_lang
 from quantuum.llm.qa_answer import qa_answer
 from quantuum.logging_setup import get_logger
 from quantuum.tasks.delivery import deliver_via_tenant_bot
@@ -35,10 +36,12 @@ async def qa_generate(
                 return
 
             cfg = await get_llm_config(session)
+            lang = qa.lang or await get_tenant_default_lang(session, tenant_id) or "ru"
             result = await qa_answer(
                 llm_client,
                 calc_md,
                 qa.question,
+                lang=lang,
                 model=cfg["model"],
                 temperature=cfg["temperature"],
                 max_tokens=cfg["max_tokens"],

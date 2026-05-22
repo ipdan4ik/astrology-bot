@@ -182,3 +182,40 @@ async def test_qa_generate_llm_failure_refunds(session, default_tenant):
     bal = await session.get(AccountBalance, acc.id)
     await session.refresh(bal)
     assert bal.package_credits == credits_before + 1
+
+
+async def test_qa_generate_passes_stored_lang(session, default_tenant):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="5"
+    )
+    profile = await upsert_natal_profile(
+        session,
+        tenant_id=default_tenant.id,
+        account_id=acc.id,
+        full_name="A",
+        birth_date=date(1990, 1, 1),
+        birth_time=time(12, 0),
+        birth_place="Moscow",
+        latitude=Decimal("55"),
+        longitude=Decimal("37"),
+        timezone="Europe/Moscow",
+    )
+    qa = await create_qa(
+        session,
+        tenant_id=default_tenant.id,
+        account_id=acc.id,
+        natal_profile_id=profile.id,
+        question="Q?",
+        lang="pt",
+    )
+
+    capture = {}
+
+    class CaptureLLM:
+        async def complete(self, *, system, user, model, temperature, max_tokens):
+            capture["user"] = user
+            return LLMResult(text="X", tokens_in=1, tokens_out=1, model="m")
+
+    ctx = {"sessionmaker": _Maker(session), "llm_client": CaptureLLM()}
+    await qa_generate(ctx, qa.id, chat_id=None, request_id=None)
+    assert "Answer in language: pt." in capture["user"]
