@@ -35,8 +35,6 @@ async def render_profile(i18n: Translator, profile) -> str:
         await i18n("profile.birth_date", birth_date=profile.birth_date.isoformat()),
         await i18n("profile.birth_time", birth_time=profile.birth_time.strftime("%H:%M")),
         await i18n("profile.place", place=profile.birth_place),
-        await i18n("profile.coords", lat=profile.latitude, lon=profile.longitude),
-        await i18n("profile.timezone", timezone=profile.timezone),
     ]
     return "\n".join(lines)
 

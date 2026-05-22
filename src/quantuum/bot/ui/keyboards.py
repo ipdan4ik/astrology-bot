@@ -11,8 +11,6 @@ _PROFILE_FIELDS = [
     ("profile.kb.edit_birth_date", "birth_date"),
     ("profile.kb.edit_birth_time", "birth_time"),
     ("profile.kb.edit_birth_place", "birth_place"),
-    ("profile.kb.edit_coords", "coords"),
-    ("profile.kb.edit_timezone", "timezone"),
 ]
 
 
@@ -48,7 +46,7 @@ async def profile_kb(has_profile: bool, i18n: Translator | None = None) -> Inlin
                 text=await _label(i18n, key),
                 callback_data=ProfileCb(action="edit", field=field),
             )
-        b.adjust(2, 2, 2)
+        b.adjust(2, 2)
     else:
         b.button(
             text=await _label(i18n, "profile.kb.fill"),
