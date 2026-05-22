@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from quantuum.auth.identity import find_superadmin_by_tg
 from quantuum.bot.ui.callbacks import SuperAdminCb
-from quantuum.db.models import Tenant
+from quantuum.db.models import Tenant, TenantInvite
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
 from quantuum.domain.invites import create_invite, list_invites, revoke_invite
@@ -174,12 +174,22 @@ async def on_tenant_resume(query: CallbackQuery, callback_data: SuperAdminCb, i1
 async def _invites_kb(invites, i18n: Translator):
     b = InlineKeyboardBuilder()
     for inv in invites:
+        # Tapping a row opens the invite's detail screen — NOT a destructive
+        # revoke (revoke is an explicit button on the detail screen).
         b.button(
             text=f"{inv.code} · {inv.tier} · {inv.used_count}/{inv.max_uses}",
-            callback_data=SuperAdminCb(action="revoke", invite_id=inv.id),
+            callback_data=SuperAdminCb(action="invite", invite_id=inv.id),
         )
     b.button(text=await i18n("admin.invites.kb.new"), callback_data=SuperAdminCb(action="newinvite"))
     b.button(text=await i18n("admin.kb.back"), callback_data=SuperAdminCb(action="menu"))
+    b.adjust(1)
+    return b.as_markup()
+
+
+async def _invite_detail_kb(invite_id: int, i18n: Translator):
+    b = InlineKeyboardBuilder()
+    b.button(text=await i18n("admin.invite.kb.revoke"), callback_data=SuperAdminCb(action="revoke", invite_id=invite_id))
+    b.button(text=await i18n("admin.kb.back"), callback_data=SuperAdminCb(action="invites"))
     b.adjust(1)
     return b.as_markup()
 
@@ -224,6 +234,23 @@ async def on_new_invite(query: CallbackQuery, callback_data: SuperAdminCb, i18n:
         await session.commit()
     await query.message.answer(
         await i18n("admin.invite.created", link=_invite_deeplink(code))
+    )
+    await query.answer()
+
+
+@router.callback_query(SuperAdminCb.filter(F.action == "invite"))
+async def on_invite(query: CallbackQuery, callback_data: SuperAdminCb, i18n: Translator) -> None:
+    async with get_sessionmaker()() as session:
+        if await find_superadmin_by_tg(session, str(query.from_user.id)) is None:
+            await query.answer(await i18n("admin.denied"), show_alert=True)
+            return
+        invite = await session.get(TenantInvite, callback_data.invite_id)
+    if invite is None:
+        await query.answer(await i18n("admin.stale"), show_alert=True)
+        return
+    await query.message.answer(
+        f"{invite.code}\n{_invite_deeplink(invite.code)}",
+        reply_markup=await _invite_detail_kb(invite.id, i18n),
     )
     await query.answer()
 

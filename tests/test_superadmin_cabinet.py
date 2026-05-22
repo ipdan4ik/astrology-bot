@@ -393,22 +393,54 @@ async def test_invites_list_and_revoke(session, default_tenant, monkeypatch):
     await session.commit()
     i18n = await build_translator(session, default_tenant.id)
 
-    # list shows the invite with a revoke button
+    # list rows open the invite DETAIL (action="invite"), they do NOT revoke
     q1 = FakeCallbackQuery(from_user_id=SA_TG)
     await sa.on_invites(q1, SuperAdminCb(action="invites"), i18n=i18n)
     _, markup = q1.message.answers[0]
-    revoke_ids = {
+    detail_ids = {
         SuperAdminCb.unpack(b.callback_data).invite_id
         for b in _inline(markup)
-        if SuperAdminCb.unpack(b.callback_data).action == "revoke"
+        if SuperAdminCb.unpack(b.callback_data).action == "invite"
     }
-    assert inv.id in revoke_ids
+    assert inv.id in detail_ids
+    # no list row carries the revoke action directly
+    assert not any(SuperAdminCb.unpack(b.callback_data).action == "revoke" for b in _inline(markup))
 
-    # revoke it
+    # revoke it (only reachable via the explicit detail button)
     q2 = FakeCallbackQuery(from_user_id=SA_TG)
     await sa.on_revoke_invite(q2, SuperAdminCb(action="revoke", invite_id=inv.id), i18n=i18n)
     await session.refresh(inv)
     assert inv.status == "revoked"
+
+
+async def test_invite_detail_shows_link_and_does_not_revoke(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_superadmin as sa
+    from quantuum.bot.ui.callbacks import SuperAdminCb
+    from quantuum.domain.invites import create_invite
+    from quantuum.settings import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("MASTER_BOT_USERNAME", "quantuum_master_bot")
+    get_settings.cache_clear()
+
+    _patch_sessionmaker(monkeypatch, sa, session)
+    await _make_superadmin(session)
+    inv = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = FakeCallbackQuery(from_user_id=SA_TG)
+    await sa.on_invite(q, SuperAdminCb(action="invite", invite_id=inv.id), i18n=i18n)
+
+    text, markup = q.message.answers[0]
+    # the detail shows the shareable deep-link...
+    assert f"?start={inv.code}" in text
+    # ...and a revoke button — but tapping the row did NOT revoke
+    actions = {SuperAdminCb.unpack(b.callback_data).action for b in _inline(markup)}
+    assert "revoke" in actions
+    await session.refresh(inv)
+    assert inv.status == "active"  # unchanged by viewing
+    get_settings.cache_clear()
 
 
 async def test_new_invite_denied_for_non_superadmin(session, default_tenant, monkeypatch):
