@@ -28,6 +28,7 @@ from quantuum.api.schemas import (
     SubscriptionPlanCreateIn,
     SubscriptionPlanPatchIn,
     TenantBotBrief,
+    TenantDeleteIn,
     TenantDetailOut,
     TenantPatchIn,
     TenantPlansOut,
@@ -54,6 +55,7 @@ from quantuum.domain.audit import list_audit, record_audit
 from quantuum.domain.stats import tenant_stats
 from quantuum.domain.tenants import (
     account_has_role,
+    archive_tenant,
     count_owners,
     list_roles,
     revoke_role,
@@ -217,6 +219,45 @@ async def resume_tenant(
         tenant_id=tenant_id,
         actor_account_id=account.id,
         action="tenant.resume",
+        entity_type="tenant",
+        entity_id=tenant_id,
+        payload={},
+    )
+
+    await session.commit()
+    await session.refresh(tenant)
+    if bot is not None:
+        await session.refresh(bot)
+    return _tenant_detail_out(tenant, bot)
+
+
+# ---------------------------------------------------------------------------
+# POST /{tenant_id}/delete  (soft delete + tombstone; SP2)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{tenant_id}/delete", response_model=TenantDetailOut)
+async def delete_tenant(
+    tenant_id: int,
+    body: TenantDeleteIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> TenantDetailOut:
+    tenant, bot = await _load_tenant_and_bot(session, tenant_id)
+
+    if tenant.is_platform:
+        raise HTTPException(status_code=400, detail="cannot delete the platform tenant")
+
+    if body.confirm_slug != tenant.slug:
+        raise HTTPException(status_code=400, detail="confirm_slug does not match")
+
+    await archive_tenant(session, tenant_id)
+
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="tenant.delete",
         entity_type="tenant",
         entity_id=tenant_id,
         payload={},

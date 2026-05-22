@@ -384,3 +384,91 @@ async def test_tenant_audit_log_customer_forbidden(
         f"/admin/tenants/{default_tenant.id}/audit-log", headers=customer_headers
     )
     assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /{tenant_id}/delete  (SP2)
+# ---------------------------------------------------------------------------
+
+
+async def test_delete_archives_and_tombstones(client, sa_headers, session):
+    tenant, bot = await _make_tenant_with_bot(session)
+    bot.bot_telegram_id = 998877
+    session.add(bot)
+    await session.commit()
+    tid, slug = tenant.id, tenant.slug
+
+    r = await client.post(
+        f"/admin/tenants/{tid}/delete",
+        json={"confirm_slug": slug},
+        headers=sa_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "archived"
+
+    await session.refresh(tenant)
+    await session.refresh(bot)
+    assert tenant.status == "archived"
+    assert tenant.slug == f"{slug}__del{tid}"
+    assert bot.bot_telegram_id is None
+    assert bot.status == "archived"
+
+
+async def test_delete_creates_audit_log(client, sa_headers, session):
+    tenant, _bot = await _make_tenant_with_bot(session)
+    await client.post(
+        f"/admin/tenants/{tenant.id}/delete",
+        json={"confirm_slug": tenant.slug},
+        headers=sa_headers,
+    )
+    result = await session.execute(
+        select(AuditLog).where(
+            AuditLog.action == "tenant.delete", AuditLog.tenant_id == tenant.id
+        )
+    )
+    assert result.scalar_one_or_none() is not None
+
+
+async def test_delete_slug_mismatch_400(client, sa_headers, session):
+    tenant, _bot = await _make_tenant_with_bot(session)
+    r = await client.post(
+        f"/admin/tenants/{tenant.id}/delete",
+        json={"confirm_slug": "nope"},
+        headers=sa_headers,
+    )
+    assert r.status_code == 400
+    await session.refresh(tenant)
+    assert tenant.status == "active"  # unchanged
+
+
+async def test_delete_platform_tenant_400(client, sa_headers, session):
+    platform = Tenant(slug="platform-del", display_name="Platform", is_platform=True)
+    session.add(platform)
+    await session.commit()
+    await session.refresh(platform)
+
+    r = await client.post(
+        f"/admin/tenants/{platform.id}/delete",
+        json={"confirm_slug": "platform-del"},
+        headers=sa_headers,
+    )
+    assert r.status_code == 400
+
+
+async def test_delete_by_owner_200(client, session, default_tenant):
+    headers = await _make_role_headers(session, default_tenant.id, "owner")
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/delete",
+        json={"confirm_slug": default_tenant.slug},
+        headers=headers,
+    )
+    assert r.status_code == 200
+
+
+async def test_delete_by_customer_403(client, customer_headers, default_tenant):
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/delete",
+        json={"confirm_slug": default_tenant.slug},
+        headers=customer_headers,
+    )
+    assert r.status_code == 403

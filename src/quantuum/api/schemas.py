@@ -300,6 +300,10 @@ class TransferIn(BaseModel):
     revoke_previous: bool = False
 
 
+class TenantDeleteIn(BaseModel):
+    confirm_slug: str
+
+
 # ---------------------------------------------------------------------------
 # i18n / config schemas (Plan 5b, Tasks 7-9)
 # ---------------------------------------------------------------------------
