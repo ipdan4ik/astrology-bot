@@ -23,6 +23,7 @@ async def managed_tenants(
             TenantRole.role.in_(roles),
             AccountIdentity.provider == "tg_chat",
             AccountIdentity.provider_user_id == str(tg_user_id),
+            Tenant.status != "archived",
         )
         .distinct()
         .order_by(Tenant.id)

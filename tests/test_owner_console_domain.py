@@ -132,3 +132,34 @@ async def test_resolve_by_slug_no_role(session, seeded):
     assert (
         await resolve_managed_tenant_by_slug(session, tg_user_id=TG, slug=seeded["V"].slug) is None
     )
+
+
+async def test_managed_tenants_excludes_archived(session):
+    from quantuum.db.models import Account, AccountIdentity, Tenant
+    from quantuum.domain.owner_console import managed_tenants
+    from quantuum.domain.tenants import grant_role
+
+    tg = "70700"
+    # Two tenants owned by the same tg user: one active, one archived.
+    active = Tenant(slug="keep", display_name="Keep", status="active")
+    archived = Tenant(slug="gone__del1", display_name="Gone", status="archived")
+    session.add(active)
+    session.add(archived)
+    await session.commit()
+    await session.refresh(active)
+    await session.refresh(archived)
+    for t in (active, archived):
+        acc = Account(tenant_id=t.id)
+        session.add(acc)
+        await session.commit()
+        await session.refresh(acc)
+        session.add(
+            AccountIdentity(account_id=acc.id, provider="tg_chat", provider_user_id=tg)
+        )
+        await session.commit()
+        await grant_role(session, tenant_id=t.id, account_id=acc.id, role="owner")
+
+    rows = await managed_tenants(session, tg)
+    slugs = {t.slug for t in rows}
+    assert "keep" in slugs
+    assert "gone__del1" not in slugs
