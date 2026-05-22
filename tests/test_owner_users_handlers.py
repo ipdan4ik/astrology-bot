@@ -188,3 +188,55 @@ async def test_grant_invalid_stays_in_state(session, default_tenant, monkeypatch
     await ou.on_user_grant_amount(msg, state, i18n)
     assert "число" in msg.answers[0][0] or "number" in msg.answers[0][0]
     assert await state.get_state() == ou.OwnerUserAdmin.awaiting_credit_amount.state
+
+
+async def test_ban_stores_reason_and_disables(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery()
+    await ou.on_user_ban_start(query, OwnerUserCb(action="ban", tenant_id=default_tenant.id, account_id=target.id), state, i18n)
+    assert await state.get_state() == ou.OwnerUserAdmin.awaiting_ban_reason.state
+
+    await ou.on_user_ban_reason(FakeMessage(text="spamming"), state, i18n)
+    row = await session.get(Account, target.id)
+    await session.refresh(row)
+    assert row.status == "disabled" and row.ban_reason == "spamming"
+    assert await state.get_state() is None
+
+
+async def test_ban_blocked_for_staff(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    owner = await _owner(session, default_tenant)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery()
+    await ou.on_user_ban_start(query, OwnerUserCb(action="ban", tenant_id=default_tenant.id, account_id=owner.id), state, i18n)
+    assert query.answers[-1][1] is True  # staff_blocked alert
+    assert await state.get_state() is None
+
+
+async def test_unban_clears(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await set_account_ban(session, target.id, reason="x")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    query = FakeCallbackQuery()
+    await ou.on_user_unban(query, OwnerUserCb(action="unban", tenant_id=default_tenant.id, account_id=target.id), i18n)
+    row = await session.get(Account, target.id)
+    await session.refresh(row)
+    assert row.status == "active" and row.ban_reason is None

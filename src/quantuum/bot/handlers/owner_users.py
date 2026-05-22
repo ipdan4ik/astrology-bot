@@ -11,9 +11,12 @@ from quantuum.db.session import get_sessionmaker
 from quantuum.domain.accounts import (
     CustomerCard,
     adjust_package_credits,
+    clear_account_ban,
     count_tenant_customers,
     get_customer_card,
+    is_tenant_staff,
     list_tenant_customers,
+    set_account_ban,
 )
 from quantuum.domain.audit import record_audit
 from quantuum.domain.owner_console import authorize_tenant_action
@@ -226,3 +229,94 @@ async def on_user_grant_amount(message: Message, state: FSMContext, i18n: Transl
         await session.commit()
     await state.clear()
     await message.answer(await i18n("owner.user.grant.done", credits=after))
+
+
+@router.callback_query(OwnerUserCb.filter(F.action == "ban"))
+async def on_user_ban_start(
+    query: CallbackQuery, callback_data: OwnerUserCb, state: FSMContext, i18n: Translator
+) -> None:
+    tenant_id = callback_data.tenant_id
+    account_id = callback_data.account_id
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=str(query.from_user.id), tenant_id=tenant_id
+        )
+        if actor is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        if await is_tenant_staff(session, tenant_id=tenant_id, account_id=account_id):
+            await query.answer(await i18n("owner.user.ban.staff_blocked"), show_alert=True)
+            return
+    await state.set_state(OwnerUserAdmin.awaiting_ban_reason)
+    await state.update_data(tenant_id=tenant_id, account_id=account_id)
+    await query.message.answer(await i18n("owner.user.ban.prompt"))
+    await query.answer()
+
+
+@router.message(Command("cancel"), OwnerUserAdmin.awaiting_ban_reason)
+async def on_ban_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await state.clear()
+    await message.answer(await i18n("owner.user.cancelled"))
+
+
+@router.message(OwnerUserAdmin.awaiting_ban_reason)
+async def on_user_ban_reason(message: Message, state: FSMContext, i18n: Translator) -> None:
+    reason = (message.text or "").strip()
+    if not reason:
+        await message.answer(await i18n("owner.user.ban.invalid"))
+        return
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
+    account_id = data["account_id"]
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+        )
+        if actor is None:
+            await message.answer(await i18n("owner.no_rights"))
+            await state.clear()
+            return
+        if await is_tenant_staff(session, tenant_id=tenant_id, account_id=account_id):
+            await message.answer(await i18n("owner.user.ban.staff_blocked"))
+            await state.clear()
+            return
+        await set_account_ban(session, account_id, reason=reason)
+        await record_audit(
+            session,
+            tenant_id=tenant_id,
+            actor_account_id=actor,
+            action="account.ban",
+            entity_type="account",
+            entity_id=account_id,
+            payload={"reason": reason},
+        )
+        await session.commit()
+    await state.clear()
+    await message.answer(await i18n("owner.user.ban.done"))
+
+
+@router.callback_query(OwnerUserCb.filter(F.action == "unban"))
+async def on_user_unban(
+    query: CallbackQuery, callback_data: OwnerUserCb, i18n: Translator
+) -> None:
+    tenant_id = callback_data.tenant_id
+    account_id = callback_data.account_id
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=str(query.from_user.id), tenant_id=tenant_id
+        )
+        if actor is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        await clear_account_ban(session, account_id)
+        await record_audit(
+            session,
+            tenant_id=tenant_id,
+            actor_account_id=actor,
+            action="account.unban",
+            entity_type="account",
+            entity_id=account_id,
+        )
+        await session.commit()
+    await query.message.answer(await i18n("owner.user.unban.done"))
+    await query.answer()
