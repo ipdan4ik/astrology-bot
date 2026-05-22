@@ -118,9 +118,11 @@ async def test_show_profile_filled_renders_localised_fields(session, default_ten
     profile_text, markup = msg.answers[0]
     assert "👤 Твой профиль:" in profile_text
     assert "Имя: Anna" in profile_text
-    assert "Таймзона: Europe/Moscow" in profile_text
+    assert "Место: Moscow" in profile_text
+    assert "Europe/Moscow" not in profile_text  # timezone hidden
     fields = {ProfileCb.unpack(b.callback_data).field for b in _inline(markup)}
-    assert {"name", "birth_date", "timezone"} <= fields
+    assert {"name", "birth_date", "birth_place"} <= fields
+    assert "timezone" not in fields and "coords" not in fields
 
 
 async def test_on_edit_field_sends_prompt(session, default_tenant):
