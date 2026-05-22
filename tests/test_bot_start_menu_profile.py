@@ -87,8 +87,10 @@ async def test_on_start_first_time_shows_language_picker(session, default_tenant
     assert len(msg.answers) == 1  # picker only, no welcome/menu yet
     prompt, markup = msg.answers[0]
     assert prompt == "Выбери язык:"
+    from quantuum.i18n.langs import PLATFORM_LANGS
+
     codes = {LangCb.unpack(b.callback_data).lang for row in markup.inline_keyboard for b in row}
-    assert codes == {"ru", "en"}
+    assert codes == set(PLATFORM_LANGS)
 
 
 async def test_on_help_btn_sends_help_text(session, default_tenant):

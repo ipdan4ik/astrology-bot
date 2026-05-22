@@ -67,15 +67,15 @@ async def test_set_language_menu_change_confirms(session, default_tenant):
 async def test_set_language_ignores_non_enabled_lang(session, default_tenant):
     from quantuum.bot.handlers import language
 
-    i18n = await build_translator(session, default_tenant.id)  # enables ru + en only
+    i18n = await build_translator(session, default_tenant.id)  # enables all platform langs
     acc = await find_or_create_account_by_tg(
         session, tenant_id=default_tenant.id, tg_user_id="902"
     )
     query, msg = _fake_query()
 
-    # "de" is not an enabled language for this tenant → ignored, nothing persisted.
+    # "xx" is not a platform language (not enabled for any tenant) → ignored, nothing persisted.
     await language.on_set_language(
-        query, LangCb(action="set", lang="de"), acc, i18n
+        query, LangCb(action="set", lang="xx"), acc, i18n
     )
 
     row = (
