@@ -38,7 +38,7 @@ services:
     environment:
       BOOTSTRAP_SUPERADMIN_EMAIL: ${BOOTSTRAP_SUPERADMIN_EMAIL:-}
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       migration:
         condition: service_completed_successfully
