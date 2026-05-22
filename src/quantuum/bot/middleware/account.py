@@ -2,6 +2,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiogram import BaseMiddleware
+from aiogram.types import CallbackQuery
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.db.session import get_sessionmaker
@@ -33,6 +34,16 @@ class AccountMiddleware(BaseMiddleware):
                 preferred_lang=account.preferred_lang,
                 tg_language_code=getattr(from_user, "language_code", None),
             )
+
+        if account.status == "disabled":
+            notice = await translator("account.banned.notice", reason=account.ban_reason or "—")
+            if isinstance(event, CallbackQuery):
+                await event.answer(notice, show_alert=True)
+            else:
+                answer = getattr(event, "answer", None)
+                if answer is not None:
+                    await answer(notice)
+            return
 
         data["account"] = account
         data["chat_id"] = chat.id if chat is not None else None

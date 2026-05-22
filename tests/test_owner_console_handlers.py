@@ -109,7 +109,7 @@ async def test_manage_managed_tenant_active_shows_pause(session, monkeypatch):
 
     text, markup = msg.answers[0]
     assert "beta" in text
-    buttons = _inline(markup)
+    buttons = [b for b in _inline(markup) if b.callback_data.startswith("omng:")]
     cbs = [OwnerManageCb.unpack(b.callback_data) for b in buttons]
     assert all(cb.tenant_id == t.id for cb in cbs)
     actions = {cb.action for cb in cbs}
@@ -132,7 +132,11 @@ async def test_manage_paused_tenant_shows_resume(session, monkeypatch):
     await oc.on_manage(msg, SimpleNamespace(args="gamma"), i18n=i18n)
 
     _, markup = msg.answers[0]
-    actions = {OwnerManageCb.unpack(b.callback_data).action for b in _inline(markup)}
+    actions = {
+        OwnerManageCb.unpack(b.callback_data).action
+        for b in _inline(markup)
+        if b.callback_data.startswith("omng:")
+    }
     assert "resume" in actions
     assert "pause" not in actions
 
@@ -175,5 +179,9 @@ async def test_manage_shows_delete_button(session, monkeypatch):
     await oc.on_manage(msg, SimpleNamespace(args="epsilon"), i18n=i18n)
 
     _, markup = msg.answers[0]
-    actions = {OwnerManageCb.unpack(b.callback_data).action for b in _inline(markup)}
+    actions = {
+        OwnerManageCb.unpack(b.callback_data).action
+        for b in _inline(markup)
+        if b.callback_data.startswith("omng:")
+    }
     assert "delete" in actions

@@ -273,4 +273,34 @@ TRANSLATIONS = {
         "la carte) ou tape une ville / partie d'adresse :"
     ),
     "onb.done": "Terminé ! Ton profil est enregistré. La commande /blueprint générera ta lecture.",
+    # Owner console — user management
+    "owner.manage.kb.users": "👥 Utilisateurs",
+    "owner.users.header": "Utilisateurs de {display_name} :",
+    "owner.users.empty": "Aucun utilisateur pour l'instant.",
+    "owner.users.row": "{name} · {credits}💎",
+    "owner.users.unnamed": "utilisateur #{id}",
+    "owner.users.nav.prev": "◀️",
+    "owner.users.nav.next": "▶️",
+    "owner.user.card": (
+        "👤 {name}\nTelegram ID: {tg_id}\nCrédits : {credits}💎\n"
+        "Abonnement : {subscription}\nStatut : {status}"
+    ),
+    "owner.user.card.banned": "🚫 Banni. Motif : {reason}",
+    "owner.user.status.active": "actif",
+    "owner.user.status.banned": "banni",
+    "owner.user.not_found": "Utilisateur introuvable.",
+    "owner.user.kb.grant": "💎 Ajuster les crédits",
+    "owner.user.kb.ban": "🚫 Bannir",
+    "owner.user.kb.unban": "✅ Débannir",
+    "owner.user.kb.back": "⬅️ Retour à la liste",
+    "owner.user.grant.prompt": "Saisis le nombre de crédits (peut être négatif, ex. -3) :",
+    "owner.user.grant.invalid": "Je n'ai pas compris. Saisis un nombre entier, ex. 5 ou -2.",
+    "owner.user.grant.done": "Fait. Nouveau solde : {credits}💎.",
+    "owner.user.ban.prompt": "Saisis le motif du bannissement :",
+    "owner.user.ban.invalid": "Le motif ne peut pas être vide. Saisis un motif :",
+    "owner.user.ban.done": "Utilisateur banni.",
+    "owner.user.ban.staff_blocked": "Vous ne pouvez pas bannir un propriétaire ou un administrateur.",
+    "owner.user.unban.done": "Utilisateur débanni.",
+    "owner.user.cancelled": "Annulé.",
+    "account.banned.notice": "🚫 Votre accès au bot est restreint. Motif : {reason}",
 }

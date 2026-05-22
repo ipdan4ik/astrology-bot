@@ -273,4 +273,34 @@ TRANSLATIONS = {
         "Karte setzen) oder gib eine Stadt / Teil einer Adresse ein:"
     ),
     "onb.done": "Fertig! Dein Profil ist gespeichert. Der Befehl /blueprint erstellt deine Analyse.",
+    # Owner console — user management
+    "owner.manage.kb.users": "👥 Nutzer",
+    "owner.users.header": "Nutzer von {display_name}:",
+    "owner.users.empty": "Noch keine Nutzer.",
+    "owner.users.row": "{name} · {credits}💎",
+    "owner.users.unnamed": "Nutzer #{id}",
+    "owner.users.nav.prev": "◀️",
+    "owner.users.nav.next": "▶️",
+    "owner.user.card": (
+        "👤 {name}\nTelegram ID: {tg_id}\nGuthaben: {credits}💎\n"
+        "Abonnement: {subscription}\nStatus: {status}"
+    ),
+    "owner.user.card.banned": "🚫 Gesperrt. Grund: {reason}",
+    "owner.user.status.active": "aktiv",
+    "owner.user.status.banned": "gesperrt",
+    "owner.user.not_found": "Nutzer nicht gefunden.",
+    "owner.user.kb.grant": "💎 Guthaben anpassen",
+    "owner.user.kb.ban": "🚫 Sperren",
+    "owner.user.kb.unban": "✅ Entsperren",
+    "owner.user.kb.back": "⬅️ Zur Liste",
+    "owner.user.grant.prompt": "Gib die Anzahl der Guthabenpunkte ein (kann negativ sein, z. B. -3):",
+    "owner.user.grant.invalid": "Das habe ich nicht verstanden. Gib eine ganze Zahl ein, z. B. 5 oder -2.",
+    "owner.user.grant.done": "Erledigt. Neues Guthaben: {credits}💎.",
+    "owner.user.ban.prompt": "Gib den Sperrgrund ein:",
+    "owner.user.ban.invalid": "Der Grund darf nicht leer sein. Gib einen Grund ein:",
+    "owner.user.ban.done": "Nutzer gesperrt.",
+    "owner.user.ban.staff_blocked": "Du kannst keinen Inhaber oder Administrator sperren.",
+    "owner.user.unban.done": "Nutzer entsperrt.",
+    "owner.user.cancelled": "Abgebrochen.",
+    "account.banned.notice": "🚫 Dein Zugang zum Bot ist eingeschränkt. Grund: {reason}",
 }

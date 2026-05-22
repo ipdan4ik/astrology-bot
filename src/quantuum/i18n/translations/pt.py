@@ -273,4 +273,34 @@ TRANSLATIONS = {
         "no mapa) ou digite uma cidade / parte de um endereço:"
     ),
     "onb.done": "Pronto! Seu perfil foi salvo. O comando /blueprint vai gerar sua leitura.",
+    # Owner console — user management
+    "owner.manage.kb.users": "👥 Usuários",
+    "owner.users.header": "Usuários de {display_name}:",
+    "owner.users.empty": "Ainda não há usuários.",
+    "owner.users.row": "{name} · {credits}💎",
+    "owner.users.unnamed": "usuário #{id}",
+    "owner.users.nav.prev": "◀️",
+    "owner.users.nav.next": "▶️",
+    "owner.user.card": (
+        "👤 {name}\nTelegram ID: {tg_id}\nCréditos: {credits}💎\n"
+        "Assinatura: {subscription}\nStatus: {status}"
+    ),
+    "owner.user.card.banned": "🚫 Banido. Motivo: {reason}",
+    "owner.user.status.active": "ativo",
+    "owner.user.status.banned": "banido",
+    "owner.user.not_found": "Usuário não encontrado.",
+    "owner.user.kb.grant": "💎 Ajustar créditos",
+    "owner.user.kb.ban": "🚫 Banir",
+    "owner.user.kb.unban": "✅ Desbanir",
+    "owner.user.kb.back": "⬅️ À lista",
+    "owner.user.grant.prompt": "Digite o número de créditos (pode ser negativo, ex.: -3):",
+    "owner.user.grant.invalid": "Não entendi. Digite um número inteiro, ex.: 5 ou -2.",
+    "owner.user.grant.done": "Concluído. Novo saldo: {credits}💎.",
+    "owner.user.ban.prompt": "Digite o motivo do banimento:",
+    "owner.user.ban.invalid": "O motivo não pode estar vazio. Digite um motivo:",
+    "owner.user.ban.done": "Usuário banido.",
+    "owner.user.ban.staff_blocked": "Você não pode banir um proprietário ou administrador.",
+    "owner.user.unban.done": "Usuário desbanido.",
+    "owner.user.cancelled": "Cancelado.",
+    "account.banned.notice": "🚫 Seu acesso ao bot está restrito. Motivo: {reason}",
 }

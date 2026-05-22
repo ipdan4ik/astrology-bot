@@ -11,6 +11,7 @@ from quantuum.api.schemas import (
     AccountSummaryOut,
     AuditEntryOut,
     BalancePatchIn,
+    BanIn,
     BlueprintSummaryOut,
     ConfigPutIn,
     LanguageOut,
@@ -50,6 +51,11 @@ from quantuum.db.models import (
     TenantLanguage,
     TenantRole,
     TenantStringOverride,
+)
+from quantuum.domain.accounts import (
+    clear_account_ban,
+    is_tenant_staff,
+    set_account_ban,
 )
 from quantuum.domain.audit import list_audit, record_audit
 from quantuum.domain.stats import tenant_stats
@@ -970,6 +976,21 @@ async def patch_account_balance(
 # ---------------------------------------------------------------------------
 
 
+def _account_detail_out(acc: Account, bal: AccountBalance | None) -> AccountDetailOut:
+    return AccountDetailOut(
+        id=acc.id,
+        created_at=acc.created_at,
+        last_seen_at=acc.last_seen_at,
+        package_credits=bal.package_credits if bal is not None else 0,
+        subscription_active_until=(
+            bal.subscription_active_until if bal is not None else None
+        ),
+        free_trial_used=bal.free_trial_used if bal is not None else False,
+        status=acc.status,
+        ban_reason=acc.ban_reason,
+    )
+
+
 @router.get(
     "/{tenant_id}/accounts/{account_id}",
     response_model=AccountDetailOut,
@@ -985,16 +1006,61 @@ async def get_tenant_account(
         raise HTTPException(status_code=404, detail="account not found")
 
     bal = await session.get(AccountBalance, account_id)
-    return AccountDetailOut(
-        id=target.id,
-        created_at=target.created_at,
-        last_seen_at=target.last_seen_at,
-        package_credits=bal.package_credits if bal is not None else 0,
-        subscription_active_until=(
-            bal.subscription_active_until if bal is not None else None
-        ),
-        free_trial_used=bal.free_trial_used if bal is not None else False,
+    return _account_detail_out(target, bal)
+
+
+@router.post("/{tenant_id}/accounts/{account_id}/ban", response_model=AccountDetailOut)
+async def ban_account(
+    tenant_id: int,
+    account_id: int,
+    body: BanIn,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> AccountDetailOut:
+    target = await session.get(Account, account_id)
+    if target is None or target.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="account not found")
+    if await is_tenant_staff(session, tenant_id=tenant_id, account_id=account_id):
+        raise HTTPException(status_code=409, detail="cannot ban staff")
+    await set_account_ban(session, account_id, reason=body.reason)
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="account.ban",
+        entity_type="account",
+        entity_id=account_id,
+        payload={"reason": body.reason},
     )
+    await session.commit()
+    await session.refresh(target)
+    bal = await session.get(AccountBalance, account_id)
+    return _account_detail_out(target, bal)
+
+
+@router.post("/{tenant_id}/accounts/{account_id}/unban", response_model=AccountDetailOut)
+async def unban_account(
+    tenant_id: int,
+    account_id: int,
+    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    session: AsyncSession = Depends(get_session),
+) -> AccountDetailOut:
+    target = await session.get(Account, account_id)
+    if target is None or target.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="account not found")
+    await clear_account_ban(session, account_id)
+    await record_audit(
+        session,
+        tenant_id=tenant_id,
+        actor_account_id=account.id,
+        action="account.unban",
+        entity_type="account",
+        entity_id=account_id,
+    )
+    await session.commit()
+    await session.refresh(target)
+    bal = await session.get(AccountBalance, account_id)
+    return _account_detail_out(target, bal)
 
 
 @router.get("/{tenant_id}/blueprints", response_model=list[BlueprintSummaryOut])
