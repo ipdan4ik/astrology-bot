@@ -24,6 +24,37 @@ async def set_tenant_status(
     await session.flush()
 
 
+async def archive_tenant(session, tenant_id: int) -> Tenant | None:
+    """Soft-delete a tenant: archive it and tombstone its unique fields.
+
+    Renames the slug (``{slug}__del{id}``) and nulls every bot's
+    ``bot_telegram_id`` so the same slug and Telegram bot can be re-onboarded
+    later without unique-constraint collisions. Idempotent: a no-op if the tenant
+    is already archived. Returns the tenant, or None if not found. The caller
+    records audit + commits (mirrors ``set_tenant_status`` usage).
+    """
+    tenant = await session.get(Tenant, tenant_id)
+    if tenant is None:
+        return None
+    if tenant.status == "archived":
+        return tenant
+    tenant.status = "archived"
+    tenant.slug = f"{tenant.slug}__del{tenant_id}"
+    session.add(tenant)
+
+    result = await session.execute(
+        select(TenantBot).where(TenantBot.tenant_id == tenant_id)
+    )
+    for bot in result.scalars().all():
+        bot.bot_telegram_id = None
+        bot.webhook_secret_path = f"{bot.webhook_secret_path}__del{bot.id}"
+        bot.status = "archived"
+        session.add(bot)
+
+    await session.flush()
+    return tenant
+
+
 async def get_default_tenant_id(session) -> int:
     settings = get_settings()
     result = await session.execute(select(Tenant).where(Tenant.slug == settings.default_tenant_slug))
