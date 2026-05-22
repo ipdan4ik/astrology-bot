@@ -1,0 +1,96 @@
+# Multi-language Support — Design
+
+**Date:** 2026-05-22
+**Status:** Approved (design)
+**Topic:** Expand the bot from 2 languages (ru/en) to 10, and make every LLM-generated reading honor the user's chosen language.
+
+## Goal
+
+Offer **10 languages** across all tenant bots and generate **all** content — UI strings *and* the AI readings ("разборы") — in the user's chosen language.
+
+Languages: **ru, en, es, fr, pt, it, de, tr, zh, hi** (8 new on top of the existing ru/en). No RTL languages, so no bidirectional-text handling is needed; `zh` (CJK) and `hi` (Devanagari) render natively in Telegram.
+
+## Background — current state
+
+- **UI strings:** 170 keys in `BASE_STRINGS` (`src/quantuum/i18n/seed_strings.py`), each with `ru` + `en`. Seeded INSERT-ONLY into `platform_strings` by `ensure_base_strings` (`src/quantuum/db/bootstrap.py`).
+- **Enabled languages:** per-tenant `TenantLanguage` rows. `ensure_tenant_default_language` (bootstrap.py:209) defaults to `default_lang="ru"`, `extra_langs=("en",)`, and is currently called only for the default tenant + platform tenant.
+- **Language resolution:** `resolve_lang` (`src/quantuum/i18n/resolver.py:62`) → `preferred_lang` → `tg_language_code` → tenant default → `"en"`. Per-key lookup `t()` has a 6-step fallback: requested lang → tenant default lang → caller default → `[missing: key]`. So a missing translation degrades to the tenant default language, never a hard error.
+- **User preference:** `Account.preferred_lang` (`src/quantuum/db/models.py:95`), set by the language picker (`src/quantuum/bot/handlers/language.py:30`).
+- **Picker labels:** hardcoded native names in `LANG_LABELS` (`src/quantuum/bot/ui/keyboards.py:20`), picker reads enabled `TenantLanguage` rows dynamically and renders one button per row (`.adjust(1)`).
+- **Readings & language today:**
+  | Reading | Honors user lang? | Why |
+  |---|---|---|
+  | Transit report | ✅ | `transit_report(..., lang=...)`; prompt says "Answer in the language requested" |
+  | Daily horoscope | ✅ | `daily_horoscope(..., lang=...)` |
+  | Q&A | ❌ | `qa_answer()` has no `lang`; prompt says "answer in the SAME language as the question". `QaAnswer.lang` *is* stored at creation but unused. |
+  | Blueprint | ❌ | `polish_blueprint()` has no `lang`; prompt: "Write in English unless the source Markdown is clearly in another language." No `lang` stored. |
+
+## Design
+
+### 1. Languages & enablement
+
+- **`LANG_LABELS`** (`keyboards.py:20`) — add native names:
+  `es → 🇪🇸 Español`, `fr → 🇫🇷 Français`, `pt → 🇵🇹 Português`, `it → 🇮🇹 Italiano`, `de → 🇩🇪 Deutsch`, `tr → 🇹🇷 Türkçe`, `zh → 🇨🇳 中文`, `hi → 🇮🇳 हिन्दी`.
+- **Picker layout** — change `language_picker_kb` from `.adjust(1)` to `.adjust(2)` (two columns) so 10 languages fit cleanly.
+- **`ensure_tenant_default_language`** — change the default `extra_langs` to `("en", "es", "fr", "pt", "it", "de", "tr", "zh", "hi")`; `default_lang` stays `"ru"`. The function is already idempotent and never flips an existing default.
+- **Backfill all tenants** — in the API lifespan bootstrap (`src/quantuum/api/app.py`), after seeding strings, iterate **every** tenant and call `ensure_tenant_default_language(session, tenant.id)`. This backfills existing tenants and is a no-op for already-seeded langs. New tenants created via onboarding inherit the new default through their existing provisioning path.
+
+### 2. UI translations
+
+- Author all **170 keys × 8 new languages** as static entries in `BASE_STRINGS`. `ensure_base_strings` inserts only missing `(key, lang)` rows, so they auto-seed on next bootstrap.
+- **No cache invalidation required:** the Redis i18n cache is keyed `i18n:<tenant>:<lang>`. A brand-new language has no warm cache entry, so its first lookup loads fresh from the DB. (Invalidation is only needed when *editing* an existing string — not the case here.)
+- **Completeness guard:** a unit test asserts every key in `BASE_STRINGS` defines all 10 languages, so a future key can't silently ship without its translations.
+
+### 3. Reading localization
+
+Mirror the existing transit/daily pattern everywhere.
+
+- **Transits, Daily:** no change (already localized).
+- **Q&A:**
+  - `qa_answer(client, calc_md, question, *, lang, model, temperature, max_tokens)` — add `lang`; append `Answer in language: {lang}.` to the user message.
+  - `prompts/qa_astrologer.txt` — replace "answer in the SAME language as the question" with "Answer in the language requested in the user message."
+  - `tasks/qa.py` — pass `lang=qa.lang` (already stored at creation). If `qa.lang` is null (legacy), fall back to a sensible default (resolve from account or `"ru"`).
+- **Blueprint:**
+  - Add nullable `lang` column to `blueprints` (alembic migration), matching `TransitReport.lang` / `QaAnswer.lang`.
+  - Set it at creation in both creation sites: bot handler `generate.py:48` (`lang=i18n.lang`) and API `me.py:124` (`lang` via `resolve_lang`). `create_blueprint` (`domain/blueprints.py:8`) gains a `lang` kwarg.
+  - `polish_blueprint(client, calc_md, *, lang, ...)` — add `lang`; append `Answer in language: {lang}.` to the user message.
+  - `prompts/blueprint_writer.txt` — replace the "Write in English unless…" line with "Write in the language requested in the user message."
+  - `tasks/blueprint.py` — read `bp.lang` and pass it through. If null (legacy in-flight rows), fall back to tenant default / `"ru"`.
+
+**Rationale for the column over resolve-at-task-time:** captures the language at request time (consistent with the other two readings), so a user switching language mid-generation can't change an in-flight reading. Cost is one nullable column + a migration.
+
+### 4. Error handling / edge cases
+
+- Un-translated UI key in a new language → resolver falls back to tenant default lang (existing behavior). The completeness test prevents this for shipped keys.
+- Legacy reading rows with null `lang` → generators fall back to tenant default / `"ru"`; no crash.
+- LLM output quality in new languages relies on the model; we pass the language code and trust the model (same trust model as the already-localized transit/daily readings).
+
+### 5. Testing
+
+- `resolve_lang` returns each newly enabled language when set as `preferred_lang`.
+- `language_picker_kb` renders all enabled languages with their `LANG_LABELS`.
+- `ensure_tenant_default_language` (new default) creates all 10 `TenantLanguage` rows for a tenant; bootstrap backfill covers a pre-existing tenant.
+- `qa_answer` and `polish_blueprint` include `Answer in language: {lang}.` in the prompt sent to a mocked LLM client, for a sample of new languages.
+- `tasks/blueprint.py` / `tasks/qa.py` thread the stored `lang` into the generator.
+- `BASE_STRINGS` completeness: every key defines all 10 languages.
+
+## Out of scope
+
+- Per-tenant owner UI to curate which languages their bot offers (the `TenantLanguage.enabled` mechanism already supports it; no UI now).
+- Locale normalization (e.g. `pt-BR` → `pt`); exact-match only, as today.
+- Retranslating already-generated readings.
+- RTL languages.
+
+## Files touched (summary)
+
+- `src/quantuum/i18n/seed_strings.py` — 8 langs × 170 keys.
+- `src/quantuum/bot/ui/keyboards.py` — `LANG_LABELS`, picker `.adjust(2)`.
+- `src/quantuum/db/bootstrap.py` — `extra_langs` default; (backfill loop may live in `api/app.py`).
+- `src/quantuum/api/app.py` — backfill all tenants.
+- `src/quantuum/db/models.py` + new alembic migration — `Blueprint.lang`.
+- `src/quantuum/domain/blueprints.py` — `create_blueprint(lang=...)`.
+- `src/quantuum/bot/handlers/generate.py`, `src/quantuum/api/routes/me.py` — set blueprint `lang` at creation.
+- `src/quantuum/llm/blueprint_polish.py`, `src/quantuum/llm/qa_answer.py` — `lang` param.
+- `src/quantuum/llm/prompts/blueprint_writer.txt`, `qa_astrologer.txt` — language instruction.
+- `src/quantuum/tasks/blueprint.py`, `src/quantuum/tasks/qa.py` — thread `lang`.
+- Tests under `tests/`.
