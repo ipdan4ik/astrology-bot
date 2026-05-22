@@ -4,6 +4,7 @@ from quantuum.domain.blueprints import get_blueprint, set_status
 from quantuum.domain.llm_config import get_llm_config
 from quantuum.domain.quota import refund_quota
 from quantuum.domain.requests import complete_request
+from quantuum.i18n.strings import get_tenant_default_lang
 from quantuum.llm.blueprint_polish import polish_blueprint
 from quantuum.logging_setup import get_logger
 from quantuum.tasks.delivery import deliver_via_tenant_bot
@@ -34,9 +35,11 @@ async def blueprint_generate(
             llm_client = ctx.get("llm_client")
 
             if llm_client is not None:
+                lang = bp.lang or await get_tenant_default_lang(session, tenant_id) or "ru"
                 result = await polish_blueprint(
                     llm_client,
                     calc_md,
+                    lang=lang,
                     model=cfg["model"],
                     temperature=cfg["temperature"],
                     max_tokens=cfg["max_tokens"],

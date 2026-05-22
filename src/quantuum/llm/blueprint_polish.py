@@ -3,11 +3,12 @@ from pathlib import Path
 PROMPT_PATH = Path(__file__).parent / "prompts" / "blueprint_writer.txt"
 
 
-async def polish_blueprint(client, calc_md, *, model, temperature, max_tokens):
+async def polish_blueprint(client, calc_md, *, lang, model, temperature, max_tokens):
     system = PROMPT_PATH.read_text()
     user = "\n".join(
         [
             "Transform this calculated Markdown into the final premium Quantuum SoulMap Blueprint.",
+            f"Answer in language: {lang}.",
             "",
             "CALCULATED MARKDOWN:",
             calc_md,

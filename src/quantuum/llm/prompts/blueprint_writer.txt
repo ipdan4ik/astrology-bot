@@ -23,7 +23,7 @@ CRITICAL FACT RULES
 - Return Markdown only.
 
 LANGUAGE AND VOICE
-- Write in English unless the source Markdown is clearly in another language.
+- Write in the language requested in the user message.
 - Address the person directly as "you" after the opening overview.
 - Tone: sacred, clear, cinematic, grounded, and emotionally precise.
 - Avoid generic astrology filler. Every paragraph should connect to at least one concrete signal from the source.

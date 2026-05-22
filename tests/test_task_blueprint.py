@@ -250,3 +250,38 @@ async def test_blueprint_uses_db_config_model(session, default_tenant):
 
     reloaded = await get_blueprint(session, bp.id)
     assert reloaded.status == "done"
+
+
+async def test_blueprint_generate_passes_stored_lang(session, default_tenant):
+    from quantuum.domain.natal_profiles import get_natal_profile
+    from quantuum.llm.base import LLMResult
+
+    acc, _ = await _setup(session, default_tenant.id)
+    profile = await get_natal_profile(session, acc.id)
+    bp = await create_blueprint(
+        session, tenant_id=default_tenant.id, account_id=acc.id,
+        natal_profile_id=profile.id, lang="de",
+    )
+
+    capture = {}
+
+    class CaptureLLM:
+        async def complete(self, *, system, user, model, temperature, max_tokens):
+            capture["user"] = user
+            return LLMResult(text="X", tokens_in=1, tokens_out=1, model="m")
+
+    class _Maker:
+        def __call__(self):
+            return _Ctx(session)
+
+    class _Ctx:
+        def __init__(self, s):
+            self._s = s
+        async def __aenter__(self):
+            return self._s
+        async def __aexit__(self, *a):
+            return False
+
+    ctx = {"sessionmaker": _Maker(), "llm_client": CaptureLLM()}
+    await blueprint_generate(ctx, bp.id, chat_id=None, request_id=None)
+    assert "Answer in language: de." in capture["user"]
