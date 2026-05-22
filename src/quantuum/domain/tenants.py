@@ -47,7 +47,6 @@ async def archive_tenant(session, tenant_id: int) -> Tenant | None:
     )
     for bot in result.scalars().all():
         bot.bot_telegram_id = None
-        bot.webhook_secret_path = f"{bot.webhook_secret_path}__del{bot.id}"
         bot.status = "archived"
         session.add(bot)
 

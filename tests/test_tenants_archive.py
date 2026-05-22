@@ -1,3 +1,5 @@
+import uuid
+
 from quantuum.db.models import Tenant, TenantBot
 
 
@@ -10,7 +12,7 @@ async def _make_tenant_with_bot(session, *, slug, bot_tg_id):
         bot_telegram_id=bot_tg_id,
         bot_username=f"{slug}bot",
         bot_token_enc=b"x",
-        webhook_secret_path=f"wh-{slug}",
+        webhook_secret_path=f"wh-{uuid.uuid4().hex}",
         status="active",
     )
     session.add(bot)
