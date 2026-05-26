@@ -319,4 +319,10 @@ TRANSLATIONS = {
     "readings.kind.gene_keys": "🗝 Gene Keys",
     "readings.kind.mayan": "🌀 Maia",
     "readings.kind.aspects": "✦ Aspectos",
+    # -------------------------------------------------------------------------
+    # History — recent readings section
+    # -------------------------------------------------------------------------
+    "history.readings_title": "📖 Leituras recentes",
+    "history.reading_row": "{kind} · {status} · {date}",
+    "history.download": "⬇️ Baixar",
 }

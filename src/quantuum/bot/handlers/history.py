@@ -1,17 +1,20 @@
 from aiogram import F, Router
 from aiogram.types import BufferedInputFile, CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
-from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb
+from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb, ReadingDownloadCb
 from quantuum.bot.ui.keyboards import blueprint_detail_kb, history_list_kb
 from quantuum.bot.ui.paging import page_slice
 from quantuum.bot.ui.text import render_detail, render_history_label
-from quantuum.db.models import Account, Blueprint
+from quantuum.db.models import Account, Blueprint, Reading
 from quantuum.db.session import get_sessionmaker
+from quantuum.domain.readings import list_readings
 from quantuum.i18n import Translator
 
 router = Router()
 PAGE_SIZE = 5
+READINGS_LIMIT = 10
 
 
 async def fetch_history_window(session, *, account_id: int, page: int) -> list[Blueprint]:
@@ -25,18 +28,41 @@ async def fetch_history_window(session, *, account_id: int, page: int) -> list[B
     return list(result.scalars().all())
 
 
+async def _render_readings(target, account: Account, i18n: Translator) -> None:
+    async with get_sessionmaker()() as session:
+        readings = await list_readings(session, account_id=account.id, limit=READINGS_LIMIT)
+    if not readings:
+        return
+    await target.answer(await i18n("history.readings_title"))
+    for r in readings:
+        kind_label = await i18n(f"readings.kind.{r.kind}")
+        row_text = (await i18n("history.reading_row")).format(
+            kind=kind_label,
+            status=r.status,
+            date=r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—",
+        )
+        b = InlineKeyboardBuilder()
+        if r.llm_md:
+            b.button(
+                text=await i18n("history.download"),
+                callback_data=ReadingDownloadCb(reading_id=r.id).pack(),
+            )
+        await target.answer(row_text, reply_markup=b.as_markup() if r.llm_md else None)
+
+
 async def _render_list(target, account: Account, i18n: Translator, page: int) -> None:
     async with get_sessionmaker()() as session:
         window = await fetch_history_window(session, account_id=account.id, page=page)
     rows, has_next = page_slice(window, PAGE_SIZE)
     if not rows and page == 0:
         await target.answer(await i18n("history.empty"))
-        return
-    entries = [(bp.id, await render_history_label(i18n, bp)) for bp in rows]
-    await target.answer(
-        await i18n("history.title"),
-        reply_markup=await history_list_kb(entries, page, has_next, i18n),
-    )
+    else:
+        entries = [(bp.id, await render_history_label(i18n, bp)) for bp in rows]
+        await target.answer(
+            await i18n("history.title"),
+            reply_markup=await history_list_kb(entries, page, has_next, i18n),
+        )
+    await _render_readings(target, account, i18n)
 
 
 async def show_history(message, account: Account, i18n: Translator, page: int = 0) -> None:
@@ -98,4 +124,19 @@ async def on_preview(
 @router.callback_query(BlueprintCb.filter(F.action == "back"))
 async def on_back(query: CallbackQuery, account: Account, i18n: Translator) -> None:
     await _render_list(query.message, account, i18n, 0)
+    await query.answer()
+
+
+@router.callback_query(ReadingDownloadCb.filter())
+async def on_reading_download(
+    query: CallbackQuery, callback_data: ReadingDownloadCb, account: Account, i18n: Translator
+) -> None:
+    async with get_sessionmaker()() as session:
+        r = await session.get(Reading, callback_data.reading_id)
+    if r is None or r.account_id != account.id or not r.llm_md:
+        await query.answer(await i18n("history.unavailable"), show_alert=True)
+        return
+    await query.message.answer_document(
+        BufferedInputFile(r.llm_md.encode(), filename=f"reading-{r.kind}-{r.id}.md")
+    )
     await query.answer()

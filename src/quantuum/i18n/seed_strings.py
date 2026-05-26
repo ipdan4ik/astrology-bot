@@ -16,6 +16,7 @@ Placeholder variables per key:
     history.detail_status   — {status}
     history.detail_created  — {created_at}
     history.detail_ready    — {completed_at}
+    history.reading_row     — {kind}, {status}, {date}
     buy.plan_subscription   — {name}, {price}
     buy.plan_package        — {name}, {count}, {price}
     buy.invoice_subscription — {period_days}
@@ -424,6 +425,21 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "history.unavailable": {
         "ru": "Недоступно",
         "en": "Unavailable",
+    },
+    # Recent readings section in history screen
+    "history.readings_title": {
+        "ru": "📖 Последние разборы",
+        "en": "📖 Recent readings",
+    },
+    # Reading list row — {kind} localised kind label, {status} raw status, {date} formatted
+    "history.reading_row": {
+        "ru": "{kind} · {status} · {date}",
+        "en": "{kind} · {status} · {date}",
+    },
+    # Download button label for a reading row
+    "history.download": {
+        "ru": "⬇️ Скачать",
+        "en": "⬇️ Download",
     },
     # -------------------------------------------------------------------------
     # Buy / payments

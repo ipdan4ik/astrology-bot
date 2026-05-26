@@ -140,6 +140,32 @@ async def test_history_list_shows_localised_title_and_labels(session, default_te
     assert "готов" in label
 
 
+async def test_history_lists_recent_readings(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from quantuum.domain.readings import create_reading, set_reading_status
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc, profile = await _acc(session, default_tenant.id)
+
+    r = await create_reading(
+        session,
+        tenant_id=default_tenant.id,
+        account_id=acc.id,
+        natal_profile_id=profile.id,
+        kind="bazi",
+        lang="ru",
+    )
+    await set_reading_status(session, r.id, "done", llm_md="BaZi result")
+
+    msg = SimpleNamespace(answer=AsyncMock())
+    await hist.show_history(msg, acc, i18n, page=0)
+
+    # Collect all text from every answer() call
+    rendered = " ".join(str(call.args[0]) for call in msg.answer.call_args_list)
+    assert "BaZi" in rendered or "bazi" in rendered or "\U0001f409" in rendered
+
+
 async def test_history_open_renders_localised_detail(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import history as hist
     from quantuum.bot.ui.callbacks import HistoryCb

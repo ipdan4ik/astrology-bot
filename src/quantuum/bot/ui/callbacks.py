@@ -62,3 +62,7 @@ class OwnerUserCb(CallbackData, prefix="ousr"):
 class ReadingCb(CallbackData, prefix="rd"):
     action: str  # generate
     kind: str    # bazi | numerology | human_design | astrology | vedic | gene_keys | mayan | aspects
+
+
+class ReadingDownloadCb(CallbackData, prefix="rdl"):
+    reading_id: int
