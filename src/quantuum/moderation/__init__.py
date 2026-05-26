@@ -1,3 +1,4 @@
+from quantuum.moderation.classifier import moderate
 from quantuum.moderation.policy import (
     Action,
     Category,
@@ -20,4 +21,5 @@ __all__ = [
     "Tier",
     "Tier1Hit",
     "Tier2Hit",
+    "moderate",
 ]
