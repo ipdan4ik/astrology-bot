@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Index, Integer, UniqueConstraint, text
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Index, Integer, LargeBinary, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -179,6 +179,23 @@ class Reading(SQLModel, table=True):
     error: str | None = None
     created_at: datetime = _dt_field(default_factory=utcnow)
     completed_at: datetime | None = _dt_field(default=None)
+
+
+class ModerationEvent(SQLModel, table=True):
+    __tablename__ = "moderation_events"
+
+    id: int | None = Field(default=None, primary_key=True)
+    account_id: int | None = Field(default=None, foreign_key="accounts.id", index=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    lang: str | None = Field(default=None, max_length=8)
+    category: str  # Category enum value
+    action: str  # Action enum value
+    source: str  # "openai" | "mini_llm"
+    text_sha256: bytes = Field(
+        sa_column=Column(LargeBinary(length=32), nullable=False),
+    )
+    text_preview: str = Field(max_length=80)
+    created_at: datetime = _dt_field(default_factory=utcnow, index=True)
 
 
 class QaAnswer(SQLModel, table=True):
