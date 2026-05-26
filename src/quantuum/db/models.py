@@ -159,6 +159,28 @@ class Blueprint(SQLModel, table=True):
     completed_at: datetime | None = _dt_field(default=None)
 
 
+class Reading(SQLModel, table=True):
+    __tablename__ = "readings"
+    __table_args__ = (Index("ix_readings_tenant_created", "tenant_id", "created_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    account_id: int = Field(foreign_key="accounts.id", index=True)
+    natal_profile_id: int = Field(foreign_key="natal_profiles.id")
+    kind: str  # bazi|numerology|human_design|astrology|vedic|gene_keys|mayan|aspects
+    status: str = "pending"  # pending|calculating|generating|done|failed
+    lang: str | None = None
+    calc_md: str | None = None
+    llm_md: str | None = None
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    llm_tokens_in: int | None = None
+    llm_tokens_out: int | None = None
+    error: str | None = None
+    created_at: datetime = _dt_field(default_factory=utcnow)
+    completed_at: datetime | None = _dt_field(default=None)
+
+
 class QaAnswer(SQLModel, table=True):
     __tablename__ = "qa_answers"
     __table_args__ = (Index("ix_qa_answers_tenant_created", "tenant_id", "created_at"),)
