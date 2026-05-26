@@ -303,4 +303,20 @@ TRANSLATIONS = {
     "owner.user.unban.done": "Utilisateur débanni.",
     "owner.user.cancelled": "Annulé.",
     "account.banned.notice": "🚫 Votre accès au bot est restreint. Motif : {reason}",
+    # -------------------------------------------------------------------------
+    # Readings submenu
+    # -------------------------------------------------------------------------
+    "btn.readings": "📖 Lectures",
+    "readings.menu.title": "Quelle lecture souhaites-tu ?",
+    "readings.queued": "Je prépare ta lecture. Cela prendra une minute.",
+    "readings.no_profile": "Remplis d'abord ton profil de naissance.",
+    "readings.no_quota": "Aucun crédit disponible. Achète un pack pour continuer.",
+    "readings.kind.bazi": "🐉 BaZi",
+    "readings.kind.numerology": "🔢 Numérologie",
+    "readings.kind.human_design": "🧬 Human Design",
+    "readings.kind.astrology": "☉ Astrologie",
+    "readings.kind.vedic": "🕉 Védique",
+    "readings.kind.gene_keys": "🗝 Gene Keys",
+    "readings.kind.mayan": "🌀 Maya",
+    "readings.kind.aspects": "✦ Aspects",
 }

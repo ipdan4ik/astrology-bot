@@ -27,6 +27,7 @@ def create_dispatcher() -> Dispatcher:
         onboarding,
         profile,
         qa,
+        readings,
         start,
         transits,
     )
@@ -35,6 +36,7 @@ def create_dispatcher() -> Dispatcher:
     dp.include_router(language.router)
     dp.include_router(buy.router)
     dp.include_router(qa.router)
+    dp.include_router(readings.router)
     dp.include_router(transits.router)
     dp.include_router(daily.router)
     dp.include_router(generate.router)

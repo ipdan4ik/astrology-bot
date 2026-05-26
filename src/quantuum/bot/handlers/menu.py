@@ -6,6 +6,7 @@ from quantuum.bot.handlers.generate import run_generate
 from quantuum.bot.handlers.history import show_history
 from quantuum.bot.handlers.profile import show_profile
 from quantuum.bot.handlers.qa import start_ask
+from quantuum.bot.handlers.readings import show_readings_menu
 from quantuum.bot.handlers.transits import run_transits
 from quantuum.bot.handlers.daily import run_daily_settings
 from quantuum.bot.ui import text
@@ -20,6 +21,7 @@ router = Router()
 # in any language routes to the right handler.
 _GENERATE_LABELS = text.menu_button_labels("btn.generate")
 _ASK_LABELS = text.menu_button_labels("btn.ask")
+_READINGS_LABELS = text.menu_button_labels("btn.readings")
 _TRANSITS_LABELS = text.menu_button_labels("btn.transits")
 _DAILY_LABELS = text.menu_button_labels("btn.daily")
 _PROFILE_LABELS = text.menu_button_labels("btn.profile")
@@ -43,6 +45,11 @@ async def on_generate_btn(
 @router.message(F.text.in_(_ASK_LABELS))
 async def on_ask_btn(message: Message, state: FSMContext, i18n: Translator) -> None:
     await start_ask(message, state, i18n)
+
+
+@router.message(F.text.in_(_READINGS_LABELS))
+async def on_readings_btn(message: Message, i18n: Translator) -> None:
+    await show_readings_menu(message, i18n)
 
 
 @router.message(F.text.in_(_TRANSITS_LABELS))

@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
-from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb, LangCb, OnboardCb, ProfileCb
+from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb, LangCb, OnboardCb, ProfileCb, ReadingCb
 from quantuum.db.session import get_sessionmaker
 from quantuum.i18n import Translator
 from quantuum.i18n.seed_strings import BASE_STRINGS
@@ -46,13 +46,14 @@ async def main_menu_kb(i18n: Translator) -> ReplyKeyboardMarkup:
     b = ReplyKeyboardBuilder()
     b.button(text=await i18n("btn.generate"))
     b.button(text=await i18n("btn.ask"))
+    b.button(text=await i18n("btn.readings"))
     b.button(text=await i18n("btn.transits"))
     b.button(text=await i18n("btn.daily"))
     b.button(text=await i18n("btn.profile"))
     b.button(text=await i18n("btn.history"))
     b.button(text=await i18n("btn.help"))
     b.button(text=await i18n("btn.language"))
-    b.adjust(2, 2, 2, 2)
+    b.adjust(2, 2, 2, 2, 1)
     return b.as_markup(resize_keyboard=True, is_persistent=True)
 
 
@@ -76,6 +77,22 @@ async def language_picker_kb(tenant_id: int, *, action: str) -> InlineKeyboardMa
             callback_data=LangCb(action=action, lang=code),
         )
     b.adjust(2)
+    return b.as_markup()
+
+
+READING_KINDS: tuple[str, ...] = (
+    "bazi", "numerology", "human_design", "astrology",
+    "vedic", "gene_keys", "mayan", "aspects",
+)
+
+
+async def readings_menu_kb(i18n: Translator) -> InlineKeyboardMarkup:
+    """Inline keyboard listing all 8 reading kinds."""
+    b = InlineKeyboardBuilder()
+    for kind in READING_KINDS:
+        label = await i18n(f"readings.kind.{kind}")
+        b.button(text=label, callback_data=ReadingCb(action="generate", kind=kind))
+    b.adjust(2, 2, 2, 2)
     return b.as_markup()
 
 

@@ -57,3 +57,8 @@ class OwnerUserCb(CallbackData, prefix="ousr"):
     tenant_id: int = 0
     account_id: int = 0
     page: int = 0
+
+
+class ReadingCb(CallbackData, prefix="rd"):
+    action: str  # generate
+    kind: str    # bazi | numerology | human_design | astrology | vedic | gene_keys | mayan | aspects
