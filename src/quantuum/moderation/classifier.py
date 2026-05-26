@@ -7,6 +7,8 @@ from pathlib import Path as _Path
 from quantuum.logging_setup import get_logger as _get_logger
 from quantuum.moderation.policy import Category, Safe, Tier1Hit, Tier2Hit
 
+_log = _get_logger("moderation")
+
 # Precedence: most severe → least. Returned at the first match.
 _TIER1_PRECEDENCE: list[tuple[Category, tuple[str, ...]]] = [
     (Category.SEXUAL_MINORS, ("sexual_minors",)),
@@ -66,9 +68,6 @@ async def _openai_moderate(text: str, client, *, model: str) -> Safe | Tier1Hit:
         if any(getattr(cats, name, False) for name in attr_names):
             return Tier1Hit(category=category)
     return Safe()
-
-
-_log = _get_logger("moderation")
 
 
 async def moderate(

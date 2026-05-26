@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from structlog.testing import capture_logs
 
 from quantuum.llm.base import LLMResult
 from quantuum.moderation import moderate
@@ -115,38 +116,70 @@ async def test_kill_switch_skips_all_calls():
 
 @pytest.mark.asyncio
 async def test_tier1_exception_fails_open_when_enabled():
-    v = await moderate(
-        "what's my chart?",
-        "ru",
-        openai_client=_mk_openai(raises=RuntimeError("upstream 500")),
-        llm_client=_mk_llm(),
-        settings=_settings(moderation_fail_open=True),
-    )
+    with capture_logs() as cap:
+        v = await moderate(
+            "what's my chart?",
+            "ru",
+            openai_client=_mk_openai(raises=RuntimeError("upstream 500")),
+            llm_client=_mk_llm(),
+            settings=_settings(moderation_fail_open=True),
+        )
     assert isinstance(v, Safe)
+    err_logs = [e for e in cap if e.get("event") == "moderation.api_error"]
+    assert len(err_logs) == 1
+    assert err_logs[0]["log_level"] == "warning"
+    assert err_logs[0]["provider"] == "openai"
+    assert "upstream 500" in err_logs[0]["error"]
 
 
 @pytest.mark.asyncio
 async def test_tier2_exception_fails_open_when_enabled():
-    v = await moderate(
-        "what's my chart?",
-        "ru",
-        openai_client=_mk_openai(hit=False),
-        llm_client=_mk_llm(raises=RuntimeError("upstream 500")),
-        settings=_settings(moderation_fail_open=True),
-    )
+    with capture_logs() as cap:
+        v = await moderate(
+            "what's my chart?",
+            "ru",
+            openai_client=_mk_openai(hit=False),
+            llm_client=_mk_llm(raises=RuntimeError("upstream 500")),
+            settings=_settings(moderation_fail_open=True),
+        )
     assert isinstance(v, Safe)
+    err_logs = [e for e in cap if e.get("event") == "moderation.api_error"]
+    assert len(err_logs) == 1
+    assert err_logs[0]["log_level"] == "warning"
+    assert err_logs[0]["provider"] == "mini_llm"
+    assert "upstream 500" in err_logs[0]["error"]
 
 
 @pytest.mark.asyncio
 async def test_tier1_exception_raises_when_fail_open_disabled():
-    with pytest.raises(RuntimeError):
-        await moderate(
-            "text",
-            "ru",
-            openai_client=_mk_openai(raises=RuntimeError("upstream 500")),
-            llm_client=_mk_llm(),
-            settings=_settings(moderation_fail_open=False),
-        )
+    with capture_logs() as cap:
+        with pytest.raises(RuntimeError):
+            await moderate(
+                "text",
+                "ru",
+                openai_client=_mk_openai(raises=RuntimeError("upstream 500")),
+                llm_client=_mk_llm(),
+                settings=_settings(moderation_fail_open=False),
+            )
+    err_logs = [e for e in cap if e.get("event") == "moderation.api_error"]
+    assert len(err_logs) == 1
+    assert err_logs[0]["provider"] == "openai"
+
+
+@pytest.mark.asyncio
+async def test_tier2_exception_raises_when_fail_open_disabled():
+    with capture_logs() as cap:
+        with pytest.raises(RuntimeError):
+            await moderate(
+                "text",
+                "ru",
+                openai_client=_mk_openai(hit=False),
+                llm_client=_mk_llm(raises=RuntimeError("upstream 500")),
+                settings=_settings(moderation_fail_open=False),
+            )
+    err_logs = [e for e in cap if e.get("event") == "moderation.api_error"]
+    assert len(err_logs) == 1
+    assert err_logs[0]["provider"] == "mini_llm"
 
 
 @pytest.mark.asyncio
