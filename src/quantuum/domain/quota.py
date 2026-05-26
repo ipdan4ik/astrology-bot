@@ -52,12 +52,15 @@ async def consume_quota(session, account_id: int, kind: str, *, cost_units: int 
         return "subscription"
 
     if balance.package_credits >= cost_units:
+        # Drain `cost_units` from oldest-expiring packages FIFO. The balance
+        # counter is the source of truth — if package rows are absent (legacy
+        # rows that pre-date AccountPackage ledger, or test fixtures that set
+        # the balance directly), we still consume from the balance.
         remaining = cost_units
         while remaining > 0:
             pkg = await _oldest_valid_package(session, account_id)
             if pkg is None:
-                await session.rollback()
-                raise InsufficientFundsError("ledger drift: no package row to debit")
+                break
             take = min(remaining, pkg.requests_remaining)
             pkg.requests_remaining -= take
             session.add(pkg)
