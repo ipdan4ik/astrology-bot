@@ -3,11 +3,22 @@ from sqlmodel import select
 from quantuum.common.datetime import utcnow
 from quantuum.db.models import Account, AccountBalance, AccountIdentity
 
+# Welcome credits granted on first account creation. Replaces the legacy
+# single-shot free-trial mechanism (one free Blueprint) with a bundle of
+# generic credits the user can spend on any reading/blueprint.
+SIGNUP_CREDITS = 10
+
 
 async def _ensure_balance(session, account_id: int) -> None:
     existing = await session.get(AccountBalance, account_id)
     if existing is None:
-        session.add(AccountBalance(account_id=account_id))
+        session.add(
+            AccountBalance(
+                account_id=account_id,
+                package_credits=SIGNUP_CREDITS,
+                free_trial_used=True,
+            )
+        )
 
 
 async def _create_account(session, tenant_id: int) -> Account:

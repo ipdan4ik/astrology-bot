@@ -10,36 +10,51 @@ async def _make_account(session, tenant_id):
     return await find_or_create_account_by_tg(session, tenant_id=tenant_id, tg_user_id="1")
 
 
-async def test_first_blueprint_uses_trial(session, default_tenant):
+async def test_new_account_receives_signup_credits(session, default_tenant):
+    from quantuum.auth.identity import SIGNUP_CREDITS
+    from quantuum.db.models import AccountBalance
+
+    acc = await _make_account(session, default_tenant.id)
+    bal = await session.get(AccountBalance, acc.id)
+    assert bal.package_credits == SIGNUP_CREDITS
+    assert bal.free_trial_used is True
+
+
+async def test_first_blueprint_uses_signup_credits(session, default_tenant):
     acc = await _make_account(session, default_tenant.id)
     charged = await consume_quota(session, acc.id, "blueprint")
-    assert charged == "trial"
+    assert charged == "package"
 
 
-async def test_second_blueprint_blocked(session, default_tenant):
+async def test_blocked_after_signup_credits_exhausted(session, default_tenant):
+    from quantuum.auth.identity import SIGNUP_CREDITS
+
     acc = await _make_account(session, default_tenant.id)
-    await consume_quota(session, acc.id, "blueprint")
+    for _ in range(SIGNUP_CREDITS):
+        await consume_quota(session, acc.id, "blueprint")
     with pytest.raises(InsufficientFundsError):
         await consume_quota(session, acc.id, "blueprint")
 
 
-async def test_refund_restores_trial(session, default_tenant):
-    from quantuum.db.models import Request
+async def test_refund_package_restores_signup_credit(session, default_tenant):
+    from quantuum.db.models import AccountBalance, Request
 
     acc = await _make_account(session, default_tenant.id)
+    bal_before = await session.get(AccountBalance, acc.id)
+    starting = bal_before.package_credits
     await consume_quota(session, acc.id, "blueprint")
     req = Request(
-        tenant_id=default_tenant.id, account_id=acc.id, kind="blueprint", charged_against="trial"
+        tenant_id=default_tenant.id, account_id=acc.id, kind="blueprint",
+        charged_against="package", cost_units=1,
     )
     session.add(req)
     await session.commit()
     await session.refresh(req)
 
     await refund_quota(session, req.id)
-
-    # trial available again
-    charged = await consume_quota(session, acc.id, "blueprint")
-    assert charged == "trial"
+    bal_after = await session.get(AccountBalance, acc.id)
+    await session.refresh(bal_after)
+    assert bal_after.package_credits == starting
 
 
 async def test_consume_decrements_oldest_package_row(session, default_tenant):

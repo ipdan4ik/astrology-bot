@@ -79,12 +79,19 @@ async def test_refund_quota_returns_cost_units(session, default_tenant):
     assert pkg.requests_remaining == 5
 
 
-async def test_trial_is_single_shot_regardless_of_cost_units(session, default_tenant):
+async def test_signup_credits_cover_multi_unit_charges(session, default_tenant):
+    """New accounts get SIGNUP_CREDITS welcome credits; cost_units > 1 draws from them."""
+    from quantuum.auth.identity import SIGNUP_CREDITS
+    from quantuum.db.models import AccountBalance
+
     acc = await _make_account(session, default_tenant.id)
+    bal = await session.get(AccountBalance, acc.id)
+    assert bal.package_credits == SIGNUP_CREDITS
+
     charged = await consume_quota(session, acc.id, "blueprint", cost_units=4)
-    assert charged == "trial"
-    with pytest.raises(InsufficientFundsError):
-        await consume_quota(session, acc.id, "blueprint", cost_units=1)
+    assert charged == "package"
+    await session.refresh(bal)
+    assert bal.package_credits == SIGNUP_CREDITS - 4
 
 
 async def test_consume_quota_drains_across_packages_fifo(session, default_tenant):

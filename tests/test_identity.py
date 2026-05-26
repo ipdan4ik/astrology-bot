@@ -22,7 +22,11 @@ async def test_tg_identity_creates_balance(session, default_tenant):
     )
     bal = await session.get(AccountBalance, acc.id)
     assert bal is not None
-    assert bal.free_trial_used is False
+    # New accounts are seeded with welcome credits (SIGNUP_CREDITS); the
+    # trial flag is pre-marked used because the welcome bundle replaces it.
+    from quantuum.auth.identity import SIGNUP_CREDITS
+    assert bal.package_credits == SIGNUP_CREDITS
+    assert bal.free_trial_used is True
 
 
 async def test_find_superadmin_by_email(session):

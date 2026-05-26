@@ -40,11 +40,13 @@ async def test_blueprint_generate_failure_refunds(session, default_tenant, monke
     from quantuum.db.models import AccountBalance
 
     acc, bp = await _setup(session, default_tenant.id)
+    bal_before = await session.get(AccountBalance, acc.id)
+    starting = bal_before.package_credits
     charged = await consume_quota(session, acc.id, "blueprint")
-    assert charged == "trial"
+    assert charged == "package"
     req = await create_request(
         session, tenant_id=default_tenant.id, account_id=acc.id, kind="blueprint",
-        charged_against="trial",
+        charged_against=charged,
     )
 
     bot = AsyncMock()
@@ -70,10 +72,10 @@ async def test_blueprint_generate_failure_refunds(session, default_tenant, monke
     ctx = {"sessionmaker": _Maker(), "bot": bot, "llm_client": None}
     await bp_mod.blueprint_generate(ctx, bp.id, chat_id=None, request_id=req.id)
 
-    # trial restored
+    # credit restored after failed generation
     bal = await session.get(AccountBalance, acc.id)
     await session.refresh(bal)
-    assert bal.free_trial_used is False
+    assert bal.package_credits == starting
 
 
 async def test_blueprint_generate_llm_failure_refunds(session, default_tenant):
@@ -84,11 +86,13 @@ async def test_blueprint_generate_llm_failure_refunds(session, default_tenant):
     from quantuum.llm.base import LLMError
 
     acc, bp = await _setup(session, default_tenant.id)
+    bal_before = await session.get(AccountBalance, acc.id)
+    starting = bal_before.package_credits
     charged = await consume_quota(session, acc.id, "blueprint")
-    assert charged == "trial"
+    assert charged == "package"
     req = await create_request(
         session, tenant_id=default_tenant.id, account_id=acc.id, kind="blueprint",
-        charged_against="trial",
+        charged_against=charged,
     )
 
     class _BoomLLM:
@@ -116,7 +120,7 @@ async def test_blueprint_generate_llm_failure_refunds(session, default_tenant):
     assert reloaded.status == "failed"
     bal = await session.get(AccountBalance, acc.id)
     await session.refresh(bal)
-    assert bal.free_trial_used is False
+    assert bal.package_credits == starting
 
 
 async def test_blueprint_generate_real_engine_with_llm(session, default_tenant):
