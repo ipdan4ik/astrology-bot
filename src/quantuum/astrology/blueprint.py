@@ -11,7 +11,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from quantuum.astrology.sections import BlueprintContext
 from zoneinfo import ZoneInfo
 
 from quantuum.astrology.util import to_fixed
@@ -60,7 +63,7 @@ def to_iso_z(ms: int) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _render_header(inp: BlueprintInput, ctx) -> str:
+def _render_header(inp: BlueprintInput, ctx: "BlueprintContext") -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:

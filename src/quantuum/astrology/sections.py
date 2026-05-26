@@ -15,7 +15,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from quantuum.astrology.blueprint import BlueprintInput
 
 from quantuum.astrology.astro import (
     ascendant_longitude,
@@ -133,7 +136,7 @@ class BlueprintContext:
     for_year: int
 
 
-def build_blueprint_context(inp) -> BlueprintContext:
+def build_blueprint_context(inp: "BlueprintInput") -> BlueprintContext:
     from quantuum.astrology.blueprint import EPOCH, parse_birth_instant
 
     birth = parse_birth_instant(inp)
@@ -213,7 +216,7 @@ def build_blueprint_context(inp) -> BlueprintContext:
 # ---------------------------------------------------------------------------
 
 
-def build_identity_section(inp, ctx: BlueprintContext) -> str:
+def build_identity_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -364,7 +367,7 @@ def build_identity_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_aspects_section(inp, ctx: BlueprintContext) -> str:
+def build_aspects_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -402,7 +405,7 @@ def build_aspects_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_vedic_section(inp, ctx: BlueprintContext) -> str:
+def build_vedic_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -435,7 +438,7 @@ def build_vedic_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_numerology_section(inp, ctx: BlueprintContext) -> str:
+def build_numerology_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -536,7 +539,7 @@ def build_numerology_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_bazi_section(inp, ctx: BlueprintContext) -> str:
+def build_bazi_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -594,7 +597,7 @@ def build_bazi_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_human_design_section(inp, ctx: BlueprintContext) -> str:
+def build_human_design_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -728,7 +731,7 @@ def build_human_design_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_gene_keys_section(inp, ctx: BlueprintContext) -> str:
+def build_gene_keys_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -789,7 +792,7 @@ def build_gene_keys_section(inp, ctx: BlueprintContext) -> str:
     return "\n".join(lines)
 
 
-def build_mayan_section(inp, ctx: BlueprintContext) -> str:
+def build_mayan_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
     lines: list[str] = []
 
     def push(s: str) -> None:
@@ -825,7 +828,7 @@ BLUEPRINT_SECTION_ORDER: tuple[str, ...] = (
     "bazi", "human_design", "gene_keys", "mayan",
 )
 
-SECTION_BUILDERS = {
+SECTION_BUILDERS: dict[str, Callable[["BlueprintInput", BlueprintContext], str]] = {
     "identity":     build_identity_section,
     "aspects":      build_aspects_section,
     "vedic":        build_vedic_section,
@@ -837,7 +840,7 @@ SECTION_BUILDERS = {
 }
 
 
-def build_reading_calc_md(kind: str, inp) -> str:
+def build_reading_calc_md(kind: str, inp: "BlueprintInput") -> str:
     """Self-contained mini-doc: birth header + one section + footer."""
     from quantuum.astrology.blueprint import _render_header, _render_footer
     ctx = build_blueprint_context(inp)
