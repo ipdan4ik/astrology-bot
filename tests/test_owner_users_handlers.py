@@ -136,6 +136,10 @@ async def test_grant_adds_credits(session, default_tenant, monkeypatch):
     _patch_sessionmaker(monkeypatch, ou, session)
     await _owner(session, default_tenant)
     target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    # zero out welcome credits so the grant delta is unambiguous
+    bal = await session.get(AccountBalance, target.id)
+    bal.package_credits = 0
+    session.add(bal)
     await session.commit()
     i18n = await build_translator(session, default_tenant.id)
     state = _fsm()
@@ -157,6 +161,10 @@ async def test_grant_deduct_clamps(session, default_tenant, monkeypatch):
     _patch_sessionmaker(monkeypatch, ou, session)
     await _owner(session, default_tenant)
     target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    # zero out welcome credits so deduct-clamp behaviour is unambiguous
+    bal = await session.get(AccountBalance, target.id)
+    bal.package_credits = 0
+    session.add(bal)
     await session.commit()
     i18n = await build_translator(session, default_tenant.id)
     state = _fsm()

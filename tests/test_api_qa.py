@@ -81,6 +81,11 @@ async def test_qa_requires_natal_profile(client, session, default_tenant):
 async def test_qa_requires_quota(client, session, default_tenant):
     acc = await _make_account(session, default_tenant.id)
     await _add_profile(session, default_tenant.id, acc.id)
+    # zero out welcome credits so the account has no quota
+    bal = await session.get(AccountBalance, acc.id)
+    bal.package_credits = 0
+    session.add(bal)
+    await session.commit()
     r = await client.post(
         "/v1/me/qa", json={"question": "Will I be rich?"}, headers=_headers(acc, default_tenant.id)
     )

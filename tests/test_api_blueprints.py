@@ -34,7 +34,9 @@ async def test_blueprint_requires_natal_profile(auth_client):
     assert r.status_code == 409  # natal profile missing
 
 
-async def test_blueprint_create_consumes_trial(auth_client):
+async def test_blueprint_create_consumes_credit(auth_client, session):
+    from quantuum.db.models import AccountBalance
+
     await auth_client.put(
         "/v1/me/natal-profile",
         json={
@@ -48,7 +50,13 @@ async def test_blueprint_create_consumes_trial(auth_client):
     bp_id = r.json()["id"]
     assert auth_client.enqueued == [(bp_id, None)]
 
-    # second one is blocked (trial used, no subscription/package)
+    # zero out credits so the next request has no quota
+    bal = await session.get(AccountBalance, 1)
+    bal.package_credits = 0
+    session.add(bal)
+    await session.commit()
+
+    # second one is blocked (credits exhausted, no subscription)
     r2 = await auth_client.post("/v1/me/blueprints")
     assert r2.status_code == 402
 

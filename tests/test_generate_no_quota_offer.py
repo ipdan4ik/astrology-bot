@@ -27,6 +27,7 @@ def _patch_sessionmaker(monkeypatch, module, session):
 
 async def test_no_quota_offers_buy_button(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import generate as gen
+    from quantuum.db.models import AccountBalance
 
     _patch_sessionmaker(monkeypatch, gen, session)
     i18n = await build_translator(session, default_tenant.id)
@@ -36,9 +37,13 @@ async def test_no_quota_offers_buy_button(session, default_tenant, monkeypatch):
         birth_date=date(1990, 1, 1), birth_time=time(12, 0), birth_place="Moscow",
         latitude=Decimal("55"), longitude=Decimal("37"), timezone="Europe/Moscow",
     )
-    # burn the free trial
+    # burn one credit, then zero out remaining credits to force no-quota on next call
     monkeypatch.setattr(gen, "enqueue_blueprint", AsyncMock())
     await gen.run_generate(SimpleNamespace(answer=AsyncMock()), acc, chat_id=9, i18n=i18n)
+    bal = await session.get(AccountBalance, acc.id)
+    bal.package_credits = 0
+    session.add(bal)
+    await session.commit()
 
     message = SimpleNamespace(answer=AsyncMock())
     await gen.run_generate(message, acc, chat_id=9, i18n=i18n)
@@ -55,6 +60,7 @@ async def test_no_quota_offers_buy_button(session, default_tenant, monkeypatch):
 
 async def test_no_quota_offers_buy_button_en(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import generate as gen
+    from quantuum.db.models import AccountBalance
 
     _patch_sessionmaker(monkeypatch, gen, session)
     i18n = await build_translator(session, default_tenant.id, lang="en")
@@ -64,8 +70,13 @@ async def test_no_quota_offers_buy_button_en(session, default_tenant, monkeypatc
         birth_date=date(1990, 1, 1), birth_time=time(12, 0), birth_place="Moscow",
         latitude=Decimal("55"), longitude=Decimal("37"), timezone="Europe/Moscow",
     )
+    # burn one credit, then zero out remaining credits to force no-quota on next call
     monkeypatch.setattr(gen, "enqueue_blueprint", AsyncMock())
     await gen.run_generate(SimpleNamespace(answer=AsyncMock()), acc, chat_id=19, i18n=i18n)
+    bal = await session.get(AccountBalance, acc.id)
+    bal.package_credits = 0
+    session.add(bal)
+    await session.commit()
 
     message = SimpleNamespace(answer=AsyncMock())
     await gen.run_generate(message, acc, chat_id=19, i18n=i18n)

@@ -37,12 +37,19 @@ async def test_request_blueprint_trial(session, default_tenant):
 
 
 async def test_request_blueprint_no_quota(session, default_tenant):
+    from quantuum.db.models import AccountBalance
+
     acc = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="3")
     await upsert_natal_profile(
         session, tenant_id=default_tenant.id, account_id=acc.id, full_name="A",
         birth_date=date(1990, 1, 1), birth_time=time(12, 0), birth_place="Moscow",
         latitude=Decimal("55"), longitude=Decimal("37"), timezone="Europe/Moscow",
     )
+    # zero out welcome credits so there is only one attempt possible before quota runs out
+    bal = await session.get(AccountBalance, acc.id)
+    bal.package_credits = 0
+    session.add(bal)
+    await session.commit()
     enqueue = AsyncMock()
     await request_blueprint_for_account(session, account=acc, chat_id=10, enqueue=enqueue)
     status, _ = await request_blueprint_for_account(

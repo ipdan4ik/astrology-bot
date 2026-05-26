@@ -64,6 +64,8 @@ async def test_is_tenant_staff(session, default_tenant):
 
 
 async def test_list_and_count_with_pagination(session, default_tenant):
+    from quantuum.auth.identity import SIGNUP_CREDITS
+
     for i in range(3):
         await find_or_create_account_by_tg(
             session, tenant_id=default_tenant.id, tg_user_id=str(1000 + i)
@@ -73,7 +75,7 @@ async def test_list_and_count_with_pagination(session, default_tenant):
     page = await list_tenant_customers(session, default_tenant.id, limit=2, offset=0)
     assert len(page) == 2
     assert page[0].tg_user_id == "1000"
-    assert page[0].package_credits == 0
+    assert page[0].package_credits == SIGNUP_CREDITS
     assert page[0].full_name is None
 
     page2 = await list_tenant_customers(session, default_tenant.id, limit=2, offset=2)
@@ -89,6 +91,8 @@ async def test_card_maps_name_credits_and_ban(session, default_tenant):
         birth_date=date(1980, 6, 24), birth_time=time(10, 0), birth_place="Moscow",
         latitude=Decimal("55.7558"), longitude=Decimal("37.6173"), timezone="Europe/Moscow",
     )
+    from quantuum.auth.identity import SIGNUP_CREDITS
+
     await adjust_package_credits(session, acc.id, 7)
     await set_account_ban(session, acc.id, reason="spam")
     await session.commit()
@@ -96,7 +100,7 @@ async def test_card_maps_name_credits_and_ban(session, default_tenant):
     card = await get_customer_card(session, default_tenant.id, acc.id)
     assert card.full_name == "Anna"
     assert card.tg_user_id == "2000"
-    assert card.package_credits == 7
+    assert card.package_credits == SIGNUP_CREDITS + 7
     assert card.status == "disabled"
     assert card.ban_reason == "spam"
 
