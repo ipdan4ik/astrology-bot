@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import TypedDict, Union
+from typing import TypedDict
 
 
 class Category(str, Enum):
@@ -84,4 +84,4 @@ class Tier2Hit:
     category: Category
 
 
-ModerationVerdict = Union[Safe, Tier1Hit, Tier2Hit]
+ModerationVerdict = Safe | Tier1Hit | Tier2Hit

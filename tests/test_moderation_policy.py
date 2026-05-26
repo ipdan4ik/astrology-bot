@@ -31,7 +31,7 @@ def test_policy_maps_every_category():
         assert entry["i18n_key"].startswith("moderation.")
 
 
-def test_policy_self_harm_uses_helpline():
+def test_policy_self_harm_entry():
     assert POLICY[Category.SELF_HARM]["i18n_key"] == "moderation.self_harm"
     assert POLICY[Category.SELF_HARM]["uses_helpline"] is True
 
@@ -42,4 +42,5 @@ def test_verdict_dataclasses():
     hit2 = Tier2Hit(category=Category.MEDICAL_ADVICE)
     assert hit1.category is Category.SELF_HARM
     assert hit2.category is Category.MEDICAL_ADVICE
-    assert hit1 != safe and hit2 != safe
+    assert hit1 != safe
+    assert hit2 != safe
