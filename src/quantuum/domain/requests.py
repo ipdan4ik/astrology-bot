@@ -3,13 +3,14 @@ from quantuum.db.models import Request
 
 
 async def create_request(
-    session, *, tenant_id: int, account_id: int, kind: str, charged_against: str
+    session, *, tenant_id: int, account_id: int, kind: str, charged_against: str, cost_units: int = 1
 ) -> Request:
     request = Request(
         tenant_id=tenant_id,
         account_id=account_id,
         kind=kind,
         charged_against=charged_against,
+        cost_units=cost_units,
         status="pending",
     )
     session.add(request)

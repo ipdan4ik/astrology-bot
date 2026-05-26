@@ -33,7 +33,8 @@ async def _newest_valid_package(session, account_id: int) -> AccountPackage | No
 
 
 async def consume_quota(session, account_id: int, kind: str, *, cost_units: int = 1) -> str:
-    assert cost_units >= 1
+    if cost_units < 1:
+        raise ValueError(f"cost_units must be >= 1, got {cost_units}")
     balance = await session.get(AccountBalance, account_id, with_for_update=True)
     if balance is None:
         balance = AccountBalance(account_id=account_id)
