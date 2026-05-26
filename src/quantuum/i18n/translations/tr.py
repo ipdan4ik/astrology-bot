@@ -302,4 +302,26 @@ TRANSLATIONS = {
     "owner.user.unban.done": "Kullanıcının yasağı kaldırıldı.",
     "owner.user.cancelled": "İptal edildi.",
     "account.banned.notice": "🚫 Bota erişiminiz kısıtlandı. Neden: {reason}",
+    # -------------------------------------------------------------------------
+    # Readings submenu
+    # -------------------------------------------------------------------------
+    "btn.readings": "📖 Okumalar",
+    "readings.menu.title": "Hangi okumayı istersin?",
+    "readings.queued": "Okumanı hazırlıyorum. Bir dakika sürecek.",
+    "readings.no_profile": "Önce doğum profilini doldur.",
+    "readings.no_quota": "Kredin kalmadı. Devam etmek için paket al.",
+    "readings.kind.bazi": "🐉 BaZi",
+    "readings.kind.numerology": "🔢 Numeroloji",
+    "readings.kind.human_design": "🧬 Human Design",
+    "readings.kind.astrology": "☉ Astroloji",
+    "readings.kind.vedic": "🕉 Vedik",
+    "readings.kind.gene_keys": "🗝 Gene Keys",
+    "readings.kind.mayan": "🌀 Maya",
+    "readings.kind.aspects": "✦ Açılar",
+    # -------------------------------------------------------------------------
+    # History — recent readings section
+    # -------------------------------------------------------------------------
+    "history.readings_title": "📖 Son okumalar",
+    "history.reading_row": "{kind} · {status} · {date}",
+    "history.download": "⬇️ İndir",
 }

@@ -302,4 +302,26 @@ TRANSLATIONS = {
     "owner.user.unban.done": "उपयोगकर्ता का प्रतिबंध हटा दिया गया।",
     "owner.user.cancelled": "रद्द किया गया।",
     "account.banned.notice": "🚫 बॉट तक आपकी पहुँच प्रतिबंधित है। कारण: {reason}",
+    # -------------------------------------------------------------------------
+    # Readings submenu
+    # -------------------------------------------------------------------------
+    "btn.readings": "📖 पाठ",
+    "readings.menu.title": "कौन सा पाठ चाहिए?",
+    "readings.queued": "आपका पाठ तैयार हो रहा है। एक मिनट लगेगा।",
+    "readings.no_profile": "पहले अपना जन्म विवरण भरें।",
+    "readings.no_quota": "क्रेडिट उपलब्ध नहीं हैं। जारी रखने के लिए पैकेज खरीदें।",
+    "readings.kind.bazi": "🐉 BaZi",
+    "readings.kind.numerology": "🔢 Numerology",
+    "readings.kind.human_design": "🧬 Human Design",
+    "readings.kind.astrology": "☉ Astrology",
+    "readings.kind.vedic": "🕉 Vedic",
+    "readings.kind.gene_keys": "🗝 Gene Keys",
+    "readings.kind.mayan": "🌀 Mayan",
+    "readings.kind.aspects": "✦ Aspects",
+    # -------------------------------------------------------------------------
+    # History — recent readings section
+    # -------------------------------------------------------------------------
+    "history.readings_title": "📖 हाल के पाठ",
+    "history.reading_row": "{kind} · {status} · {date}",
+    "history.download": "⬇️ डाउनलोड",
 }

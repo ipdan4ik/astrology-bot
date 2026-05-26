@@ -301,4 +301,26 @@ TRANSLATIONS = {
     "owner.user.unban.done": "用户已解封。",
     "owner.user.cancelled": "已取消。",
     "account.banned.notice": "🚫 您的机器人访问权限已被限制。原因：{reason}",
+    # -------------------------------------------------------------------------
+    # Readings submenu
+    # -------------------------------------------------------------------------
+    "btn.readings": "📖 解读",
+    "readings.menu.title": "想要哪种解读？",
+    "readings.queued": "正在生成你的解读，需要一分钟。",
+    "readings.no_profile": "请先填写出生信息。",
+    "readings.no_quota": "没有可用积分。购买套餐以继续。",
+    "readings.kind.bazi": "🐉 BaZi（八字）",
+    "readings.kind.numerology": "🔢 数字学",
+    "readings.kind.human_design": "🧬 Human Design（人类图）",
+    "readings.kind.astrology": "☉ 星座",
+    "readings.kind.vedic": "🕉 吠陀",
+    "readings.kind.gene_keys": "🗝 Gene Keys",
+    "readings.kind.mayan": "🌀 玛雅",
+    "readings.kind.aspects": "✦ 相位",
+    # -------------------------------------------------------------------------
+    # History — recent readings section
+    # -------------------------------------------------------------------------
+    "history.readings_title": "📖 最近解读",
+    "history.reading_row": "{kind} · {status} · {date}",
+    "history.download": "⬇️ 下载",
 }

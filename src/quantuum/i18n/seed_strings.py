@@ -16,6 +16,7 @@ Placeholder variables per key:
     history.detail_status   — {status}
     history.detail_created  — {created_at}
     history.detail_ready    — {completed_at}
+    history.reading_row     — {kind}, {status}, {date}
     buy.plan_subscription   — {name}, {price}
     buy.plan_package        — {name}, {count}, {price}
     buy.invoice_subscription — {period_days}
@@ -65,6 +66,11 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "btn.daily": {
         "ru": "🔔 Ежедневный гороскоп",
         "en": "🔔 Daily horoscope",
+    },
+    # Readings submenu button
+    "btn.readings": {
+        "ru": "📖 Разборы",
+        "en": "📖 Readings",
     },
     # Language selection (picker + menu button)
     "btn.language": {
@@ -419,6 +425,21 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "history.unavailable": {
         "ru": "Недоступно",
         "en": "Unavailable",
+    },
+    # Recent readings section in history screen
+    "history.readings_title": {
+        "ru": "📖 Последние разборы",
+        "en": "📖 Recent readings",
+    },
+    # Reading list row — {kind} localised kind label, {status} raw status, {date} formatted
+    "history.reading_row": {
+        "ru": "{kind} · {status} · {date}",
+        "en": "{kind} · {status} · {date}",
+    },
+    # Download button label for a reading row
+    "history.download": {
+        "ru": "⬇️ Скачать",
+        "en": "⬇️ Download",
     },
     # -------------------------------------------------------------------------
     # Buy / payments
@@ -923,6 +944,33 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "🚫 Доступ к боту ограничен. Причина: {reason}",
         "en": "🚫 Your access to the bot is restricted. Reason: {reason}",
     },
+    # -------------------------------------------------------------------------
+    # Readings submenu (readings.py)
+    # -------------------------------------------------------------------------
+    "readings.menu.title": {
+        "ru": "Какой разбор сгенерировать?",
+        "en": "Which reading would you like?",
+    },
+    "readings.queued": {
+        "ru": "Готовлю разбор. Это займёт минуту.",
+        "en": "Generating your reading. This will take a minute.",
+    },
+    "readings.no_profile": {
+        "ru": "Сначала заполни профиль рождения.",
+        "en": "Please fill in your birth profile first.",
+    },
+    "readings.no_quota": {
+        "ru": "Нет доступных кредитов. Купи пакет, чтобы продолжить.",
+        "en": "No credits available. Buy a package to continue.",
+    },
+    "readings.kind.bazi":         {"ru": "🐉 BaZi",         "en": "🐉 BaZi"},
+    "readings.kind.numerology":   {"ru": "🔢 Нумерология",   "en": "🔢 Numerology"},
+    "readings.kind.human_design": {"ru": "🧬 Human Design",  "en": "🧬 Human Design"},
+    "readings.kind.astrology":    {"ru": "☉ Астрология",    "en": "☉ Astrology"},
+    "readings.kind.vedic":        {"ru": "🕉 Ведическая",   "en": "🕉 Vedic"},
+    "readings.kind.gene_keys":    {"ru": "🗝 Gene Keys",    "en": "🗝 Gene Keys"},
+    "readings.kind.mayan":        {"ru": "🌀 Майя",         "en": "🌀 Mayan"},
+    "readings.kind.aspects":      {"ru": "✦ Аспекты",      "en": "✦ Aspects"},
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that

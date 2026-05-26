@@ -141,8 +141,12 @@ async def test_blueprint_generate_real_engine_with_llm(session, default_tenant):
     reloaded = await get_blueprint(session, bp.id)
     assert reloaded.status == "done"
     assert reloaded.calc_md.startswith("# Quantuum Blueprint —")
-    assert reloaded.llm_md == "POLISHED REPORT"
-    assert reloaded.llm_tokens_in == 11
+    # llm_md is now the composite stitched document from 8 parallel polish_reading calls.
+    assert reloaded.llm_md is not None
+    assert "QUANTUUM SOULMAP BLUEPRINT" in reloaded.llm_md
+    assert "## 🌌 FIELD OVERVIEW" in reloaded.llm_md
+    # tokens_in/out are summed over 8 polish_reading calls (FakeLLM returns 11/22 each).
+    assert reloaded.llm_tokens_in == 11 * 8
     assert reloaded.llm_provider == "openai"
     assert reloaded.llm_model == "claude-test"
 

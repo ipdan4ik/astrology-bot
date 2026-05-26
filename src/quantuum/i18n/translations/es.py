@@ -303,4 +303,26 @@ TRANSLATIONS = {
     "owner.user.unban.done": "Usuario desbaneado.",
     "owner.user.cancelled": "Cancelado.",
     "account.banned.notice": "🚫 Tu acceso al bot está restringido. Motivo: {reason}",
+    # -------------------------------------------------------------------------
+    # Readings submenu
+    # -------------------------------------------------------------------------
+    "btn.readings": "📖 Lecturas",
+    "readings.menu.title": "¿Qué lectura te gustaría?",
+    "readings.queued": "Estoy preparando tu lectura. Tardará un minuto.",
+    "readings.no_profile": "Primero, completa tu perfil de nacimiento.",
+    "readings.no_quota": "No hay créditos disponibles. Compra un paquete para continuar.",
+    "readings.kind.bazi": "🐉 BaZi",
+    "readings.kind.numerology": "🔢 Numerología",
+    "readings.kind.human_design": "🧬 Human Design",
+    "readings.kind.astrology": "☉ Astrología",
+    "readings.kind.vedic": "🕉 Védica",
+    "readings.kind.gene_keys": "🗝 Gene Keys",
+    "readings.kind.mayan": "🌀 Maya",
+    "readings.kind.aspects": "✦ Aspectos",
+    # -------------------------------------------------------------------------
+    # History — recent readings section
+    # -------------------------------------------------------------------------
+    "history.readings_title": "📖 Lecturas recientes",
+    "history.reading_row": "{kind} · {status} · {date}",
+    "history.download": "⬇️ Descargar",
 }

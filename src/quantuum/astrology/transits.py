@@ -22,7 +22,8 @@ from quantuum.astrology.astro import (
     midheaven_longitude,
     planet_position,
 )
-from quantuum.astrology.blueprint import ALL_PLANETS, BlueprintInput, parse_birth_instant
+from quantuum.astrology.blueprint import BlueprintInput, parse_birth_instant
+from quantuum.astrology.sections import ALL_PLANETS
 from quantuum.astrology.util import fmt_deg, to_fixed, to_sign_degree
 
 # Transiting bodies scanned for the forward forecast. Moon EXCLUDED (~13 deg/day

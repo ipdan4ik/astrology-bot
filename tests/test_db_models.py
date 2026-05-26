@@ -53,3 +53,26 @@ def test_tenant_bot_defaults():
     assert tb.transport == "polling"
     assert tb.status == "active"
     assert tb.bot_telegram_id is None
+
+
+async def test_reading_model_create_and_load(session, default_tenant):
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import NatalProfile, Reading
+    from datetime import date, time
+
+    acc = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="r1")
+    profile = NatalProfile(
+        tenant_id=default_tenant.id, account_id=acc.id,
+        full_name="Test", birth_date=date(1990, 1, 1), birth_time=time(12, 0),
+        birth_place="X", latitude=0, longitude=0, timezone="UTC",
+    )
+    session.add(profile); await session.commit(); await session.refresh(profile)
+
+    reading = Reading(
+        tenant_id=default_tenant.id, account_id=acc.id,
+        natal_profile_id=profile.id, kind="bazi", lang="ru",
+    )
+    session.add(reading); await session.commit(); await session.refresh(reading)
+    assert reading.id is not None
+    assert reading.status == "pending"
+    assert reading.kind == "bazi"

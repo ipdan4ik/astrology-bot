@@ -32,7 +32,9 @@ async def _newest_valid_package(session, account_id: int) -> AccountPackage | No
     return result.scalars().first()
 
 
-async def consume_quota(session, account_id: int, kind: str) -> str:
+async def consume_quota(session, account_id: int, kind: str, *, cost_units: int = 1) -> str:
+    if cost_units < 1:
+        raise ValueError(f"cost_units must be >= 1, got {cost_units}")
     balance = await session.get(AccountBalance, account_id, with_for_update=True)
     if balance is None:
         balance = AccountBalance(account_id=account_id)
@@ -49,13 +51,21 @@ async def consume_quota(session, account_id: int, kind: str) -> str:
         await session.commit()
         return "subscription"
 
-    if balance.package_credits >= 1:
-        # Decrement the oldest-expiring package ledger row to mirror the credit spend.
-        pkg = await _oldest_valid_package(session, account_id)
-        if pkg is not None:
-            pkg.requests_remaining -= 1
+    if balance.package_credits >= cost_units:
+        # Drain `cost_units` from oldest-expiring packages FIFO. The balance
+        # counter is the source of truth — if package rows are absent (legacy
+        # rows that pre-date AccountPackage ledger, or test fixtures that set
+        # the balance directly), we still consume from the balance.
+        remaining = cost_units
+        while remaining > 0:
+            pkg = await _oldest_valid_package(session, account_id)
+            if pkg is None:
+                break
+            take = min(remaining, pkg.requests_remaining)
+            pkg.requests_remaining -= take
             session.add(pkg)
-        balance.package_credits -= 1
+            remaining -= take
+        balance.package_credits -= cost_units
         balance.updated_at = utcnow()
         session.add(balance)
         await session.commit()
@@ -69,15 +79,16 @@ async def refund_quota(session, request_id: int) -> None:
     if request is None or request.charged_against in (None, "none"):
         return
 
+    units = max(request.cost_units or 1, 1)
     balance = await session.get(AccountBalance, request.account_id, with_for_update=True)
     if balance is not None:
         if request.charged_against == "trial":
             balance.free_trial_used = False
         elif request.charged_against == "package":
-            balance.package_credits += 1
+            balance.package_credits += units
             pkg = await _newest_valid_package(session, request.account_id)
             if pkg is not None:
-                pkg.requests_remaining += 1
+                pkg.requests_remaining += units
                 session.add(pkg)
         balance.updated_at = utcnow()
         session.add(balance)

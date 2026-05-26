@@ -16,14 +16,30 @@ def test_fake_satisfies_protocol():
     assert isinstance(FakeLLM(), LLMClient)
 
 
-async def test_polish_blueprint_wraps_calc_md():
+async def test_polish_blueprint_composes_eight_reading_polishes():
+    from quantuum.astrology.blueprint import BlueprintInput
+
+    inp = BlueprintInput(
+        full_name="Test", birth_date="1990-08-15", birth_time="14:30",
+        birth_place="X", latitude=55.7558, longitude=37.6173,
+        timezone="Europe/Moscow", for_year=2026,
+    )
     fake = FakeLLM()
-    res = await polish_blueprint(fake, "# calc", lang="en", model="m", temperature=0.1, max_tokens=1000)
-    assert res.text == "POLISHED" and res.tokens_in == 11
-    call = fake.calls[0]
-    assert "CALCULATED MARKDOWN:" in call["user"] and "# calc" in call["user"]
-    assert "Answer in language: en." in call["user"]
-    assert "Quantuum Blueprint Writer" in call["system"]
+    res = await polish_blueprint(
+        fake, "irrelevant", lang="en", model="m",
+        temperature=0.1, max_tokens=1000, build_input=inp,
+    )
+    # 8 section polishes, one LLM call each
+    assert len(fake.calls) == 8
+    # Aggregated token counts (FakeLLM returns 11/22 per call)
+    assert res.tokens_in == 11 * 8
+    assert res.tokens_out == 22 * 8
+    # Stitched output includes the ceremonial header and field overview
+    assert "Test — QUANTUUM SOULMAP BLUEPRINT" in res.text
+    assert "## 🌌 FIELD OVERVIEW" in res.text
+    # Language was forwarded to every call
+    for call in fake.calls:
+        assert "Answer in language: en." in call["user"]
 
 
 async def test_openai_client_parses_and_strips_fence(monkeypatch):

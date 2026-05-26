@@ -43,6 +43,7 @@ async def blueprint_generate(
                     model=cfg["model"],
                     temperature=cfg["temperature"],
                     max_tokens=cfg["max_tokens"],
+                    build_input=inp,
                 )
                 await set_status(
                     session,
