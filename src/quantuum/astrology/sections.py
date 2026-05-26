@@ -824,12 +824,12 @@ def build_mayan_section(inp: "BlueprintInput", ctx: BlueprintContext) -> str:
 # ---------------------------------------------------------------------------
 
 BLUEPRINT_SECTION_ORDER: tuple[str, ...] = (
-    "identity", "aspects", "vedic", "numerology",
+    "astrology", "aspects", "vedic", "numerology",
     "bazi", "human_design", "gene_keys", "mayan",
 )
 
 SECTION_BUILDERS: dict[str, Callable[["BlueprintInput", BlueprintContext], str]] = {
-    "identity":     build_identity_section,
+    "astrology":    build_identity_section,
     "aspects":      build_aspects_section,
     "vedic":        build_vedic_section,
     "numerology":   build_numerology_section,

@@ -42,7 +42,7 @@ def test_blueprint_context_exposes_required_fields():
 
 
 SECTION_HEADINGS = {
-    "identity":     "## 1. Identity Layer",
+    "astrology":    "## 1. Identity Layer",
     "aspects":      "## 2. Major Aspects",
     "vedic":        "## 3. Vedic (Sidereal, Lahiri Ayanamsha)",
     "numerology":   "## 4. Numerology (Pythagorean)",
@@ -57,7 +57,7 @@ def test_section_starts_with_expected_heading(kind, expected_heading):
     inp = _sample_input()
     ctx = build_blueprint_context(inp)
     builders = {
-        "identity":     build_identity_section,
+        "astrology":    build_identity_section,
         "aspects":      build_aspects_section,
         "vedic":        build_vedic_section,
         "numerology":   build_numerology_section,
@@ -72,6 +72,6 @@ def test_section_starts_with_expected_heading(kind, expected_heading):
 
 def test_section_order_is_canonical():
     assert BLUEPRINT_SECTION_ORDER == (
-        "identity", "aspects", "vedic", "numerology",
+        "astrology", "aspects", "vedic", "numerology",
         "bazi", "human_design", "gene_keys", "mayan",
     )

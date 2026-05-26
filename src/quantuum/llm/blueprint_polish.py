@@ -9,17 +9,6 @@ from quantuum.astrology.sections import (
 )
 from quantuum.llm.reading_polish import polish_reading
 
-# Map blueprint section keys → reading kinds for polishing.
-_SECTION_TO_KIND = {
-    "identity":     "astrology",
-    "aspects":      "aspects",
-    "vedic":        "vedic",
-    "numerology":   "numerology",
-    "bazi":         "bazi",
-    "human_design": "human_design",
-    "gene_keys":    "gene_keys",
-    "mayan":        "mayan",
-}
 
 _FRAGMENT_RE = re.compile(
     r"<!-- field-overview-start -->\s*(.*?)\s*<!-- field-overview-end -->",
@@ -75,7 +64,7 @@ async def polish_blueprint(client, calc_md: str, *, lang: str, model: str,
                             temperature: float, max_tokens: int, build_input):
     polished = await asyncio.gather(*[
         polish_reading(
-            client, _SECTION_TO_KIND[section],
+            client, section,
             build_reading_calc_md(section, build_input),
             lang=lang, model=model, temperature=temperature, max_tokens=max_tokens,
         )
