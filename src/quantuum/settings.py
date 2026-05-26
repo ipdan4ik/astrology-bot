@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     moderation_fail_open: bool = True
     moderation_openai_model: str = "omni-moderation-latest"
     moderation_advice_model: str | None = None
-    moderation_advice_max_tokens: int = 32
+    moderation_advice_max_tokens: int = 32  # enough for {"category": "..."} JSON reply
     moderation_advice_temperature: float = 0.0
 
 

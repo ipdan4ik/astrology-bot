@@ -40,17 +40,12 @@ def test_geocoder_settings_defaults():
 def test_moderation_settings_defaults():
     from quantuum.settings import Settings
 
-    s = Settings(
-        database_url="postgresql://x",
-        redis_url="redis://x",
-        jwt_signing_key="x",
-    )
-    assert s.moderation_enabled is True
-    assert s.moderation_fail_open is True
-    assert s.moderation_openai_model == "omni-moderation-latest"
-    assert s.moderation_advice_model is None  # falls back to llm_model
-    assert s.moderation_advice_max_tokens == 32
-    assert s.moderation_advice_temperature == 0.0
+    assert Settings.model_fields["moderation_enabled"].default is True
+    assert Settings.model_fields["moderation_fail_open"].default is True
+    assert Settings.model_fields["moderation_openai_model"].default == "omni-moderation-latest"
+    assert Settings.model_fields["moderation_advice_model"].default is None
+    assert Settings.model_fields["moderation_advice_max_tokens"].default == 32
+    assert Settings.model_fields["moderation_advice_temperature"].default == 0.0
 
 
 def test_moderation_settings_env_override(monkeypatch):
