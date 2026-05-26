@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json as _json
+from pathlib import Path as _Path
+
 from quantuum.moderation.policy import Category, Safe, Tier1Hit, Tier2Hit
 
 # Precedence: most severe → least. Returned at the first match.
@@ -9,10 +12,6 @@ _TIER1_PRECEDENCE: list[tuple[Category, tuple[str, ...]]] = [
     (Category.VIOLENCE, ("violence", "violence_graphic")),
     (Category.HATE, ("hate", "hate_threatening")),
 ]
-
-
-import json as _json
-from pathlib import Path as _Path
 
 _ADVICE_PROMPT_PATH = _Path(__file__).parent / "prompts" / "advice_classifier.txt"
 
