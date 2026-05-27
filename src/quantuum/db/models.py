@@ -183,6 +183,9 @@ class Reading(SQLModel, table=True):
 
 class ModerationEvent(SQLModel, table=True):
     __tablename__ = "moderation_events"
+    __table_args__ = (
+        Index("ix_moderation_events_account_created", "account_id", "created_at"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     account_id: int | None = Field(default=None, foreign_key="accounts.id", index=True)

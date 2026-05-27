@@ -38,6 +38,11 @@ def upgrade() -> None:
     op.create_index("ix_moderation_events_tenant_id", "moderation_events", ["tenant_id"])
     op.create_index("ix_moderation_events_created_at", "moderation_events", ["created_at"])
     op.create_index(
+        "ix_moderation_events_account_created",
+        "moderation_events",
+        ["account_id", "created_at"],
+    )
+    op.create_index(
         "ix_moderation_events_category_created",
         "moderation_events",
         ["category", "created_at"],
@@ -46,6 +51,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_moderation_events_category_created", table_name="moderation_events")
+    op.drop_index("ix_moderation_events_account_created", table_name="moderation_events")
     op.drop_index("ix_moderation_events_created_at", table_name="moderation_events")
     op.drop_index("ix_moderation_events_tenant_id", table_name="moderation_events")
     op.drop_index("ix_moderation_events_account_id", table_name="moderation_events")
