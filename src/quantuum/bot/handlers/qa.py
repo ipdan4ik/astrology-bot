@@ -60,7 +60,9 @@ async def _submit(message: Message, raw: str, account: Account, i18n: Translator
                 settings=settings,
             )
         except Exception:
-            verdict = Safe()  # last-resort fail-open guard
+            if not settings.moderation_fail_open:
+                raise
+            verdict = Safe()
 
         if not isinstance(verdict, Safe):
             entry = POLICY[verdict.category]
