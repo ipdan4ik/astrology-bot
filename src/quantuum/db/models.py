@@ -507,3 +507,33 @@ class AuditLog(SQLModel, table=True):
     ip_address: str | None = None
     user_agent: str | None = None
     created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class StartToken(SQLModel, table=True):
+    __tablename__ = "start_tokens"
+
+    code: str = Field(primary_key=True, max_length=64)
+    kind: str = Field(index=True)  # referral | discount | promo | ...
+    tenant_id: int = Field(foreign_key="tenants.id", index=True)
+    owner_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+    payload: dict = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    status: str = "active"  # active | disabled
+    max_uses: int | None = Field(default=None)
+    used_count: int = 0
+    expires_at: datetime | None = _dt_field(default=None)
+    created_at: datetime = _dt_field(default_factory=utcnow)
+
+
+class StartTokenUse(SQLModel, table=True):
+    __tablename__ = "start_token_uses"
+    __table_args__ = (
+        UniqueConstraint("account_id", name="uq_start_token_uses_account_id"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_code: str = Field(foreign_key="start_tokens.code", index=True)
+    account_id: int = Field(foreign_key="accounts.id")
+    used_at: datetime = _dt_field(default_factory=utcnow)
+    claimed_at: datetime | None = _dt_field(default=None)
