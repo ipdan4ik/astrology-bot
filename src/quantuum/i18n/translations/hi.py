@@ -324,4 +324,14 @@ TRANSLATIONS = {
     "history.readings_title": "📖 हाल के पाठ",
     "history.reading_row": "{kind} · {status} · {date}",
     "history.download": "⬇️ डाउनलोड",
+    # -------------------------------------------------------------------------
+    # Content moderation
+    # -------------------------------------------------------------------------
+    "moderation.self_harm": "अगर आप अभी कठिन समय में हैं, तो कृपया सहायता लें: {helpline_url}. मैं किसी विशेषज्ञ की जगह नहीं ले सकता, पर मैं यहाँ हूँ.",
+    "moderation.violence": "यह सवाल मेरी मदद की सीमा के बाहर है.",
+    "moderation.hate": "मैं इसके लिए नहीं हूँ.",
+    "moderation.medical": "यह डॉक्टर के लिए सवाल है, ज्योतिष के लिए नहीं. मैं चिकित्सकीय सलाह नहीं देता.",
+    "moderation.legal": "यह वकील के लिए है. मैं ऊर्जा और चक्रों की बात करता हूँ, कानूनी जोखिमों की नहीं.",
+    "moderation.blocked_generic": "यह अनुरोध संसाधित नहीं किया जा सकता.",
+    "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
 }

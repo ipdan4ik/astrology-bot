@@ -325,4 +325,14 @@ TRANSLATIONS = {
     "history.readings_title": "📖 Letture recenti",
     "history.reading_row": "{kind} · {status} · {date}",
     "history.download": "⬇️ Scarica",
+    # -------------------------------------------------------------------------
+    # Content moderation
+    # -------------------------------------------------------------------------
+    "moderation.self_harm": "Se ora stai attraversando un momento difficile, chiedi supporto: {helpline_url}. Non sostituisco un professionista, ma ci sono.",
+    "moderation.violence": "Questa domanda è oltre ciò con cui posso aiutarti.",
+    "moderation.hate": "Non sono qui per questo.",
+    "moderation.medical": "È una domanda per un medico, non per l'astrologia. Non do consigli clinici.",
+    "moderation.legal": "Quello è per un avvocato. Parlo di energie e cicli, non di rischi legali.",
+    "moderation.blocked_generic": "Questa richiesta non può essere elaborata.",
+    "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
 }

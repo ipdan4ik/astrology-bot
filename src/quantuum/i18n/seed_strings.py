@@ -971,6 +971,43 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "readings.kind.gene_keys":    {"ru": "🗝 Gene Keys",    "en": "🗝 Gene Keys"},
     "readings.kind.mayan":        {"ru": "🌀 Майя",         "en": "🌀 Mayan"},
     "readings.kind.aspects":      {"ru": "✦ Аспекты",      "en": "✦ Aspects"},
+    # -------------------------------------------------------------------------
+    # Content moderation
+    # -------------------------------------------------------------------------
+    "moderation.self_harm": {
+        "ru": (
+            "Если ты сейчас в трудной точке — обратись за поддержкой: {helpline_url}. "
+            "Я не заменяю специалиста, но я рядом."
+        ),
+        "en": (
+            "If you're in a hard place right now, please reach out for support: "
+            "{helpline_url}. I'm not a substitute for a professional, but I'm here."
+        ),
+    },
+    "moderation.violence": {
+        "ru": "Этот вопрос за пределами того, чем я могу помочь.",
+        "en": "This question is outside what I can help with.",
+    },
+    "moderation.hate": {
+        "ru": "Я тут не для этого.",
+        "en": "I'm not here for that.",
+    },
+    "moderation.medical": {
+        "ru": "Это вопрос к врачу, не к астрологу. Клинических рекомендаций я не даю.",
+        "en": "This is a question for a doctor, not an astrologer. I don't give clinical guidance.",
+    },
+    "moderation.legal": {
+        "ru": "Это к юристу. Я могу говорить про энергии и циклы, но не про правовые риски.",
+        "en": "That's for a lawyer. I can speak to energies and cycles, not legal risk.",
+    },
+    "moderation.blocked_generic": {
+        "ru": "Этот запрос невозможен.",
+        "en": "This request can't be processed.",
+    },
+    "moderation.helpline_url": {
+        "ru": "https://findahelpline.com/topics/suicidal-thoughts",
+        "en": "https://findahelpline.com/topics/suicidal-thoughts",
+    },
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that

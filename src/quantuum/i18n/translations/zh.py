@@ -323,4 +323,14 @@ TRANSLATIONS = {
     "history.readings_title": "📖 最近解读",
     "history.reading_row": "{kind} · {status} · {date}",
     "history.download": "⬇️ 下载",
+    # -------------------------------------------------------------------------
+    # Content moderation
+    # -------------------------------------------------------------------------
+    "moderation.self_harm": "如果你正处在艰难时刻，请寻求支持：{helpline_url}。我不能替代专业人士，但我会在这里。",
+    "moderation.violence": "这个问题超出了我能帮助的范围。",
+    "moderation.hate": "我不是为这个而在这里的。",
+    "moderation.medical": "这是医生的问题，不是占星的问题。我不提供临床建议。",
+    "moderation.legal": "这是律师的问题。我谈能量与周期，不谈法律风险。",
+    "moderation.blocked_generic": "无法处理此请求。",
+    "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
 }
