@@ -1,10 +1,11 @@
+import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 from sqlalchemy import select
 
 from quantuum.auth.identity import find_or_create_account_by_tg
-from quantuum.db.models import ModerationEvent, QaAnswer, Request
+from quantuum.db.models import ModerationEvent, QaAnswer, Reading, Request
 from quantuum.domain.natal_profiles import upsert_natal_profile
 from quantuum.domain.tenant_features import set_feature_enabled
 from tests.conftest import build_translator
@@ -221,5 +222,81 @@ async def test_daily_enabled_does_not_block(session, default_tenant, monkeypatch
 
     # The disabled message MUST NOT have been sent.
     for call in msg.answer.await_args_list:
+        text = call.args[0] if call.args else ""
+        assert "отключена" not in text.lower(), f"Gate falsely blocked: {text!r}"
+
+
+# ---------- Readings per-kind ----------
+
+
+@pytest.mark.parametrize(
+    "kind", ["bazi", "numerology", "human_design", "astrology",
+             "vedic", "gene_keys", "mayan", "aspects"],
+)
+async def test_reading_kind_disabled_short_circuits(
+    session, default_tenant, monkeypatch, kind
+):
+    acc = await _setup_account(session, default_tenant.id, tg=f"r_{kind}_off")
+    await _disable(session, default_tenant.id, f"reading.{kind}", by=acc.id)
+
+    from quantuum.bot.handlers import readings as r_handler
+
+    monkeypatch.setattr(r_handler, "enqueue_reading", AsyncMock())
+
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    query = MagicMock()
+    query.message = MagicMock()
+    query.message.answer = AsyncMock()
+    query.message.chat = MagicMock()
+    query.message.chat.id = 12345
+    query.answer = AsyncMock()
+    query.data = f"rdg:generate:{kind}"
+
+    from quantuum.bot.ui.callbacks import ReadingCb
+
+    monkeypatch.setattr(
+        ReadingCb,
+        "unpack",
+        classmethod(
+            lambda cls, data: SimpleNamespace(action="generate", kind=kind)
+        ),
+    )
+
+    await r_handler.on_reading_choice(query, acc, i18n)
+
+    reading_rows = (await session.execute(select(Reading))).scalars().all()
+    assert reading_rows == []
+    query.message.answer.assert_awaited_once()
+    sent = query.message.answer.await_args.args[0]
+    assert "отключена" in sent.lower() or "available" in sent.lower()
+
+
+async def test_reading_kind_enabled_does_not_block(session, default_tenant, monkeypatch):
+    # Pick one kind, leave it default ON, confirm gate doesn't fire.
+    acc = await _setup_account(session, default_tenant.id, tg="r_on_positive")
+
+    from quantuum.bot.handlers import readings as r_handler
+
+    monkeypatch.setattr(r_handler, "enqueue_reading", AsyncMock())
+
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    query = MagicMock()
+    query.message = MagicMock()
+    query.message.answer = AsyncMock()
+    query.message.chat = MagicMock()
+    query.message.chat.id = 12345
+    query.answer = AsyncMock()
+    query.data = "rdg:generate:bazi"
+
+    from quantuum.bot.ui.callbacks import ReadingCb
+    monkeypatch.setattr(
+        ReadingCb,
+        "unpack",
+        classmethod(lambda cls, data: SimpleNamespace(action="generate", kind="bazi")),
+    )
+
+    await r_handler.on_reading_choice(query, acc, i18n)
+
+    for call in query.message.answer.await_args_list:
         text = call.args[0] if call.args else ""
         assert "отключена" not in text.lower(), f"Gate falsely blocked: {text!r}"

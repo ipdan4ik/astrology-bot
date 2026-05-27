@@ -11,10 +11,13 @@ from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.quota import consume_quota
 from quantuum.domain.readings import create_reading
 from quantuum.domain.requests import create_request
+from quantuum.domain.tenant_features import is_feature_enabled
 from quantuum.i18n import Translator
+from quantuum.logging_setup import get_logger
 from quantuum.tasks.enqueue import enqueue_reading
 
 router = Router()
+_log = get_logger("tenant_features.gate")
 
 
 async def show_readings_menu(message: Message, account: Account, i18n: Translator) -> None:
@@ -29,6 +32,20 @@ async def on_reading_choice(
     query: CallbackQuery, account: Account, i18n: Translator
 ) -> None:
     kind = ReadingCb.unpack(query.data).kind
+    flag_key = f"reading.{kind}"
+
+    async with get_sessionmaker()() as session:
+        if not await is_feature_enabled(session, account.tenant_id, flag_key):
+            _log.info(
+                "feature.gate_blocked",
+                tenant_id=account.tenant_id,
+                account_id=account.id,
+                key=flag_key,
+                surface="readings.on_reading_choice",
+            )
+            await query.message.answer(await i18n("feature.disabled_generic"))
+            await query.answer()
+            return
 
     async with get_sessionmaker()() as session:
         profile = await get_natal_profile(session, account.id)
