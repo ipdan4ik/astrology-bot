@@ -136,3 +136,52 @@ async def test_set_populates_updated_by(session, default_tenant):
     ).scalar_one()
     assert row.value_jsonb == {"enabled": False}
     assert row.updated_by_account_id == acc.id
+
+
+async def test_set_bumps_updated_at_on_update(session, default_tenant):
+    import asyncio
+
+    from sqlalchemy import select
+
+    from quantuum.db.models import TenantConfig
+
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="actor6"
+    )
+    await set_feature_enabled(
+        session,
+        tenant_id=default_tenant.id,
+        key="blueprint",
+        enabled=False,
+        by_account_id=acc.id,
+    )
+    await session.commit()
+    row = (
+        await session.execute(
+            select(TenantConfig).where(
+                TenantConfig.tenant_id == default_tenant.id,
+                TenantConfig.key == "feature.blueprint",
+            )
+        )
+    ).scalar_one()
+    t1 = row.updated_at
+
+    await asyncio.sleep(0.01)
+
+    await set_feature_enabled(
+        session,
+        tenant_id=default_tenant.id,
+        key="blueprint",
+        enabled=True,
+        by_account_id=acc.id,
+    )
+    await session.commit()
+    await session.refresh(row)
+    t2 = row.updated_at
+
+    assert t2 > t1
+
+
+async def test_is_feature_enabled_unknown_key_raises(session, default_tenant):
+    with pytest.raises(ValueError, match=r"not\.a\.real\.key"):
+        await is_feature_enabled(session, default_tenant.id, "not.a.real.key")

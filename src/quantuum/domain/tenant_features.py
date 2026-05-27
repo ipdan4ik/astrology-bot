@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from quantuum.common.datetime import utcnow
 from quantuum.db.models import TenantConfig
 
 FEATURE_KEYS: tuple[str, ...] = (
@@ -29,6 +30,8 @@ async def is_feature_enabled(
     session: AsyncSession, tenant_id: int, key: str
 ) -> bool:
     """Resolve a single feature flag. Missing row => True (default ON)."""
+    if key not in FEATURE_KEYS:
+        raise ValueError(f"unknown feature key: {key}")
     row = await session.get(TenantConfig, (tenant_id, _config_key(key)))
     if row is None:
         return True
@@ -76,4 +79,5 @@ async def set_feature_enabled(
     else:
         row.value_jsonb = {"enabled": enabled}
         row.updated_by_account_id = by_account_id
+        row.updated_at = utcnow()
     await session.flush()
