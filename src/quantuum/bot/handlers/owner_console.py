@@ -16,6 +16,16 @@ from quantuum.domain.owner_console import (
     resolve_managed_tenant_by_slug,
 )
 from quantuum.domain.stats import tenant_stats
+from quantuum.domain.tenant_branding import (
+    MAX_DISPLAY_NAME_LEN,
+    MAX_HELP_LEN,
+    MAX_SIGNATURE_LEN,
+    MAX_WELCOME_LEN,
+    get_branding_text,
+    reset_branding_text,
+    set_branding_text,
+    set_display_name,
+)
 from quantuum.domain.tenant_features import (
     list_feature_states,
     set_feature_enabled,
@@ -483,3 +493,229 @@ async def on_features_toggle(
     kb = await _features_keyboard(callback_data.tenant_id, flags, i18n)
     await query.message.edit_reply_markup(reply_markup=kb)
     await query.answer()
+
+
+# ── SP3: Branding submenu + edit FSM ────────────────────────────────────────────
+
+_branding_log = get_logger("tenant_branding.console")
+
+_BRANDING_PREVIEW_LEN = 40
+
+_BRANDING_LIMITS: dict[str, int] = {
+    "display_name": MAX_DISPLAY_NAME_LEN,
+    "start.welcome": MAX_WELCOME_LEN,
+    "help.text": MAX_HELP_LEN,
+    "brand.signature": MAX_SIGNATURE_LEN,
+}
+
+_BRANDING_LABEL_KEYS: dict[str, str] = {
+    "display_name": "owner.branding.label.name",
+    "start.welcome": "owner.branding.label.welcome",
+    "help.text": "owner.branding.label.help",
+    "brand.signature": "owner.branding.label.signature",
+}
+
+
+class OwnerBranding(StatesGroup):
+    awaiting_value = State()
+
+
+def _truncate(s: str) -> str:
+    if len(s) <= _BRANDING_PREVIEW_LEN:
+        return s
+    return s[: _BRANDING_PREVIEW_LEN - 1] + "…"
+
+
+async def _branding_current_value(
+    session, *, tenant_id: int, key: str, lang: str
+) -> str | None:
+    """Resolve current value: Tenant.display_name for display_name; override
+    text for the three i18n keys (None when no row)."""
+    if key == "display_name":
+        row = await session.get(Tenant, tenant_id)
+        return row.display_name if row is not None else None
+    return await get_branding_text(
+        session, tenant_id=tenant_id, key=key, lang=lang
+    )
+
+
+async def _branding_keyboard(
+    tenant_id: int, previews: dict[str, str], i18n: Translator
+):
+    b = InlineKeyboardBuilder()
+    empty_marker = await i18n("owner.branding.preview_empty")
+    for key in ("display_name", "start.welcome", "help.text", "brand.signature"):
+        label = await i18n(_BRANDING_LABEL_KEYS[key])
+        preview = previews.get(key) or ""
+        preview = _truncate(preview) if preview else empty_marker
+        b.button(
+            text=f"{label}: {preview}",
+            callback_data=OwnerBrandingCb(
+                action="edit", tenant_id=tenant_id, key=key
+            ).pack(),
+        )
+    b.adjust(1, 1, 1, 1)
+    return b.as_markup()
+
+
+@router.callback_query(OwnerBrandingCb.filter(F.action == "open"))
+async def on_branding_open(
+    query: CallbackQuery,
+    callback_data: OwnerBrandingCb,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        previews = {}
+        for key in ("display_name", "start.welcome", "help.text", "brand.signature"):
+            previews[key] = await _branding_current_value(
+                session, tenant_id=callback_data.tenant_id, key=key, lang=i18n.lang
+            )
+    kb = await _branding_keyboard(callback_data.tenant_id, previews, i18n)
+    await query.message.edit_text(
+        await i18n("owner.branding.title"),
+        reply_markup=kb,
+    )
+    await query.answer()
+
+
+@router.callback_query(OwnerBrandingCb.filter(F.action == "edit"))
+async def on_branding_edit(
+    query: CallbackQuery,
+    callback_data: OwnerBrandingCb,
+    state: FSMContext,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    key = callback_data.key
+    if key not in _BRANDING_LIMITS:
+        await query.answer(await i18n("owner.no_rights"), show_alert=True)
+        return
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+    await state.set_state(OwnerBranding.awaiting_value)
+    await state.update_data(
+        tenant_id=callback_data.tenant_id,
+        key=key,
+        lang=i18n.lang,
+    )
+    label = await i18n(_BRANDING_LABEL_KEYS[key])
+    await query.message.answer(
+        await i18n("owner.branding.prompt", label=label)
+    )
+    await query.answer()
+
+
+@router.message(Command("cancel"), OwnerBranding.awaiting_value)
+async def on_branding_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
+    await state.clear()
+    await message.answer(await i18n("owner.branding.cancelled"))
+
+
+@router.message(OwnerBranding.awaiting_value)
+async def on_branding_value(message: Message, state: FSMContext, i18n: Translator) -> None:
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
+    key = data["key"]
+    lang = data["lang"]
+    raw = message.text or ""
+
+    if raw.strip() == "/reset":
+        async with get_sessionmaker()() as session:
+            actor_id = await authorize_tenant_action(
+                session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+            )
+            if actor_id is None:
+                await message.answer(await i18n("owner.no_rights"))
+                await state.clear()
+                return
+            if key == "display_name":
+                await message.answer(
+                    await i18n("owner.branding.bad_format")
+                )
+                return
+            await reset_branding_text(
+                session, tenant_id=tenant_id, key=key, lang=lang
+            )
+            await session.commit()
+        _branding_log.info(
+            "branding.reset",
+            tenant_id=tenant_id,
+            key=key,
+            lang=lang,
+            by_account_id=actor_id,
+        )
+        await state.clear()
+        await message.answer(await i18n("owner.branding.reset_done"))
+        return
+
+    if raw == "":
+        await message.answer(await i18n("owner.branding.empty_value"))
+        return
+
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+        )
+        if actor_id is None:
+            await message.answer(await i18n("owner.no_rights"))
+            await state.clear()
+            return
+        try:
+            if key == "display_name":
+                await set_display_name(
+                    session,
+                    tenant_id=tenant_id,
+                    display_name=raw,
+                    by_account_id=actor_id,
+                )
+            else:
+                await set_branding_text(
+                    session,
+                    tenant_id=tenant_id,
+                    key=key,
+                    lang=lang,
+                    text=raw,
+                    by_account_id=actor_id,
+                )
+            await session.commit()
+        except ValueError as exc:
+            err = str(exc)
+            if "too long" in err:
+                limit = _BRANDING_LIMITS[key]
+                await message.answer(
+                    await i18n(
+                        "owner.branding.too_long",
+                        actual=len(raw),
+                        limit=limit,
+                    )
+                )
+            elif "newline" in err:
+                await message.answer(await i18n("owner.branding.bad_format"))
+            elif "empty" in err:
+                await message.answer(await i18n("owner.branding.empty_value"))
+            else:
+                await message.answer(await i18n("owner.branding.bad_format"))
+            return
+
+    _branding_log.info(
+        "branding.updated",
+        tenant_id=tenant_id,
+        key=key,
+        lang=None if key == "display_name" else lang,
+        by_account_id=actor_id,
+        length=len(raw),
+    )
+    await state.clear()
+    await message.answer(await i18n("owner.branding.saved"))
