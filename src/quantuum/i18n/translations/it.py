@@ -343,4 +343,23 @@ TRANSLATIONS = {
     "owner.features.label.blueprint": "Lettura",
     "owner.features.label.transits": "Transiti",
     "owner.features.label.daily": "Quotidiano",
+    # White-label branding (SP3)
+    "brand.signature": "",
+    "owner.branding.btn": "🎨 Branding",
+    "owner.branding.title": "🎨 Branding (lingua: {lang})",
+    "owner.branding.label.name": "Nome",
+    "owner.branding.label.welcome": "Benvenuto",
+    "owner.branding.label.help": "Aiuto",
+    "owner.branding.label.signature": "Firma",
+    "owner.branding.prompt": (
+        "Invia il nuovo testo per **{label}** ({lang}), "
+        "o /cancel per mantenere, /reset per ripristinare il predefinito."
+    ),
+    "owner.branding.saved": "✅ Aggiornato.",
+    "owner.branding.reset_done": "↩️ Ripristinato al predefinito.",
+    "owner.branding.cancelled": "Annullato.",
+    "owner.branding.too_long": "Troppo lungo: {actual} caratteri (max {limit}).",
+    "owner.branding.bad_format": "Il nome deve essere 1-64 caratteri senza ritorni a capo.",
+    "owner.branding.empty_value": "Valore vuoto non permesso. Usa /reset per cancellare.",
+    "owner.branding.preview_empty": "(vuoto)",
 }

@@ -1043,6 +1043,75 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Ежедневное",
         "en": "Daily",
     },
+    # -------------------------------------------------------------------------
+    # White-label branding (SP3)
+    # -------------------------------------------------------------------------
+    "brand.signature": {
+        "ru": "",
+        "en": "",
+    },
+    "owner.branding.btn": {
+        "ru": "🎨 Брендинг",
+        "en": "🎨 Branding",
+    },
+    "owner.branding.title": {
+        "ru": "🎨 Брендинг (язык: {lang})",
+        "en": "🎨 Branding (lang: {lang})",
+    },
+    "owner.branding.label.name": {
+        "ru": "Название",
+        "en": "Name",
+    },
+    "owner.branding.label.welcome": {
+        "ru": "Приветствие",
+        "en": "Welcome",
+    },
+    "owner.branding.label.help": {
+        "ru": "Помощь",
+        "en": "Help",
+    },
+    "owner.branding.label.signature": {
+        "ru": "Подпись",
+        "en": "Signature",
+    },
+    "owner.branding.prompt": {
+        "ru": (
+            "Пришлите новый текст для **{label}** ({lang}), "
+            "или /cancel — оставить как есть, /reset — вернуть дефолт."
+        ),
+        "en": (
+            "Send new text for **{label}** ({lang}), "
+            "or /cancel to keep current, /reset to restore default."
+        ),
+    },
+    "owner.branding.saved": {
+        "ru": "✅ Обновлено.",
+        "en": "✅ Updated.",
+    },
+    "owner.branding.reset_done": {
+        "ru": "↩️ Сброшено к дефолту.",
+        "en": "↩️ Reset to default.",
+    },
+    "owner.branding.cancelled": {
+        "ru": "Отменено.",
+        "en": "Cancelled.",
+    },
+    "owner.branding.too_long": {
+        "ru": "Слишком длинно: {actual} символов (максимум {limit}).",
+        "en": "Too long: {actual} chars (max {limit}).",
+    },
+    "owner.branding.bad_format": {
+        "ru": "Имя должно быть 1-64 символов и не содержать переводов строки.",
+        "en": "Name must be 1-64 chars and contain no newlines.",
+    },
+    "owner.branding.empty_value": {
+        "ru": "Пустое значение запрещено. Используйте /reset для сброса.",
+        "en": "Empty value not allowed. Use /reset to clear.",
+    },
+    "owner.branding.preview_empty": {
+        "ru": "(пусто)",
+        "en": "(empty)",
+    },
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that

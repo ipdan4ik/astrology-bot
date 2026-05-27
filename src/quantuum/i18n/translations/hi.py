@@ -342,4 +342,23 @@ TRANSLATIONS = {
     "owner.features.label.blueprint": "रीडिंग",
     "owner.features.label.transits": "ट्रांज़िट",
     "owner.features.label.daily": "दैनिक",
+    # White-label branding (SP3)
+    "brand.signature": "",
+    "owner.branding.btn": "🎨 ब्रांडिंग",
+    "owner.branding.title": "🎨 ब्रांडिंग (भाषा: {lang})",
+    "owner.branding.label.name": "नाम",
+    "owner.branding.label.welcome": "स्वागत",
+    "owner.branding.label.help": "मदद",
+    "owner.branding.label.signature": "हस्ताक्षर",
+    "owner.branding.prompt": (
+        "**{label}** ({lang}) के लिए नया पाठ भेजें, "
+        "या रखने के लिए /cancel, डिफ़ॉल्ट पर पुनर्स्थापित करने के लिए /reset।"
+    ),
+    "owner.branding.saved": "✅ अपडेट किया गया।",
+    "owner.branding.reset_done": "↩️ डिफ़ॉल्ट पर पुनर्स्थापित।",
+    "owner.branding.cancelled": "रद्द किया गया।",
+    "owner.branding.too_long": "बहुत लंबा: {actual} अक्षर (अधिकतम {limit})।",
+    "owner.branding.bad_format": "नाम 1-64 अक्षर का होना चाहिए, बिना लाइन ब्रेक के।",
+    "owner.branding.empty_value": "खाली मान की अनुमति नहीं है। साफ़ करने के लिए /reset का उपयोग करें।",
+    "owner.branding.preview_empty": "(खाली)",
 }

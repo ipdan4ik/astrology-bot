@@ -342,4 +342,23 @@ TRANSLATIONS = {
     "owner.features.label.blueprint": "Okuma",
     "owner.features.label.transits": "Transitler",
     "owner.features.label.daily": "Günlük",
+    # White-label branding (SP3)
+    "brand.signature": "",
+    "owner.branding.btn": "🎨 Markalama",
+    "owner.branding.title": "🎨 Markalama (dil: {lang})",
+    "owner.branding.label.name": "Ad",
+    "owner.branding.label.welcome": "Karşılama",
+    "owner.branding.label.help": "Yardım",
+    "owner.branding.label.signature": "İmza",
+    "owner.branding.prompt": (
+        "**{label}** ({lang}) için yeni metin gönderin, "
+        "veya korumak için /cancel, varsayılana döndürmek için /reset."
+    ),
+    "owner.branding.saved": "✅ Güncellendi.",
+    "owner.branding.reset_done": "↩️ Varsayılana sıfırlandı.",
+    "owner.branding.cancelled": "İptal edildi.",
+    "owner.branding.too_long": "Çok uzun: {actual} karakter (maks {limit}).",
+    "owner.branding.bad_format": "Ad 1-64 karakter olmalı ve satır sonu içermemeli.",
+    "owner.branding.empty_value": "Boş değer izin verilmez. Temizlemek için /reset kullanın.",
+    "owner.branding.preview_empty": "(boş)",
 }

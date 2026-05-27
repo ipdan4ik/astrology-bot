@@ -341,4 +341,23 @@ TRANSLATIONS = {
     "owner.features.label.blueprint": "解读",
     "owner.features.label.transits": "过境",
     "owner.features.label.daily": "每日",
+    # White-label branding (SP3)
+    "brand.signature": "",
+    "owner.branding.btn": "🎨 品牌",
+    "owner.branding.title": "🎨 品牌 (语言: {lang})",
+    "owner.branding.label.name": "名称",
+    "owner.branding.label.welcome": "欢迎语",
+    "owner.branding.label.help": "帮助",
+    "owner.branding.label.signature": "签名",
+    "owner.branding.prompt": (
+        "为 **{label}** ({lang}) 发送新文本，"
+        "或 /cancel 保持当前，/reset 恢复默认。"
+    ),
+    "owner.branding.saved": "✅ 已更新。",
+    "owner.branding.reset_done": "↩️ 已恢复默认。",
+    "owner.branding.cancelled": "已取消。",
+    "owner.branding.too_long": "太长：{actual} 字符（最多 {limit}）。",
+    "owner.branding.bad_format": "名称必须为 1-64 字符且不含换行。",
+    "owner.branding.empty_value": "不允许空值。使用 /reset 清除。",
+    "owner.branding.preview_empty": "(空)",
 }
