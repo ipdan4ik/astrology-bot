@@ -22,6 +22,7 @@ def create_dispatcher() -> Dispatcher:
         daily,
         generate,
         history,
+        invite,
         language,
         menu,
         onboarding,
@@ -39,6 +40,7 @@ def create_dispatcher() -> Dispatcher:
     dp.include_router(readings.router)
     dp.include_router(transits.router)
     dp.include_router(daily.router)
+    dp.include_router(invite.router)
     dp.include_router(generate.router)
     dp.include_router(profile.router)
     dp.include_router(history.router)

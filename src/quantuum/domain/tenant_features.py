@@ -17,6 +17,7 @@ FEATURE_KEYS: tuple[str, ...] = (
     "reading.gene_keys",
     "reading.mayan",
     "reading.aspects",
+    "referrals",
 )
 
 _CONFIG_KEY_PREFIX = "feature."
@@ -41,7 +42,7 @@ async def is_feature_enabled(
 async def list_feature_states(
     session: AsyncSession, tenant_id: int
 ) -> dict[str, bool]:
-    """Return {feature_key: enabled} for all 12 features."""
+    """Return {feature_key: enabled} for all 13 features."""
     stmt = select(TenantConfig).where(
         TenantConfig.tenant_id == tenant_id,
         TenantConfig.key.like(f"{_CONFIG_KEY_PREFIX}%"),
