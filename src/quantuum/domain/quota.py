@@ -3,6 +3,10 @@ from sqlmodel import or_, select
 from quantuum.common.datetime import utcnow
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import AccountBalance, AccountPackage, Request
+from quantuum.domain.referrals import maybe_payout_referral
+from quantuum.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 async def _oldest_valid_package(session, account_id: int) -> AccountPackage | None:
@@ -69,6 +73,12 @@ async def consume_quota(session, account_id: int, kind: str, *, cost_units: int 
         balance.updated_at = utcnow()
         session.add(balance)
         await session.commit()
+        try:
+            await maybe_payout_referral(session, referee_account_id=account_id)
+            await session.commit()
+        except Exception:
+            logger.exception("referral_payout_failed", account_id=account_id)
+            await session.rollback()
         return "package"
 
     raise InsufficientFundsError("no quota available")
