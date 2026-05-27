@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
-from quantuum.bot.ui.callbacks import OwnerBrandingCb, OwnerFeatureCb, OwnerManageCb, OwnerUserCb
+from quantuum.bot.ui.callbacks import OwnerBrandingCb, OwnerFeatureCb, OwnerManageCb, OwnerReferralsCb, OwnerUserCb
 from quantuum.db.models import Account, AccountIdentity, Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
@@ -25,6 +25,13 @@ from quantuum.domain.tenant_branding import (
     reset_branding_text,
     set_branding_text,
     set_display_name,
+)
+from quantuum.domain.referrals import (
+    DEFAULT_REWARD_CREDITS,
+    MAX_REWARD_CREDITS,
+    get_reward_credits,
+    reset_reward_credits,
+    set_reward_credits,
 )
 from quantuum.domain.tenant_features import (
     list_feature_states,
@@ -100,6 +107,14 @@ async def on_manage(message: Message, command: CommandObject, i18n: Translator) 
             text=await i18n("owner.branding.btn"),
             callback_data=OwnerBrandingCb(
                 action="open", tenant_id=tenant.id, key=""
+            ).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.referrals.menu_button"),
+            callback_data=OwnerReferralsCb(
+                action="open", tenant_id=tenant.id
             ).pack(),
         )
     )
@@ -719,3 +734,116 @@ async def on_branding_value(message: Message, state: FSMContext, i18n: Translato
     )
     await state.clear()
     await message.answer(await i18n("owner.branding.saved"))
+
+
+# ── SP4: Referrals submenu + edit FSM ───────────────────────────────────────────
+
+
+class OwnerReferrals(StatesGroup):
+    awaiting_value = State()
+
+
+async def _referrals_keyboard(i18n: Translator):
+    b = InlineKeyboardBuilder()
+    b.button(
+        text=await i18n("owner.referrals.menu_button"),
+        callback_data=OwnerReferralsCb(action="edit").pack(),
+    )
+    b.adjust(1)
+    return b.as_markup()
+
+
+@router.callback_query(OwnerReferralsCb.filter(F.action == "open"))
+async def on_referrals_open(
+    query: CallbackQuery,
+    callback_data: OwnerReferralsCb,
+    account_id: int,
+    tenant_id: int,
+    i18n: Translator,
+) -> None:
+    async with get_sessionmaker()() as session:
+        current = await get_reward_credits(session, tenant_id=tenant_id)
+    body = (
+        f"{await i18n('owner.referrals.title')}\n\n"
+        f"{await i18n('owner.referrals.current_value', value=current)}"
+    )
+    await query.message.answer(body, reply_markup=await _referrals_keyboard(i18n))
+    await query.answer()
+
+
+@router.callback_query(OwnerReferralsCb.filter(F.action == "edit"))
+async def on_referrals_edit(
+    query: CallbackQuery,
+    callback_data: OwnerReferralsCb,
+    state: FSMContext,
+    tenant_id: int,
+    i18n: Translator,
+) -> None:
+    await state.set_state(OwnerReferrals.awaiting_value)
+    await query.message.answer(
+        await i18n("owner.referrals.prompt", max=MAX_REWARD_CREDITS)
+        + "\n"
+        + await i18n("owner.referrals.cancel_hint"),
+    )
+    await query.answer()
+
+
+@router.message(Command("cancel"), OwnerReferrals.awaiting_value)
+async def on_referrals_cancel(
+    message: Message, state: FSMContext, i18n: Translator
+) -> None:
+    await state.clear()
+    await message.answer(await i18n("menu.cancelled"))
+
+
+@router.message(OwnerReferrals.awaiting_value)
+async def on_referrals_value(
+    message: Message,
+    state: FSMContext,
+    account_id: int,
+    tenant_id: int,
+    i18n: Translator,
+) -> None:
+    text_in = (message.text or "").strip()
+
+    if text_in == "/reset":
+        async with get_sessionmaker()() as session:
+            await reset_reward_credits(
+                session, tenant_id=tenant_id, by_account_id=account_id
+            )
+            await session.commit()
+        await state.clear()
+        await message.answer(
+            await i18n("owner.referrals.reset", value=DEFAULT_REWARD_CREDITS)
+        )
+        return
+
+    try:
+        value = int(text_in)
+    except (TypeError, ValueError):
+        await message.answer(await i18n("owner.referrals.not_a_number"))
+        return  # stay in state
+
+    if value < 0 or value > MAX_REWARD_CREDITS:
+        await message.answer(
+            await i18n("owner.referrals.too_large", max=MAX_REWARD_CREDITS)
+        )
+        return  # stay in state
+
+    async with get_sessionmaker()() as session:
+        try:
+            await set_reward_credits(
+                session,
+                tenant_id=tenant_id,
+                value=value,
+                by_account_id=account_id,
+            )
+            await session.commit()
+        except ValueError:
+            await message.answer(
+                await i18n("owner.referrals.too_large", max=MAX_REWARD_CREDITS)
+            )
+            return  # stay in state
+
+    await state.clear()
+    await message.answer(await i18n("owner.referrals.saved", value=value))

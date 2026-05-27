@@ -78,3 +78,8 @@ class OwnerBrandingCb(CallbackData, prefix="obrand"):
     action: str    # open | edit
     tenant_id: int = 0
     key: str = ""  # display_name | start.welcome | help.text | brand.signature | empty for open
+
+
+class OwnerReferralsCb(CallbackData, prefix="oref"):
+    action: str       # open | edit | reset
+    tenant_id: int = 0
