@@ -51,10 +51,14 @@ async def show_invite(
         await session.commit()
 
     if not username:
+        # bot_username is set during tenant provisioning; guard the window
+        # before the master-onboarding flow has resolved it.
         await message.answer(await i18n("invite.disabled"))
         return
 
     link = f"https://t.me/{username}?start={code}"
+    # `earned` snapshots claimed * current reward; historical payouts at a
+    # different rate are not reflected.
     body = (
         f"{await i18n('invite.title')}\n\n"
         f"{await i18n('invite.link_label')}: {link}\n"
