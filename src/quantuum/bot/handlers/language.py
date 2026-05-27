@@ -35,5 +35,5 @@ async def on_set_language(
         await query.message.answer(await new_i18n("start.welcome"))
     else:
         await query.message.answer(await new_i18n("lang.changed"))
-    await show_main_menu(query.message, new_i18n)
+    await show_main_menu(query.message, account.tenant_id, new_i18n)
     await query.answer()

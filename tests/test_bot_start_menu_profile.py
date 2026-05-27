@@ -95,8 +95,9 @@ async def test_on_start_first_time_shows_language_picker(session, default_tenant
 
 async def test_on_help_btn_sends_help_text(session, default_tenant):
     i18n = await build_translator(session, default_tenant.id)
+    await session.commit()  # ensure tenant visible to separate session in main_menu_kb
     msg = FakeMessage("ℹ️ Помощь")
-    await menu.on_help_btn(msg, i18n)
+    await menu.on_help_btn(msg, default_tenant.id, i18n)
     help_text, markup = msg.answers[0]
     assert "Quantuum Blueprint" in help_text
     assert "@quantuum_support" in help_text
@@ -125,9 +126,10 @@ async def test_language_button_opens_picker(session, default_tenant):
 
 async def test_on_cancel_sends_cancelled(session, default_tenant):
     i18n = await build_translator(session, default_tenant.id)
+    await session.commit()  # ensure tenant visible to separate session in main_menu_kb
     msg = FakeMessage()
     query = FakeCallbackQuery(msg)
-    await menu.on_cancel(query, _fsm(), i18n)
+    await menu.on_cancel(query, _fsm(), default_tenant.id, i18n)
     assert msg.answers[0][0] == "Отменено."
     assert query.answered
 

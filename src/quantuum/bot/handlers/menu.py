@@ -31,8 +31,11 @@ _LANGUAGE_LABELS = text.menu_button_labels("btn.language")
 LABELS = text.all_menu_labels()
 
 
-async def show_main_menu(message: Message, i18n: Translator) -> None:
-    await message.answer(await i18n("menu.title"), reply_markup=await main_menu_kb(i18n))
+async def show_main_menu(message: Message, tenant_id: int, i18n: Translator) -> None:
+    await message.answer(
+        await i18n("menu.title"),
+        reply_markup=await main_menu_kb(i18n, tenant_id),
+    )
 
 
 @router.message(F.text.in_(_GENERATE_LABELS))
@@ -48,8 +51,8 @@ async def on_ask_btn(message: Message, state: FSMContext, i18n: Translator) -> N
 
 
 @router.message(F.text.in_(_READINGS_LABELS))
-async def on_readings_btn(message: Message, i18n: Translator) -> None:
-    await show_readings_menu(message, i18n)
+async def on_readings_btn(message: Message, account: Account, i18n: Translator) -> None:
+    await show_readings_menu(message, account, i18n)
 
 
 @router.message(F.text.in_(_TRANSITS_LABELS))
@@ -73,8 +76,11 @@ async def on_history_btn(message: Message, account: Account, i18n: Translator) -
 
 
 @router.message(F.text.in_(_HELP_LABELS))
-async def on_help_btn(message: Message, i18n: Translator) -> None:
-    await message.answer(await i18n("help.text"), reply_markup=await main_menu_kb(i18n))
+async def on_help_btn(message: Message, tenant_id: int, i18n: Translator) -> None:
+    await message.answer(
+        await i18n("help.text"),
+        reply_markup=await main_menu_kb(i18n, tenant_id),
+    )
 
 
 @router.message(F.text.in_(_LANGUAGE_LABELS))
@@ -86,9 +92,12 @@ async def on_language_btn(message: Message, tenant_id: int, i18n: Translator) ->
 
 
 @router.callback_query(OnboardCb.filter(F.action == "cancel"))
-async def on_cancel(query: CallbackQuery, state: FSMContext, i18n: Translator) -> None:
+async def on_cancel(
+    query: CallbackQuery, state: FSMContext, tenant_id: int, i18n: Translator
+) -> None:
     await state.clear()
     await query.message.answer(
-        await i18n("menu.cancelled"), reply_markup=await main_menu_kb(i18n)
+        await i18n("menu.cancelled"),
+        reply_markup=await main_menu_kb(i18n, tenant_id),
     )
     await query.answer()

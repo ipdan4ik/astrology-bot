@@ -17,10 +17,10 @@ from quantuum.tasks.enqueue import enqueue_reading
 router = Router()
 
 
-async def show_readings_menu(message: Message, i18n: Translator) -> None:
+async def show_readings_menu(message: Message, account: Account, i18n: Translator) -> None:
     await message.answer(
         await i18n("readings.menu.title"),
-        reply_markup=await readings_menu_kb(i18n),
+        reply_markup=await readings_menu_kb(i18n, account.tenant_id),
     )
 
 

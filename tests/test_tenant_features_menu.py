@@ -1,0 +1,111 @@
+import pytest
+
+from quantuum.auth.identity import find_or_create_account_by_tg
+from quantuum.bot.ui.keyboards import main_menu_kb, readings_menu_kb
+from quantuum.domain.tenant_features import set_feature_enabled
+
+
+async def _disable(session, tenant_id, *keys, by_account_id):
+    for k in keys:
+        await set_feature_enabled(
+            session,
+            tenant_id=tenant_id,
+            key=k,
+            enabled=False,
+            by_account_id=by_account_id,
+        )
+    await session.commit()
+
+
+def _button_texts(kb) -> list[str]:
+    return [btn.text for row in kb.keyboard for btn in row]
+
+
+def _inline_button_texts(kb) -> list[str]:
+    return [btn.text for row in kb.inline_keyboard for btn in row]
+
+
+async def test_main_menu_full_when_all_enabled(session, default_tenant, build_translator):
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    kb = await main_menu_kb(i18n, default_tenant.id)
+    texts = " ".join(_button_texts(kb))
+    # Top-level surface buttons all present.
+    assert "Разбор" in texts  # blueprint
+    assert "Спросить" in texts or "Вопрос" in texts  # qa
+    assert "Транзит" in texts
+    assert "Ежедневн" in texts
+    # Always-on
+    assert "Профиль" in texts
+
+
+async def test_main_menu_hides_disabled_surfaces(session, default_tenant, build_translator):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="actor_menu"
+    )
+    await _disable(session, default_tenant.id, "qa", "daily", by_account_id=acc.id)
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    kb = await main_menu_kb(i18n, default_tenant.id)
+    texts = " ".join(_button_texts(kb))
+    # qa label patterns absent (whichever variant the project uses for btn.ask)
+    assert "Спросить" not in texts and "Вопрос-ответ" not in texts
+    # daily label absent
+    assert "Ежедневн" not in texts
+
+
+async def test_main_menu_hides_readings_button_when_all_readings_off(
+    session, default_tenant, build_translator
+):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="actor_no_readings"
+    )
+    await _disable(
+        session,
+        default_tenant.id,
+        "reading.bazi", "reading.numerology", "reading.human_design",
+        "reading.astrology", "reading.vedic", "reading.gene_keys",
+        "reading.mayan", "reading.aspects",
+        by_account_id=acc.id,
+    )
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    # The btn.readings label in RU (look it up in seed_strings before assuming) should be absent.
+    # Test by checking that the labels of other buttons are still present (sanity)
+    # and that the readings label is NOT in the kb.
+    kb = await main_menu_kb(i18n, default_tenant.id)
+    texts = _button_texts(kb)
+    # Sanity: history button still present.
+    assert any("История" in t or "📜" in t for t in texts)
+    # And: readings hub button absent. The RU label for btn.readings is "📖 Разборы" (per BASE_STRINGS).
+    # The blueprint button ("🔮 Разбор") is singular and not affected by readings being off.
+    # Distinguish by checking neither readings hub nor any reading-kind label is in this kb.
+    # Easiest: count the "Разбор" occurrences — blueprint contributes 1, readings hub would
+    # contribute another ("Разборы" contains "Разбор"). With all readings off, expect exactly 1.
+    razbor_count = sum(1 for t in texts if "Разбор" in t)
+    assert razbor_count == 1, f"Expected only blueprint button, got {texts}"
+
+
+async def test_readings_menu_full_when_all_enabled(session, default_tenant, build_translator):
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    kb = await readings_menu_kb(i18n, default_tenant.id)
+    texts = _inline_button_texts(kb)
+    assert len(texts) == 8
+
+
+async def test_readings_menu_hides_disabled_kinds(session, default_tenant, build_translator):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="actor_partial"
+    )
+    await _disable(
+        session, default_tenant.id,
+        "reading.bazi", "reading.vedic",
+        by_account_id=acc.id,
+    )
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    kb = await readings_menu_kb(i18n, default_tenant.id)
+    texts = _inline_button_texts(kb)
+    assert len(texts) == 6
+
+
+@pytest.fixture
+def build_translator():
+    from tests.conftest import build_translator as bt
+    return bt

@@ -21,4 +21,4 @@ async def on_start(
         )
         return
     await message.answer(await i18n("start.welcome"))
-    await show_main_menu(message, i18n)
+    await show_main_menu(message, tenant_id, i18n)

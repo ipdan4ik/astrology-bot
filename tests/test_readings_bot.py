@@ -49,7 +49,8 @@ async def test_readings_menu_includes_all_eight_kinds(session, default_tenant, k
     from quantuum.bot.ui.keyboards import readings_menu_kb
 
     i18n = await build_translator(session, default_tenant.id)
-    kb = await readings_menu_kb(i18n)
+    await session.commit()  # flush so the separate session in readings_menu_kb sees the tenant
+    kb = await readings_menu_kb(i18n, default_tenant.id)
     serialised = []
     for row in kb.inline_keyboard:
         for btn in row:

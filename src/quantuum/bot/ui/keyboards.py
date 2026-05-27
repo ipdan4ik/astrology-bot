@@ -42,18 +42,49 @@ async def _label(i18n: Translator | None, key: str) -> str:
     return await i18n(key)
 
 
-async def main_menu_kb(i18n: Translator) -> ReplyKeyboardMarkup:
+async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
+    from quantuum.domain.tenant_features import list_feature_states
+
+    async with get_sessionmaker()() as session:
+        flags = await list_feature_states(session, tenant_id)
+
+    show_readings = any(
+        enabled for k, enabled in flags.items() if k.startswith("reading.")
+    )
+
     b = ReplyKeyboardBuilder()
-    b.button(text=await i18n("btn.generate"))
-    b.button(text=await i18n("btn.ask"))
-    b.button(text=await i18n("btn.readings"))
-    b.button(text=await i18n("btn.transits"))
-    b.button(text=await i18n("btn.daily"))
-    b.button(text=await i18n("btn.profile"))
-    b.button(text=await i18n("btn.history"))
-    b.button(text=await i18n("btn.help"))
-    b.button(text=await i18n("btn.language"))
-    b.adjust(2, 2, 2, 2, 1)
+    count = 0
+
+    def _add(text: str) -> None:
+        nonlocal count
+        b.button(text=text)
+        count += 1
+
+    if flags.get("blueprint", True):
+        _add(await i18n("btn.generate"))
+    if flags.get("qa", True):
+        _add(await i18n("btn.ask"))
+    if show_readings:
+        _add(await i18n("btn.readings"))
+    if flags.get("transits", True):
+        _add(await i18n("btn.transits"))
+    if flags.get("daily", True):
+        _add(await i18n("btn.daily"))
+
+    _add(await i18n("btn.profile"))
+    _add(await i18n("btn.history"))
+    _add(await i18n("btn.help"))
+    _add(await i18n("btn.language"))
+
+    layout: list[int] = []
+    remaining = count
+    while remaining >= 2:
+        layout.append(2)
+        remaining -= 2
+    if remaining:
+        layout.append(1)
+    if layout:
+        b.adjust(*layout)
     return b.as_markup(resize_keyboard=True, is_persistent=True)
 
 
@@ -86,13 +117,28 @@ READING_KINDS: tuple[str, ...] = (
 )
 
 
-async def readings_menu_kb(i18n: Translator) -> InlineKeyboardMarkup:
-    """Inline keyboard listing all 8 reading kinds."""
+async def readings_menu_kb(i18n: Translator, tenant_id: int) -> InlineKeyboardMarkup:
+    """Inline keyboard listing only the enabled reading kinds for this tenant."""
+    from quantuum.domain.tenant_features import list_feature_states
+
+    async with get_sessionmaker()() as session:
+        flags = await list_feature_states(session, tenant_id)
+
     b = InlineKeyboardBuilder()
-    for kind in READING_KINDS:
+    visible: list[str] = [k for k in READING_KINDS if flags.get(f"reading.{k}", True)]
+    for kind in visible:
         label = await i18n(f"readings.kind.{kind}")
         b.button(text=label, callback_data=ReadingCb(action="generate", kind=kind))
-    b.adjust(2, 2, 2, 2)
+
+    if visible:
+        layout: list[int] = []
+        remaining = len(visible)
+        while remaining >= 2:
+            layout.append(2)
+            remaining -= 2
+        if remaining:
+            layout.append(1)
+        b.adjust(*layout)
     return b.as_markup()
 
 
