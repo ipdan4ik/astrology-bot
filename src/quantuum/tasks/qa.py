@@ -5,6 +5,7 @@ from quantuum.domain.requests import complete_request
 from quantuum.i18n.strings import get_tenant_default_lang
 from quantuum.llm.qa_answer import qa_answer
 from quantuum.logging_setup import get_logger
+from quantuum.bot.rendering.signature import append_signature
 from quantuum.tasks.delivery import deliver_via_tenant_bot
 
 logger = get_logger("task.qa")
@@ -79,6 +80,9 @@ async def qa_generate(
     # Delivery is best-effort and must NOT trigger a refund of a successful generation.
     if chat_id is not None and delivery_md is not None and tenant_id is not None:
         try:
+            delivery_md = await append_signature(
+                delivery_md, tenant_id=tenant_id, lang=lang
+            )
             await deliver_via_tenant_bot(
                 sessionmaker,
                 tenant_id=tenant_id,

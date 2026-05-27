@@ -1,3 +1,7 @@
+import importlib
+
+import pytest
+
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.bot.rendering.signature import append_signature
 from quantuum.domain.tenant_branding import set_branding_text
@@ -77,3 +81,20 @@ async def test_signature_per_lang_routing(session, default_tenant):
     )
     assert ru_out == "BODY\n\n© RU only"
     assert en_out == "BODY"  # platform default is ""
+
+
+@pytest.mark.parametrize(
+    "module_path",
+    [
+        "quantuum.tasks.qa",
+        "quantuum.tasks.blueprint",
+        "quantuum.tasks.reading",
+        "quantuum.tasks.transits",
+        "quantuum.tasks.daily",
+    ],
+)
+def test_worker_module_imports_append_signature(module_path):
+    mod = importlib.import_module(module_path)
+    assert getattr(mod, "append_signature", None) is not None, (
+        f"{module_path} must import append_signature for delivery wrapping"
+    )

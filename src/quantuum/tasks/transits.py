@@ -7,6 +7,7 @@ from quantuum.domain.transits import get_transit, resolve_natal, set_transit_sta
 from quantuum.i18n import resolve_lang
 from quantuum.llm.transit_report import transit_report
 from quantuum.logging_setup import get_logger
+from quantuum.bot.rendering.signature import append_signature
 from quantuum.tasks.delivery import deliver_via_tenant_bot
 
 logger = get_logger("task.transits")
@@ -47,16 +48,17 @@ async def transit_generate(
                 return
 
             cfg = await get_llm_config(session)
+            lang = await resolve_lang(
+                session,
+                tenant_id=row.tenant_id,
+                preferred_lang=row.lang,
+                tg_language_code=None,
+            )
             result = await transit_report(
                 llm_client,
                 natal_md,
                 transit_md,
-                lang=await resolve_lang(
-                    session,
-                    tenant_id=row.tenant_id,
-                    preferred_lang=row.lang,
-                    tg_language_code=None,
-                ),
+                lang=lang,
                 model=cfg["model"],
                 temperature=cfg["temperature"],
                 max_tokens=cfg["max_tokens"],
@@ -94,6 +96,9 @@ async def transit_generate(
     # Delivery is best-effort and must NOT trigger a refund of a successful report.
     if chat_id is not None and delivery_md is not None and tenant_id is not None:
         try:
+            delivery_md = await append_signature(
+                delivery_md, tenant_id=tenant_id, lang=lang
+            )
             await deliver_via_tenant_bot(
                 sessionmaker,
                 tenant_id=tenant_id,

@@ -21,6 +21,7 @@ from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.tenants import get_active_tenant_bot
 from quantuum.domain.transits import resolve_natal
 from quantuum.i18n import Translator, resolve_lang
+from quantuum.bot.rendering.signature import append_signature
 from quantuum.llm.daily_horoscope import daily_horoscope
 from quantuum.logging_setup import get_logger
 
@@ -37,9 +38,12 @@ async def deliver_daily(sessionmaker, *, tenant_id: int, chat_id: str, lang: str
             session, tenant_id=tenant_id, preferred_lang=lang, tg_language_code=None
         )
         header = await i18n("daily.header")
+    body = await append_signature(
+        f"{header}\n\n{text}", tenant_id=tenant_id, lang=lang or "ru"
+    )
     bot = Bot(token=decrypt_token(tb.bot_token_enc))
     try:
-        await bot.send_message(int(chat_id), f"{header}\n\n{text}"[:4000])
+        await bot.send_message(int(chat_id), body[:4000])
     finally:
         await bot.session.close()
 
