@@ -1008,6 +1008,41 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "https://findahelpline.com/topics/suicidal-thoughts",
         "en": "https://findahelpline.com/topics/suicidal-thoughts",
     },
+    # -------------------------------------------------------------------------
+    # Feature toggles
+    # -------------------------------------------------------------------------
+    "feature.disabled_generic": {
+        "ru": "Эта функция отключена в этом боте.",
+        "en": "This feature isn't available on this bot.",
+    },
+    "owner.features.title": {
+        "ru": "⚙️ Функции",
+        "en": "⚙️ Features",
+    },
+    "owner.features.btn": {
+        "ru": "⚙️ Функции",
+        "en": "⚙️ Features",
+    },
+    "owner.features.section.readings": {
+        "ru": "— Разборы —",
+        "en": "— Readings —",
+    },
+    "owner.features.label.qa": {
+        "ru": "Вопрос-ответ",
+        "en": "QA",
+    },
+    "owner.features.label.blueprint": {
+        "ru": "Разбор",
+        "en": "Blueprint",
+    },
+    "owner.features.label.transits": {
+        "ru": "Транзиты",
+        "en": "Transits",
+    },
+    "owner.features.label.daily": {
+        "ru": "Ежедневное",
+        "en": "Daily",
+    },
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that

@@ -334,4 +334,12 @@ TRANSLATIONS = {
     "moderation.legal": "यह वकील के लिए है. मैं ऊर्जा और चक्रों की बात करता हूँ, कानूनी जोखिमों की नहीं.",
     "moderation.blocked_generic": "यह अनुरोध संसाधित नहीं किया जा सकता.",
     "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
+    "feature.disabled_generic": "यह सुविधा इस बॉट पर उपलब्ध नहीं है.",
+    "owner.features.title": "⚙️ सुविधाएं",
+    "owner.features.btn": "⚙️ सुविधाएं",
+    "owner.features.section.readings": "— रीडिंग्स —",
+    "owner.features.label.qa": "प्रश्न-उत्तर",
+    "owner.features.label.blueprint": "रीडिंग",
+    "owner.features.label.transits": "ट्रांज़िट",
+    "owner.features.label.daily": "दैनिक",
 }

@@ -334,4 +334,12 @@ TRANSLATIONS = {
     "moderation.legal": "Bu avukatlık konusu. Enerjilerden ve döngülerden bahsederim, hukuki risklerden değil.",
     "moderation.blocked_generic": "Bu istek işleme alınamıyor.",
     "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
+    "feature.disabled_generic": "Bu özellik bu bot için kullanılamıyor.",
+    "owner.features.title": "⚙️ Özellikler",
+    "owner.features.btn": "⚙️ Özellikler",
+    "owner.features.section.readings": "— Okumalar —",
+    "owner.features.label.qa": "Soru-Cevap",
+    "owner.features.label.blueprint": "Okuma",
+    "owner.features.label.transits": "Transitler",
+    "owner.features.label.daily": "Günlük",
 }

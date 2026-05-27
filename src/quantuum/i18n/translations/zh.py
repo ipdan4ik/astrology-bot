@@ -333,4 +333,12 @@ TRANSLATIONS = {
     "moderation.legal": "这是律师的问题。我谈能量与周期，不谈法律风险。",
     "moderation.blocked_generic": "无法处理此请求。",
     "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
+    "feature.disabled_generic": "此功能在此机器人上不可用。",
+    "owner.features.title": "⚙️ 功能",
+    "owner.features.btn": "⚙️ 功能",
+    "owner.features.section.readings": "— 解读 —",
+    "owner.features.label.qa": "问答",
+    "owner.features.label.blueprint": "解读",
+    "owner.features.label.transits": "过境",
+    "owner.features.label.daily": "每日",
 }

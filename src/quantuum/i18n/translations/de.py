@@ -335,4 +335,12 @@ TRANSLATIONS = {
     "moderation.legal": "Das ist eine Frage für einen Anwalt. Ich rede über Energien und Zyklen, nicht über rechtliche Risiken.",
     "moderation.blocked_generic": "Diese Anfrage kann nicht bearbeitet werden.",
     "moderation.helpline_url": "https://findahelpline.com/topics/suicidal-thoughts",
+    "feature.disabled_generic": "Diese Funktion ist in diesem Bot nicht verfügbar.",
+    "owner.features.title": "⚙️ Funktionen",
+    "owner.features.btn": "⚙️ Funktionen",
+    "owner.features.section.readings": "— Auswertungen —",
+    "owner.features.label.qa": "Frage-Antwort",
+    "owner.features.label.blueprint": "Auswertung",
+    "owner.features.label.transits": "Transite",
+    "owner.features.label.daily": "Tägliches",
 }
