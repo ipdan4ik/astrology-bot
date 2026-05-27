@@ -10,14 +10,15 @@ from quantuum.domain.tenant_features import (
 
 
 def test_feature_keys_inventory():
-    # Lock the canonical 12-flag set.
+    # Lock the canonical flag set (SP2 12 + SP4 referrals).
     assert set(FEATURE_KEYS) == {
         "qa", "blueprint", "transits", "daily",
         "reading.bazi", "reading.numerology", "reading.human_design",
         "reading.astrology", "reading.vedic", "reading.gene_keys",
         "reading.mayan", "reading.aspects",
+        "referrals",
     }
-    assert len(FEATURE_KEYS) == 12
+    assert len(FEATURE_KEYS) == 13
 
 
 async def test_is_feature_enabled_defaults_true_when_no_row(session, default_tenant):
@@ -107,7 +108,7 @@ async def test_list_reflects_overrides(session, default_tenant):
     assert states["reading.bazi"] is False
     assert states["qa"] is True
     assert states["reading.numerology"] is True
-    assert len(states) == 12
+    assert len(states) == 13
 
 
 async def test_set_populates_updated_by(session, default_tenant):
