@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
-from quantuum.bot.ui.callbacks import OwnerFeatureCb, OwnerManageCb, OwnerUserCb
+from quantuum.bot.ui.callbacks import OwnerBrandingCb, OwnerFeatureCb, OwnerManageCb, OwnerUserCb
 from quantuum.db.models import Account, AccountIdentity, Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
@@ -81,6 +81,14 @@ async def on_manage(message: Message, command: CommandObject, i18n: Translator) 
         InlineKeyboardButton(
             text=await i18n("owner.features.btn"),
             callback_data=OwnerFeatureCb(
+                action="open", tenant_id=tenant.id, key=""
+            ).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.branding.btn"),
+            callback_data=OwnerBrandingCb(
                 action="open", tenant_id=tenant.id, key=""
             ).pack(),
         )

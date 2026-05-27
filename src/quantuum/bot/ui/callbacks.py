@@ -72,3 +72,9 @@ class ReadingCb(CallbackData, prefix="rd"):
 
 class ReadingDownloadCb(CallbackData, prefix="rdl"):
     reading_id: int
+
+
+class OwnerBrandingCb(CallbackData, prefix="obrand"):
+    action: str    # open | edit
+    tenant_id: int = 0
+    key: str = ""  # display_name | start.welcome | help.text | brand.signature | empty for open
