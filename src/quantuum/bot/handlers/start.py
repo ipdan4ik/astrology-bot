@@ -3,8 +3,14 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from quantuum.bot.handlers.menu import show_main_menu
+from quantuum.bot.handlers.start_tokens import (
+    dispatch_start_token,
+    parse_start_payload,
+    resolve_start_token,
+)
 from quantuum.bot.ui.keyboards import language_picker_kb
 from quantuum.db.models import Account
+from quantuum.db.session import get_sessionmaker
 from quantuum.i18n import Translator
 
 router = Router()
@@ -14,6 +20,16 @@ router = Router()
 async def on_start(
     message: Message, account: Account, tenant_id: int, i18n: Translator
 ) -> None:
+    payload = parse_start_payload(message.text)
+    if payload:
+        async with get_sessionmaker()() as session:
+            token = await resolve_start_token(session, code=payload, tenant_id=tenant_id)
+            if token is None:
+                await message.answer(await i18n("invite.unknown_code"))
+            else:
+                await dispatch_start_token(session, token=token, account_id=account.id)
+            await session.commit()
+
     if account.preferred_lang is None:
         await message.answer(
             await i18n("lang.prompt"),
