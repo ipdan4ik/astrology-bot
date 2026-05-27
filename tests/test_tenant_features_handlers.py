@@ -140,3 +140,86 @@ async def test_daily_disabled_short_circuits(session, default_tenant, monkeypatc
     msg.answer.assert_awaited_once()
     sent = msg.answer.await_args.args[0]
     assert "отключена" in sent.lower() or "available" in sent.lower()
+
+
+# ---------- Positive-path (gate must NOT block) ----------
+
+
+async def test_qa_enabled_does_not_block(session, default_tenant, monkeypatch):
+    # All features default ON — gate must not short-circuit.
+    acc = await _setup_account(session, default_tenant.id, tg="qa_on_positive")
+
+    from quantuum.bot.handlers import qa as qa_handler
+
+    monkeypatch.setattr(
+        qa_handler,
+        "get_settings",
+        lambda: SimpleNamespace(
+            moderation_enabled=False,  # moderation off, isolate the gate
+            moderation_fail_open=True,
+            llm_api_key="",
+            llm_provider="openai",
+        ),
+    )
+    monkeypatch.setattr(qa_handler, "enqueue_qa", AsyncMock())
+
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    msg = _make_message()
+    await qa_handler._submit(msg, "what does my chart say?", acc, i18n)
+
+    # The disabled message MUST NOT have been sent.
+    for call in msg.answer.await_args_list:
+        text = call.args[0] if call.args else ""
+        assert "отключена" not in text.lower(), f"Gate falsely blocked: {text!r}"
+
+
+async def test_blueprint_enabled_does_not_block(session, default_tenant, monkeypatch):
+    # All features default ON — gate must not short-circuit.
+    acc = await _setup_account(session, default_tenant.id, tg="bp_on_positive")
+
+    from quantuum.bot.handlers import generate as gen_handler
+
+    monkeypatch.setattr(gen_handler, "enqueue_blueprint", AsyncMock())
+
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    msg = _make_message()
+    await gen_handler.run_generate(msg, acc, 12345, i18n)
+
+    # The disabled message MUST NOT have been sent.
+    for call in msg.answer.await_args_list:
+        text = call.args[0] if call.args else ""
+        assert "отключена" not in text.lower(), f"Gate falsely blocked: {text!r}"
+
+
+async def test_transits_enabled_does_not_block(session, default_tenant, monkeypatch):
+    # All features default ON — gate must not short-circuit.
+    acc = await _setup_account(session, default_tenant.id, tg="tr_on_positive")
+
+    from quantuum.bot.handlers import transits as tr_handler
+
+    monkeypatch.setattr(tr_handler, "enqueue_transit", AsyncMock())
+
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    msg = _make_message()
+    await tr_handler.run_transits(msg, None, acc, i18n)
+
+    # The disabled message MUST NOT have been sent.
+    for call in msg.answer.await_args_list:
+        text = call.args[0] if call.args else ""
+        assert "отключена" not in text.lower(), f"Gate falsely blocked: {text!r}"
+
+
+async def test_daily_enabled_does_not_block(session, default_tenant, monkeypatch):
+    # All features default ON — gate must not short-circuit.
+    acc = await _setup_account(session, default_tenant.id, tg="d_on_positive")
+
+    from quantuum.bot.handlers import daily as d_handler
+
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    msg = _make_message()
+    await d_handler.run_daily_settings(msg, acc, i18n)
+
+    # The disabled message MUST NOT have been sent.
+    for call in msg.answer.await_args_list:
+        text = call.args[0] if call.args else ""
+        assert "отключена" not in text.lower(), f"Gate falsely blocked: {text!r}"
