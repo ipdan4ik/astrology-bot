@@ -14,6 +14,7 @@ from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.qa import create_qa
 from quantuum.domain.quota import consume_quota
 from quantuum.domain.requests import create_request
+from quantuum.domain.tenant_features import is_feature_enabled
 from quantuum.i18n import Translator
 from quantuum.llm.registry import get_llm_client
 from quantuum.logging_setup import get_logger
@@ -23,6 +24,7 @@ from quantuum.tasks.enqueue import enqueue_qa
 
 router = Router()
 _log = get_logger("moderation.handler")
+_feature_log = get_logger("tenant_features.gate")
 
 MAX_QUESTION_LEN = 1000
 
@@ -45,6 +47,19 @@ async def _submit(message: Message, raw: str, account: Account, i18n: Translator
     if len(q) > MAX_QUESTION_LEN:
         await message.answer(await i18n("qa.too_long"))
         return
+
+    # Feature gate — before moderation and quota charge.
+    async with get_sessionmaker()() as session:
+        if not await is_feature_enabled(session, account.tenant_id, "qa"):
+            _feature_log.info(
+                "feature.gate_blocked",
+                tenant_id=account.tenant_id,
+                account_id=account.id,
+                key="qa",
+                surface="qa._submit",
+            )
+            await message.answer(await i18n("feature.disabled_generic"))
+            return
 
     # Moderation pre-check — before any quota charge.
     settings = get_settings()

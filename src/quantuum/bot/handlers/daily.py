@@ -10,9 +10,12 @@ from quantuum.db.models import Account, DailySubscription
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.daily import get_settings, is_subscriber, upsert_settings
 from quantuum.domain.natal_profiles import get_natal_profile
+from quantuum.domain.tenant_features import is_feature_enabled
 from quantuum.i18n import Translator
+from quantuum.logging_setup import get_logger
 
 router = Router()
+_log = get_logger("tenant_features.gate")
 
 
 async def _safe_edit(query: CallbackQuery, text: str, kb: InlineKeyboardMarkup) -> None:
@@ -42,6 +45,19 @@ async def _daily_view(
 
 
 async def run_daily_settings(message: Message, account: Account, i18n: Translator) -> None:
+    # Feature gate — before any DB read.
+    async with get_sessionmaker()() as session:
+        if not await is_feature_enabled(session, account.tenant_id, "daily"):
+            _log.info(
+                "feature.gate_blocked",
+                tenant_id=account.tenant_id,
+                account_id=account.id,
+                key="daily",
+                surface="daily.run_daily_settings",
+            )
+            await message.answer(await i18n("feature.disabled_generic"))
+            return
+
     async with get_sessionmaker()() as session:
         if not await is_subscriber(session, account.id):
             await message.answer(

@@ -14,10 +14,13 @@ from quantuum.domain.blueprints import create_blueprint
 from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.quota import consume_quota
 from quantuum.domain.requests import create_request
+from quantuum.domain.tenant_features import is_feature_enabled
 from quantuum.i18n import Translator
+from quantuum.logging_setup import get_logger
 from quantuum.tasks.enqueue import enqueue_blueprint
 
 router = Router()
+_log = get_logger("tenant_features.gate")
 
 
 async def _buy_offer_kb(i18n: Translator):
@@ -64,6 +67,19 @@ async def request_blueprint_for_account(
 async def run_generate(
     message: Message, account: Account, chat_id: int, i18n: Translator
 ) -> None:
+    # Feature gate — before any DB read or quota charge.
+    async with get_sessionmaker()() as session:
+        if not await is_feature_enabled(session, account.tenant_id, "blueprint"):
+            _log.info(
+                "feature.gate_blocked",
+                tenant_id=account.tenant_id,
+                account_id=account.id,
+                key="blueprint",
+                surface="generate.run_generate",
+            )
+            await message.answer(await i18n("feature.disabled_generic"))
+            return
+
     async with get_sessionmaker()() as session:
         status, _ = await request_blueprint_for_account(
             session, account=account, chat_id=chat_id, enqueue=enqueue_blueprint, lang=i18n.lang
