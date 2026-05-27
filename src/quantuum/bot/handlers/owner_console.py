@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
-from quantuum.bot.ui.callbacks import OwnerManageCb, OwnerUserCb
+from quantuum.bot.ui.callbacks import OwnerFeatureCb, OwnerManageCb, OwnerUserCb
 from quantuum.db.models import Account, AccountIdentity, Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
@@ -16,8 +16,15 @@ from quantuum.domain.owner_console import (
     resolve_managed_tenant_by_slug,
 )
 from quantuum.domain.stats import tenant_stats
+from quantuum.domain.tenant_features import (
+    list_feature_states,
+    set_feature_enabled,
+)
 from quantuum.domain.tenants import archive_tenant, set_tenant_status, transfer_ownership
 from quantuum.i18n import Translator
+from quantuum.logging_setup import get_logger
+
+_log = get_logger("tenant_features.console")
 
 router = Router()
 
@@ -68,6 +75,14 @@ async def on_manage(message: Message, command: CommandObject, i18n: Translator) 
         InlineKeyboardButton(
             text=await i18n("owner.manage.kb.users"),
             callback_data=OwnerUserCb(action="list", tenant_id=tenant.id, page=0).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.features.btn"),
+            callback_data=OwnerFeatureCb(
+                action="open", tenant_id=tenant.id, key=""
+            ).pack(),
         )
     )
     if tenant.status == "active":
@@ -355,3 +370,108 @@ async def on_delete_confirm(message: Message, state: FSMContext, i18n: Translato
         await session.commit()
     await state.clear()
     await message.answer(await i18n("owner.delete.done"))
+
+
+# ── Task 6: Features submenu + toggle ───────────────────────────────────────────
+
+
+async def _features_keyboard(
+    tenant_id: int, flags: dict[str, bool], i18n: Translator
+):
+    """12-toggle inline keyboard, 2 columns."""
+    b = InlineKeyboardBuilder()
+
+    def _mark(enabled: bool) -> str:
+        return "✅" if enabled else "❌"
+
+    top_level = [
+        ("qa", "owner.features.label.qa"),
+        ("blueprint", "owner.features.label.blueprint"),
+        ("transits", "owner.features.label.transits"),
+        ("daily", "owner.features.label.daily"),
+    ]
+    for key, label_key in top_level:
+        text_label = f"{_mark(flags[key])} {await i18n(label_key)}"
+        b.button(
+            text=text_label,
+            callback_data=OwnerFeatureCb(
+                action="toggle", tenant_id=tenant_id, key=key
+            ).pack(),
+        )
+
+    for kind in (
+        "bazi", "numerology", "human_design", "astrology",
+        "vedic", "gene_keys", "mayan", "aspects",
+    ):
+        flag_key = f"reading.{kind}"
+        text_label = f"{_mark(flags[flag_key])} {await i18n(f'readings.kind.{kind}')}"
+        b.button(
+            text=text_label,
+            callback_data=OwnerFeatureCb(
+                action="toggle", tenant_id=tenant_id, key=flag_key
+            ).pack(),
+        )
+
+    b.adjust(2, 2, 2, 2, 2, 2)
+    return b.as_markup()
+
+
+@router.callback_query(OwnerFeatureCb.filter(F.action == "open"))
+async def on_features_open(
+    query: CallbackQuery,
+    callback_data: OwnerFeatureCb,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        flags = await list_feature_states(session, callback_data.tenant_id)
+    kb = await _features_keyboard(callback_data.tenant_id, flags, i18n)
+    await query.message.edit_text(
+        await i18n("owner.features.title"),
+        reply_markup=kb,
+    )
+    await query.answer()
+
+
+@router.callback_query(OwnerFeatureCb.filter(F.action == "toggle"))
+async def on_features_toggle(
+    query: CallbackQuery,
+    callback_data: OwnerFeatureCb,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    key = callback_data.key
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        flags = await list_feature_states(session, callback_data.tenant_id)
+        new_state = not flags.get(key, True)
+        await set_feature_enabled(
+            session,
+            tenant_id=callback_data.tenant_id,
+            key=key,
+            enabled=new_state,
+            by_account_id=actor_id,
+        )
+        await session.commit()
+        flags = await list_feature_states(session, callback_data.tenant_id)
+    _log.info(
+        "feature.toggled",
+        tenant_id=callback_data.tenant_id,
+        key=key,
+        enabled=new_state,
+        by_account_id=actor_id,
+    )
+    kb = await _features_keyboard(callback_data.tenant_id, flags, i18n)
+    await query.message.edit_reply_markup(reply_markup=kb)
+    await query.answer()

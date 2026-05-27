@@ -30,6 +30,12 @@ class OwnerManageCb(CallbackData, prefix="omng"):
     tenant_id: int = 0
 
 
+class OwnerFeatureCb(CallbackData, prefix="ofeat"):
+    action: str    # open | toggle
+    tenant_id: int = 0
+    key: str = ""  # FEATURE_KEYS member, or empty for "open"
+
+
 class BuyCb(CallbackData, prefix="buy"):
     action: str  # open | pick
     kind: str = ""  # subscription | package
