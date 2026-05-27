@@ -51,14 +51,25 @@ def test_locale_module_has_key(key: str, lang: str, mod):
     assert mod.TRANSLATIONS[key].strip()
 
 
-def test_invite_earned_uses_template_vars():
-    assert "{credits}" in BASE_STRINGS["invite.earned"]["ru"]
-    assert "{friends}" in BASE_STRINGS["invite.earned"]["ru"]
+PLACEHOLDER_MAP: dict[str, tuple[str, ...]] = {
+    "invite.earned": ("{credits}", "{friends}"),
+    "owner.referrals.current_value": ("{value}",),
+    "owner.referrals.prompt": ("{max}",),
+    "owner.referrals.saved": ("{value}",),
+    "owner.referrals.reset": ("{value}",),
+    "owner.referrals.too_large": ("{max}",),
+}
 
 
-def test_owner_referrals_current_value_uses_template_var():
-    assert "{value}" in BASE_STRINGS["owner.referrals.current_value"]["ru"]
+@pytest.mark.parametrize("key,vars_", list(PLACEHOLDER_MAP.items()))
+def test_placeholder_in_base_strings(key: str, vars_: tuple[str, ...]):
+    for var in vars_:
+        assert var in BASE_STRINGS[key]["ru"], (key, var, "ru")
+        assert var in BASE_STRINGS[key]["en"], (key, var, "en")
 
 
-def test_owner_referrals_prompt_uses_max_var():
-    assert "{max}" in BASE_STRINGS["owner.referrals.prompt"]["ru"]
+@pytest.mark.parametrize("lang,mod", LOCALE_MODULES.items())
+@pytest.mark.parametrize("key,vars_", list(PLACEHOLDER_MAP.items()))
+def test_placeholder_in_locale(key: str, vars_: tuple[str, ...], lang: str, mod):
+    for var in vars_:
+        assert var in mod.TRANSLATIONS[key], (lang, key, var)
