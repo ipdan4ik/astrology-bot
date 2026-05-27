@@ -515,7 +515,7 @@ class StartToken(SQLModel, table=True):
     code: str = Field(primary_key=True, max_length=64)
     kind: str = Field(index=True)  # referral | discount | promo | ...
     tenant_id: int = Field(foreign_key="tenants.id", index=True)
-    owner_account_id: int | None = Field(default=None, foreign_key="accounts.id")
+    owner_account_id: int | None = Field(default=None, foreign_key="accounts.id", index=True)
     payload: dict = Field(
         default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
     )
