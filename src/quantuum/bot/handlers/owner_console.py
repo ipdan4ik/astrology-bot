@@ -579,7 +579,7 @@ async def on_branding_open(
             )
     kb = await _branding_keyboard(callback_data.tenant_id, previews, i18n)
     await query.message.edit_text(
-        await i18n("owner.branding.title"),
+        await i18n("owner.branding.title", language=i18n.lang),
         reply_markup=kb,
     )
     await query.answer()
@@ -612,7 +612,7 @@ async def on_branding_edit(
     )
     label = await i18n(_BRANDING_LABEL_KEYS[key])
     await query.message.answer(
-        await i18n("owner.branding.prompt", label=label)
+        await i18n("owner.branding.prompt", label=label, language=i18n.lang)
     )
     await query.answer()
 

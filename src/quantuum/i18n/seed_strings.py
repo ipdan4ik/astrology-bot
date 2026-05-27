@@ -1055,8 +1055,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "en": "🎨 Branding",
     },
     "owner.branding.title": {
-        "ru": "🎨 Брендинг (язык: {lang})",
-        "en": "🎨 Branding (lang: {lang})",
+        "ru": "🎨 Брендинг (язык: {language})",
+        "en": "🎨 Branding (lang: {language})",
     },
     "owner.branding.label.name": {
         "ru": "Название",
@@ -1076,11 +1076,11 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     },
     "owner.branding.prompt": {
         "ru": (
-            "Пришлите новый текст для **{label}** ({lang}), "
+            "Пришлите новый текст для **{label}** ({language}), "
             "или /cancel — оставить как есть, /reset — вернуть дефолт."
         ),
         "en": (
-            "Send new text for **{label}** ({lang}), "
+            "Send new text for **{label}** ({language}), "
             "or /cancel to keep current, /reset to restore default."
         ),
     },

@@ -95,7 +95,9 @@ async def test_branding_submenu_renders_four_entries(session, default_tenant):
     await on_branding_open(query, cb, i18n)
 
     query.message.edit_text.assert_awaited_once()
-    _, kwargs = query.message.edit_text.await_args
+    args, kwargs = query.message.edit_text.await_args
+    title = args[0]
+    assert "ru" in title and "{language}" not in title and "{lang}" not in title
     markup = kwargs.get("reply_markup")
     button_datas = [
         btn.callback_data for row in markup.inline_keyboard for btn in row

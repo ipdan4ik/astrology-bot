@@ -345,13 +345,13 @@ TRANSLATIONS = {
     # White-label branding (SP3)
     "brand.signature": "",
     "owner.branding.btn": "🎨 Markalama",
-    "owner.branding.title": "🎨 Markalama (dil: {lang})",
+    "owner.branding.title": "🎨 Markalama (dil: {language})",
     "owner.branding.label.name": "Ad",
     "owner.branding.label.welcome": "Karşılama",
     "owner.branding.label.help": "Yardım",
     "owner.branding.label.signature": "İmza",
     "owner.branding.prompt": (
-        "**{label}** ({lang}) için yeni metin gönderin, "
+        "**{label}** ({language}) için yeni metin gönderin, "
         "veya korumak için /cancel, varsayılana döndürmek için /reset."
     ),
     "owner.branding.saved": "✅ Güncellendi.",

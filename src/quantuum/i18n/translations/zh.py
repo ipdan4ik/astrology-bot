@@ -344,13 +344,13 @@ TRANSLATIONS = {
     # White-label branding (SP3)
     "brand.signature": "",
     "owner.branding.btn": "🎨 品牌",
-    "owner.branding.title": "🎨 品牌 (语言: {lang})",
+    "owner.branding.title": "🎨 品牌 (语言: {language})",
     "owner.branding.label.name": "名称",
     "owner.branding.label.welcome": "欢迎语",
     "owner.branding.label.help": "帮助",
     "owner.branding.label.signature": "签名",
     "owner.branding.prompt": (
-        "为 **{label}** ({lang}) 发送新文本，"
+        "为 **{label}** ({language}) 发送新文本，"
         "或 /cancel 保持当前，/reset 恢复默认。"
     ),
     "owner.branding.saved": "✅ 已更新。",

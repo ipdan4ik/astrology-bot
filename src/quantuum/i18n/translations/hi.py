@@ -345,13 +345,13 @@ TRANSLATIONS = {
     # White-label branding (SP3)
     "brand.signature": "",
     "owner.branding.btn": "🎨 ब्रांडिंग",
-    "owner.branding.title": "🎨 ब्रांडिंग (भाषा: {lang})",
+    "owner.branding.title": "🎨 ब्रांडिंग (भाषा: {language})",
     "owner.branding.label.name": "नाम",
     "owner.branding.label.welcome": "स्वागत",
     "owner.branding.label.help": "मदद",
     "owner.branding.label.signature": "हस्ताक्षर",
     "owner.branding.prompt": (
-        "**{label}** ({lang}) के लिए नया पाठ भेजें, "
+        "**{label}** ({language}) के लिए नया पाठ भेजें, "
         "या रखने के लिए /cancel, डिफ़ॉल्ट पर पुनर्स्थापित करने के लिए /reset।"
     ),
     "owner.branding.saved": "✅ अपडेट किया गया।",

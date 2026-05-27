@@ -346,13 +346,13 @@ TRANSLATIONS = {
     # White-label branding (SP3)
     "brand.signature": "",
     "owner.branding.btn": "🎨 Marca",
-    "owner.branding.title": "🎨 Marca (idioma: {lang})",
+    "owner.branding.title": "🎨 Marca (idioma: {language})",
     "owner.branding.label.name": "Nombre",
     "owner.branding.label.welcome": "Bienvenida",
     "owner.branding.label.help": "Ayuda",
     "owner.branding.label.signature": "Firma",
     "owner.branding.prompt": (
-        "Envía nuevo texto para **{label}** ({lang}), "
+        "Envía nuevo texto para **{label}** ({language}), "
         "o /cancel para mantener, /reset para restaurar predeterminado."
     ),
     "owner.branding.saved": "✅ Actualizado.",
