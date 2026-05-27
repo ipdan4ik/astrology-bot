@@ -3,19 +3,26 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
+from openai import AsyncOpenAI
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
+from quantuum.domain.moderation import record_moderation_event
 from quantuum.domain.natal_profiles import get_natal_profile
 from quantuum.domain.qa import create_qa
 from quantuum.domain.quota import consume_quota
 from quantuum.domain.requests import create_request
 from quantuum.i18n import Translator
+from quantuum.llm.registry import get_llm_client
+from quantuum.logging_setup import get_logger
+from quantuum.moderation import POLICY, Safe, Tier1Hit, moderate
+from quantuum.settings import get_settings
 from quantuum.tasks.enqueue import enqueue_qa
 
 router = Router()
+_log = get_logger("moderation.handler")
 
 MAX_QUESTION_LEN = 1000
 
@@ -39,6 +46,54 @@ async def _submit(message: Message, raw: str, account: Account, i18n: Translator
         await message.answer(await i18n("qa.too_long"))
         return
 
+    # Moderation pre-check — before any quota charge.
+    settings = get_settings()
+    if settings.moderation_enabled and settings.llm_api_key:
+        openai_client = AsyncOpenAI(api_key=settings.llm_api_key)
+        llm_client = get_llm_client(settings)
+        try:
+            verdict = await moderate(
+                q,
+                i18n.lang,
+                openai_client=openai_client,
+                llm_client=llm_client,
+                settings=settings,
+            )
+        except Exception:
+            verdict = Safe()  # last-resort fail-open guard
+
+        if not isinstance(verdict, Safe):
+            entry = POLICY[verdict.category]
+            source = "openai" if isinstance(verdict, Tier1Hit) else "mini_llm"
+            text_kwargs: dict[str, str] = {}
+            if entry["uses_helpline"]:
+                text_kwargs["helpline_url"] = await i18n("moderation.helpline_url")
+            response_text = await i18n(entry["i18n_key"], **text_kwargs)
+            async with get_sessionmaker()() as session:
+                await record_moderation_event(
+                    session,
+                    account_id=account.id,
+                    tenant_id=account.tenant_id,
+                    lang=i18n.lang,
+                    category=verdict.category,
+                    action=entry["action"],
+                    source=source,
+                    raw_text=q,
+                )
+                await session.commit()
+            _log.info(
+                "moderation.triggered",
+                account_id=account.id,
+                tenant_id=account.tenant_id,
+                category=verdict.category.value,
+                action=entry["action"].value,
+                source=source,
+                lang=i18n.lang,
+            )
+            await message.answer(response_text)
+            return
+
+    # Existing flow: profile → quota → request → qa → enqueue.
     async with get_sessionmaker()() as session:
         profile = await get_natal_profile(session, account.id)
         if profile is None:
