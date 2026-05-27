@@ -68,6 +68,11 @@ async def generate_referral_code(
                 payload={"code": code},
             )
             return code
+    logger.warning(
+        "referral.code_collision_exhausted",
+        account_id=account_id,
+        tenant_id=tenant_id,
+    )
     raise RuntimeError("could not generate unique referral code after retries")
 
 
