@@ -160,3 +160,27 @@ async def test_dispatch_referral_already_attributed_silent(session: AsyncSession
     ).scalars().all()
     assert len(uses) == 1
     assert uses[0].token_code == code1
+
+
+async def test_dispatch_unknown_kind_is_silent(session: AsyncSession):
+    t = await _tenant(session)
+    aid = await _account(session, t.id, 1001)
+    referee = await _account(session, t.id, 2001)
+    token = StartToken(
+        code="FUTUREXX",
+        kind="future_kind",
+        tenant_id=t.id,
+        owner_account_id=aid,
+        status="active",
+    )
+    session.add(token)
+    await session.flush()
+
+    await dispatch_start_token(session, token=token, account_id=referee)
+
+    uses = (
+        await session.execute(
+            select(StartTokenUse).where(StartTokenUse.account_id == referee)
+        )
+    ).scalars().all()
+    assert uses == []
