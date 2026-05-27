@@ -360,4 +360,23 @@ TRANSLATIONS = {
     "owner.branding.bad_format": "名称必须为 1-64 字符且不含换行。",
     "owner.branding.empty_value": "不允许空值。使用 /reset 清除。",
     "owner.branding.preview_empty": "(空)",
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": "🎁 邀请朋友",
+    "invite.title": "邀请朋友加入此机器人。",
+    "invite.link_label": "您的链接",
+    "invite.earned": "已赚取：来自 {friends} 位朋友的 {credits} 积分。",
+    "invite.share_text": "试试这个机器人",
+    "invite.disabled": "此机器人中推荐计划已禁用。",
+    "invite.unknown_code": "推荐链接无法识别，将继续但不提供奖励。",
+    "owner.referrals.title": "推荐计划",
+    "owner.referrals.current_value": "当前奖励：{value} 积分。",
+    "owner.referrals.prompt": "发送 0 到 {max} 之间的整数以更改奖励。",
+    "owner.referrals.saved": "已保存：{value} 积分。",
+    "owner.referrals.reset": "已重置为默认值（{value}）。",
+    "owner.referrals.too_large": "值必须在 0-{max} 范围内。",
+    "owner.referrals.not_a_number": "请发送一个整数。",
+    "owner.referrals.cancel_hint": "发送 /cancel 以取消。",
+    "owner.referrals.menu_button": "推荐",
 }

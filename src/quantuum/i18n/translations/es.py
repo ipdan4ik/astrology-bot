@@ -362,4 +362,23 @@ TRANSLATIONS = {
     "owner.branding.bad_format": "El nombre debe tener 1-64 caracteres sin saltos de línea.",
     "owner.branding.empty_value": "Valor vacío no permitido. Usa /reset para limpiar.",
     "owner.branding.preview_empty": "(vacío)",
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": "🎁 Invitar a un amigo",
+    "invite.title": "Invita a tus amigos a este bot.",
+    "invite.link_label": "Tu enlace",
+    "invite.earned": "Ganado: {credits} créditos de {friends} amigos.",
+    "invite.share_text": "Prueba este bot",
+    "invite.disabled": "Las referencias están desactivadas en este bot.",
+    "invite.unknown_code": "Enlace de referencia no reconocido. Continuando sin bonificación.",
+    "owner.referrals.title": "Programa de referidos",
+    "owner.referrals.current_value": "Recompensa actual: {value} créditos.",
+    "owner.referrals.prompt": "Envía un número entero entre 0 y {max} para cambiar la recompensa.",
+    "owner.referrals.saved": "Guardado: {value} créditos.",
+    "owner.referrals.reset": "Restablecido al valor predeterminado ({value}).",
+    "owner.referrals.too_large": "El valor debe estar entre 0 y {max}.",
+    "owner.referrals.not_a_number": "Envía un número entero.",
+    "owner.referrals.cancel_hint": "Envía /cancel para cancelar.",
+    "owner.referrals.menu_button": "Referidos",
 }

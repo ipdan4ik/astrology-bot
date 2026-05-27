@@ -362,4 +362,23 @@ TRANSLATIONS = {
     "owner.branding.bad_format": "Name muss 1-64 Zeichen lang sein und keine Zeilenumbrüche enthalten.",
     "owner.branding.empty_value": "Leerer Wert nicht erlaubt. /reset zum Löschen.",
     "owner.branding.preview_empty": "(leer)",
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": "🎁 Freund einladen",
+    "invite.title": "Lade Freunde zu diesem Bot ein.",
+    "invite.link_label": "Dein Link",
+    "invite.earned": "Verdient: {credits} Credits von {friends} Freunden.",
+    "invite.share_text": "Probier diesen Bot",
+    "invite.disabled": "Empfehlungen sind in diesem Bot deaktiviert.",
+    "invite.unknown_code": "Empfehlungslink nicht erkannt. Fortsetzung ohne Bonus.",
+    "owner.referrals.title": "Empfehlungsprogramm",
+    "owner.referrals.current_value": "Aktuelle Belohnung: {value} Credits.",
+    "owner.referrals.prompt": "Sende eine ganze Zahl zwischen 0 und {max}.",
+    "owner.referrals.saved": "Gespeichert: {value} Credits.",
+    "owner.referrals.reset": "Auf Standard zurückgesetzt ({value}).",
+    "owner.referrals.too_large": "Wert muss zwischen 0 und {max} sein.",
+    "owner.referrals.not_a_number": "Sende eine ganze Zahl.",
+    "owner.referrals.cancel_hint": "Sende /cancel zum Abbrechen.",
+    "owner.referrals.menu_button": "Empfehlungen",
 }

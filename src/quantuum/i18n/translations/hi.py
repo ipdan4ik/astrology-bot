@@ -361,4 +361,23 @@ TRANSLATIONS = {
     "owner.branding.bad_format": "नाम 1-64 अक्षर का होना चाहिए, बिना लाइन ब्रेक के।",
     "owner.branding.empty_value": "खाली मान की अनुमति नहीं है। साफ़ करने के लिए /reset का उपयोग करें।",
     "owner.branding.preview_empty": "(खाली)",
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": "🎁 दोस्त को आमंत्रित करें",
+    "invite.title": "इस बॉट में दोस्तों को आमंत्रित करें।",
+    "invite.link_label": "आपका लिंक",
+    "invite.earned": "अर्जित: {friends} दोस्तों से {credits} क्रेडिट।",
+    "invite.share_text": "इस बॉट को आज़माएं",
+    "invite.disabled": "इस बॉट में रेफरल प्रोग्राम अक्षम है।",
+    "invite.unknown_code": "रेफरल लिंक पहचाना नहीं गया। बिना बोनस के जारी है।",
+    "owner.referrals.title": "रेफरल प्रोग्राम",
+    "owner.referrals.current_value": "वर्तमान पुरस्कार: {value} क्रेडिट।",
+    "owner.referrals.prompt": "पुरस्कार बदलने के लिए 0 से {max} के बीच पूर्णांक भेजें।",
+    "owner.referrals.saved": "सहेजा गया: {value} क्रेडिट।",
+    "owner.referrals.reset": "डिफ़ॉल्ट पर रीसेट ({value})।",
+    "owner.referrals.too_large": "मान 0 से {max} की सीमा में होना चाहिए।",
+    "owner.referrals.not_a_number": "एक पूर्णांक भेजें।",
+    "owner.referrals.cancel_hint": "रद्द करने के लिए /cancel भेजें।",
+    "owner.referrals.menu_button": "रेफरल",
 }

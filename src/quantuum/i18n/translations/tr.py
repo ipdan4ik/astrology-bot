@@ -361,4 +361,23 @@ TRANSLATIONS = {
     "owner.branding.bad_format": "Ad 1-64 karakter olmalı ve satır sonu içermemeli.",
     "owner.branding.empty_value": "Boş değer izin verilmez. Temizlemek için /reset kullanın.",
     "owner.branding.preview_empty": "(boş)",
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": "🎁 Arkadaş davet et",
+    "invite.title": "Bu bota arkadaşlarınızı davet edin.",
+    "invite.link_label": "Bağlantınız",
+    "invite.earned": "Kazanıldı: {friends} arkadaştan {credits} kredi.",
+    "invite.share_text": "Bu botu deneyin",
+    "invite.disabled": "Bu botta referans programı devre dışı.",
+    "invite.unknown_code": "Referans bağlantısı tanınmadı. Bonussuz devam ediliyor.",
+    "owner.referrals.title": "Referans programı",
+    "owner.referrals.current_value": "Mevcut ödül: {value} kredi.",
+    "owner.referrals.prompt": "Ödülü değiştirmek için 0 ile {max} arasında bir tam sayı gönderin.",
+    "owner.referrals.saved": "Kaydedildi: {value} kredi.",
+    "owner.referrals.reset": "Varsayılana sıfırlandı ({value}).",
+    "owner.referrals.too_large": "Değer 0-{max} aralığında olmalıdır.",
+    "owner.referrals.not_a_number": "Bir tam sayı gönderin.",
+    "owner.referrals.cancel_hint": "İptal etmek için /cancel gönderin.",
+    "owner.referrals.menu_button": "Referanslar",
 }

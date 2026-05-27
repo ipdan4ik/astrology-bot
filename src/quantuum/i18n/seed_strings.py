@@ -1112,6 +1112,73 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "(пусто)",
         "en": "(empty)",
     },
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": {
+        "ru": "🎁 Пригласить друга",
+        "en": "🎁 Invite a friend",
+    },
+    "invite.title": {
+        "ru": "Приглашайте друзей в этот бот.",
+        "en": "Invite friends to this bot.",
+    },
+    "invite.link_label": {
+        "ru": "Ваша ссылка",
+        "en": "Your link",
+    },
+    "invite.earned": {
+        "ru": "Заработано: {credits} кредитов от {friends} друзей.",
+        "en": "Earned: {credits} credits from {friends} friends.",
+    },
+    "invite.share_text": {
+        "ru": "Попробуй этого бота",
+        "en": "Try this bot",
+    },
+    "invite.disabled": {
+        "ru": "Реферальная программа в этом боте отключена.",
+        "en": "Referrals are disabled in this bot.",
+    },
+    "invite.unknown_code": {
+        "ru": "Реферальная ссылка не распознана. Продолжаем без бонуса.",
+        "en": "Referral link not recognized. Continuing without bonus.",
+    },
+    "owner.referrals.title": {
+        "ru": "Реферальная программа",
+        "en": "Referral program",
+    },
+    "owner.referrals.current_value": {
+        "ru": "Текущее вознаграждение: {value} кредитов.",
+        "en": "Current reward: {value} credits.",
+    },
+    "owner.referrals.prompt": {
+        "ru": "Отправьте целое число от 0 до {max}, чтобы изменить вознаграждение.",
+        "en": "Send an integer between 0 and {max} to change the reward.",
+    },
+    "owner.referrals.saved": {
+        "ru": "Сохранено: {value} кредитов.",
+        "en": "Saved: {value} credits.",
+    },
+    "owner.referrals.reset": {
+        "ru": "Сброшено к значению по умолчанию ({value}).",
+        "en": "Reset to default ({value}).",
+    },
+    "owner.referrals.too_large": {
+        "ru": "Значение должно быть в диапазоне 0–{max}.",
+        "en": "Value must be in range 0-{max}.",
+    },
+    "owner.referrals.not_a_number": {
+        "ru": "Пришлите целое число.",
+        "en": "Send an integer.",
+    },
+    "owner.referrals.cancel_hint": {
+        "ru": "Отправьте /cancel, чтобы отменить.",
+        "en": "Send /cancel to abort.",
+    },
+    "owner.referrals.menu_button": {
+        "ru": "Реферальная программа",
+        "en": "Referrals",
+    },
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that

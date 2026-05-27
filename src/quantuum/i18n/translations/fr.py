@@ -362,4 +362,23 @@ TRANSLATIONS = {
     "owner.branding.bad_format": "Le nom doit faire 1-64 caractères sans saut de ligne.",
     "owner.branding.empty_value": "Valeur vide interdite. Utilisez /reset pour effacer.",
     "owner.branding.preview_empty": "(vide)",
+    # -------------------------------------------------------------------------
+    # Referral links (SP4)
+    # -------------------------------------------------------------------------
+    "btn.invite": "🎁 Inviter un ami",
+    "invite.title": "Invitez vos amis dans ce bot.",
+    "invite.link_label": "Votre lien",
+    "invite.earned": "Gagné : {credits} crédits de {friends} amis.",
+    "invite.share_text": "Essayez ce bot",
+    "invite.disabled": "Les parrainages sont désactivés dans ce bot.",
+    "invite.unknown_code": "Lien de parrainage non reconnu. Continuation sans bonus.",
+    "owner.referrals.title": "Programme de parrainage",
+    "owner.referrals.current_value": "Récompense actuelle : {value} crédits.",
+    "owner.referrals.prompt": "Envoyez un entier entre 0 et {max} pour modifier la récompense.",
+    "owner.referrals.saved": "Enregistré : {value} crédits.",
+    "owner.referrals.reset": "Réinitialisé à la valeur par défaut ({value}).",
+    "owner.referrals.too_large": "La valeur doit être comprise entre 0 et {max}.",
+    "owner.referrals.not_a_number": "Envoyez un entier.",
+    "owner.referrals.cancel_hint": "Envoyez /cancel pour annuler.",
+    "owner.referrals.menu_button": "Parrainages",
 }
