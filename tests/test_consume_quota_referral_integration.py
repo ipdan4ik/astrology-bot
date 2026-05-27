@@ -90,15 +90,14 @@ async def test_consume_quota_no_double_payout(session: AsyncSession):
             status="paid", paid_at=utcnow(),
         )
     )
-    bal_referee = await session.get(AccountBalance, referee)
-    bal_referee.package_credits = 10
     await session.flush()
 
+    # _setup gives referee 10 credits; two qa spends (cost 1 each) leave 8.
     await consume_quota(session, referee, kind="qa")
     await consume_quota(session, referee, kind="qa")
 
     bal = await session.get(AccountBalance, referrer)
-    assert bal.package_credits == DEFAULT_REWARD_CREDITS
+    assert bal.package_credits == DEFAULT_REWARD_CREDITS  # exactly one payout
 
 
 async def test_consume_quota_payout_failure_does_not_block_spend(
