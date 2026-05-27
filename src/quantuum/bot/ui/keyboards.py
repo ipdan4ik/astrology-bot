@@ -3,6 +3,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb, LangCb, OnboardCb, ProfileCb, ReadingCb
 from quantuum.db.session import get_sessionmaker
+from quantuum.domain.tenant_features import list_feature_states
 from quantuum.i18n import Translator
 from quantuum.i18n.seed_strings import BASE_STRINGS
 from quantuum.i18n.strings import get_enabled_langs, get_tenant_default_lang
@@ -43,8 +44,6 @@ async def _label(i18n: Translator | None, key: str) -> str:
 
 
 async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
-    from quantuum.domain.tenant_features import list_feature_states
-
     async with get_sessionmaker()() as session:
         flags = await list_feature_states(session, tenant_id)
 
@@ -119,8 +118,6 @@ READING_KINDS: tuple[str, ...] = (
 
 async def readings_menu_kb(i18n: Translator, tenant_id: int) -> InlineKeyboardMarkup:
     """Inline keyboard listing only the enabled reading kinds for this tenant."""
-    from quantuum.domain.tenant_features import list_feature_states
-
     async with get_sessionmaker()() as session:
         flags = await list_feature_states(session, tenant_id)
 

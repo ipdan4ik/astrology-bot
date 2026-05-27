@@ -74,13 +74,9 @@ async def test_main_menu_hides_readings_button_when_all_readings_off(
     texts = _button_texts(kb)
     # Sanity: history button still present.
     assert any("История" in t or "📜" in t for t in texts)
-    # And: readings hub button absent. The RU label for btn.readings is "📖 Разборы" (per BASE_STRINGS).
-    # The blueprint button ("🔮 Разбор") is singular and not affected by readings being off.
-    # Distinguish by checking neither readings hub nor any reading-kind label is in this kb.
-    # Easiest: count the "Разбор" occurrences — blueprint contributes 1, readings hub would
-    # contribute another ("Разборы" contains "Разбор"). With all readings off, expect exactly 1.
-    razbor_count = sum(1 for t in texts if "Разбор" in t)
-    assert razbor_count == 1, f"Expected only blueprint button, got {texts}"
+    # Readings hub button must be absent when all reading kinds are disabled.
+    readings_hub_label = "📖 Разборы"  # BASE_STRINGS["btn.readings"]["ru"]
+    assert readings_hub_label not in texts, f"Readings hub button should be hidden, got {texts}"
 
 
 async def test_readings_menu_full_when_all_enabled(session, default_tenant, build_translator):
