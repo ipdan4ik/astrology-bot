@@ -2,7 +2,7 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
@@ -743,11 +743,11 @@ class OwnerReferrals(StatesGroup):
     awaiting_value = State()
 
 
-async def _referrals_keyboard(i18n: Translator):
+async def _referrals_keyboard(i18n: Translator, tenant_id: int) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     b.button(
         text=await i18n("owner.referrals.menu_button"),
-        callback_data=OwnerReferralsCb(action="edit").pack(),
+        callback_data=OwnerReferralsCb(action="edit", tenant_id=tenant_id).pack(),
     )
     b.adjust(1)
     return b.as_markup()
@@ -757,17 +757,22 @@ async def _referrals_keyboard(i18n: Translator):
 async def on_referrals_open(
     query: CallbackQuery,
     callback_data: OwnerReferralsCb,
-    account_id: int,
-    tenant_id: int,
     i18n: Translator,
 ) -> None:
+    tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
-        current = await get_reward_credits(session, tenant_id=tenant_id)
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        current = await get_reward_credits(session, tenant_id=callback_data.tenant_id)
     body = (
         f"{await i18n('owner.referrals.title')}\n\n"
         f"{await i18n('owner.referrals.current_value', value=current)}"
     )
-    await query.message.answer(body, reply_markup=await _referrals_keyboard(i18n))
+    await query.message.answer(body, reply_markup=await _referrals_keyboard(i18n, callback_data.tenant_id))
     await query.answer()
 
 
@@ -776,10 +781,18 @@ async def on_referrals_edit(
     query: CallbackQuery,
     callback_data: OwnerReferralsCb,
     state: FSMContext,
-    tenant_id: int,
     i18n: Translator,
 ) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
     await state.set_state(OwnerReferrals.awaiting_value)
+    await state.update_data(tenant_id=callback_data.tenant_id)
     await query.message.answer(
         await i18n("owner.referrals.prompt", max=MAX_REWARD_CREDITS)
         + "\n"
@@ -800,16 +813,23 @@ async def on_referrals_cancel(
 async def on_referrals_value(
     message: Message,
     state: FSMContext,
-    account_id: int,
-    tenant_id: int,
     i18n: Translator,
 ) -> None:
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
     text_in = (message.text or "").strip()
 
     if text_in == "/reset":
         async with get_sessionmaker()() as session:
+            actor_id = await authorize_tenant_action(
+                session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+            )
+            if actor_id is None:
+                await message.answer(await i18n("owner.no_rights"))
+                await state.clear()
+                return
             await reset_reward_credits(
-                session, tenant_id=tenant_id, by_account_id=account_id
+                session, tenant_id=tenant_id, by_account_id=actor_id
             )
             await session.commit()
         await state.clear()
@@ -831,19 +851,20 @@ async def on_referrals_value(
         return  # stay in state
 
     async with get_sessionmaker()() as session:
-        try:
-            await set_reward_credits(
-                session,
-                tenant_id=tenant_id,
-                value=value,
-                by_account_id=account_id,
-            )
-            await session.commit()
-        except ValueError:
-            await message.answer(
-                await i18n("owner.referrals.too_large", max=MAX_REWARD_CREDITS)
-            )
-            return  # stay in state
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+        )
+        if actor_id is None:
+            await message.answer(await i18n("owner.no_rights"))
+            await state.clear()
+            return
+        await set_reward_credits(
+            session,
+            tenant_id=tenant_id,
+            value=value,
+            by_account_id=actor_id,
+        )
+        await session.commit()
 
     await state.clear()
     await message.answer(await i18n("owner.referrals.saved", value=value))

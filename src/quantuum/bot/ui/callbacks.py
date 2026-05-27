@@ -81,5 +81,5 @@ class OwnerBrandingCb(CallbackData, prefix="obrand"):
 
 
 class OwnerReferralsCb(CallbackData, prefix="oref"):
-    action: str       # open | edit | reset
+    action: str       # open | edit
     tenant_id: int = 0

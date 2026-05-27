@@ -3,17 +3,18 @@ from unittest.mock import AsyncMock, MagicMock
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import Message
 from sqlalchemy import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.bot.ui.callbacks import OwnerReferralsCb
-from quantuum.db.models import AuditLog, Tenant
+from quantuum.db.models import AuditLog, Tenant, TenantRole
 from quantuum.domain.referrals import (
     DEFAULT_REWARD_CREDITS,
     get_reward_credits,
 )
-from quantuum.i18n import Translator
+from tests.conftest import build_translator
 
 
 def test_owner_referrals_cb_class_exists():
@@ -21,35 +22,63 @@ def test_owner_referrals_cb_class_exists():
     assert cb.action == "open"
 
 
-async def _setup(session: AsyncSession, *, seed_strings: bool = False) -> tuple[int, int]:
+async def _make_owner(session, tenant_id, *, tg: str):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=tenant_id, tg_user_id=tg
+    )
+    session.add(TenantRole(tenant_id=tenant_id, account_id=acc.id, role="owner"))
+    await session.commit()
+    return acc
+
+
+def _make_query(tg_user_id: str):
+    query = MagicMock()
+    query.from_user = MagicMock()
+    # Store as string so str() round-trip in handlers matches identity lookup.
+    query.from_user.id = tg_user_id
+    query.message = MagicMock()
+    query.message.answer = AsyncMock()
+    query.answer = AsyncMock()
+    return query
+
+
+def _make_message(tg_user_id: str) -> MagicMock:
+    msg = MagicMock(spec=Message)
+    msg.from_user = MagicMock()
+    msg.from_user.id = int(tg_user_id)
+    msg.answer = AsyncMock()
+    return msg
+
+
+def _make_fsm(tenant_id: int | None = None) -> FSMContext:
+    storage = MemoryStorage()
+    # Use a stable key; the exact ids don't matter for unit tests.
+    state = FSMContext(
+        storage=storage,
+        key=StorageKey(bot_id=1, chat_id=9001, user_id=9001),
+    )
+    return state
+
+
+async def _setup(session: AsyncSession, *, tg: str = "9001") -> tuple[int, int]:
     t = Tenant(slug="t1", display_name="T1")
     session.add(t)
     await session.flush()
-    aid = (
-        await find_or_create_account_by_tg(
-            session, tenant_id=t.id, tg_user_id="9001"
-        )
-    ).id
-    if seed_strings:
-        from quantuum.db.bootstrap import ensure_base_strings
-        await ensure_base_strings(session)
-    await session.commit()
-    return t.id, aid
+    acc = await _make_owner(session, t.id, tg=tg)
+    return t.id, acc.id
 
 
 async def test_referrals_open_renders_current_value(session: AsyncSession):
     from quantuum.bot.handlers.owner_console import on_referrals_open
 
-    tid, aid = await _setup(session, seed_strings=True)
-    query = MagicMock()
-    query.message = MagicMock()
-    query.message.answer = AsyncMock()
-    query.answer = AsyncMock()
-    i18n = Translator(tenant_id=tid, lang="en")
-    cb = OwnerReferralsCb(action="open")
+    tid, aid = await _setup(session, tg="9001")
+    i18n = await build_translator(session, tid, lang="en")
+    query = _make_query("9001")
+    cb = OwnerReferralsCb(action="open", tenant_id=tid)
 
-    await on_referrals_open(query, cb, account_id=aid, tenant_id=tid, i18n=i18n)
+    await on_referrals_open(query, cb, i18n=i18n)
 
+    query.message.answer.assert_awaited_once()
     args, kwargs = query.message.answer.call_args
     body = args[0] if args else kwargs.get("text", "")
     assert str(DEFAULT_REWARD_CREDITS) in body
@@ -58,20 +87,15 @@ async def test_referrals_open_renders_current_value(session: AsyncSession):
 async def test_referrals_edit_saves_value(session: AsyncSession):
     from quantuum.bot.handlers.owner_console import on_referrals_value
 
-    tid, aid = await _setup(session)
-    storage = MemoryStorage()
-    state = FSMContext(
-        storage=storage,
-        key=StorageKey(bot_id=1, chat_id=aid, user_id=aid),
-    )
-    message = MagicMock()
-    message.text = "25"
-    message.answer = AsyncMock()
-    i18n = Translator(tenant_id=tid, lang="en")
+    tid, aid = await _setup(session, tg="9002")
+    i18n = await build_translator(session, tid, lang="en")
+    state = _make_fsm()
+    await state.update_data(tenant_id=tid)
 
-    await on_referrals_value(
-        message, state=state, account_id=aid, tenant_id=tid, i18n=i18n
-    )
+    message = _make_message("9002")
+    message.text = "25"
+
+    await on_referrals_value(message, state=state, i18n=i18n)
 
     assert await get_reward_credits(session, tenant_id=tid) == 25
 
@@ -79,22 +103,16 @@ async def test_referrals_edit_saves_value(session: AsyncSession):
 async def test_referrals_edit_validation_too_large(session: AsyncSession):
     from quantuum.bot.handlers.owner_console import on_referrals_value
 
-    tid, aid = await _setup(session)
-    storage = MemoryStorage()
-    state = FSMContext(
-        storage=storage,
-        key=StorageKey(bot_id=1, chat_id=aid, user_id=aid),
-    )
-    # Set FSM state so the validation-failure path retains state
+    tid, aid = await _setup(session, tg="9003")
+    i18n = await build_translator(session, tid, lang="en")
+    state = _make_fsm()
+    await state.update_data(tenant_id=tid)
     await state.set_state("OwnerReferrals:awaiting_value")
-    message = MagicMock()
-    message.text = "9999"
-    message.answer = AsyncMock()
-    i18n = Translator(tenant_id=tid, lang="en")
 
-    await on_referrals_value(
-        message, state=state, account_id=aid, tenant_id=tid, i18n=i18n
-    )
+    message = _make_message("9003")
+    message.text = "9999"
+
+    await on_referrals_value(message, state=state, i18n=i18n)
 
     assert await get_reward_credits(session, tenant_id=tid) == DEFAULT_REWARD_CREDITS
     assert (await state.get_state()) == "OwnerReferrals:awaiting_value"
@@ -103,21 +121,16 @@ async def test_referrals_edit_validation_too_large(session: AsyncSession):
 async def test_referrals_edit_validation_not_a_number(session: AsyncSession):
     from quantuum.bot.handlers.owner_console import on_referrals_value
 
-    tid, aid = await _setup(session)
-    storage = MemoryStorage()
-    state = FSMContext(
-        storage=storage,
-        key=StorageKey(bot_id=1, chat_id=aid, user_id=aid),
-    )
+    tid, aid = await _setup(session, tg="9004")
+    i18n = await build_translator(session, tid, lang="en")
+    state = _make_fsm()
+    await state.update_data(tenant_id=tid)
     await state.set_state("OwnerReferrals:awaiting_value")
-    message = MagicMock()
-    message.text = "abc"
-    message.answer = AsyncMock()
-    i18n = Translator(tenant_id=tid, lang="en")
 
-    await on_referrals_value(
-        message, state=state, account_id=aid, tenant_id=tid, i18n=i18n
-    )
+    message = _make_message("9004")
+    message.text = "abc"
+
+    await on_referrals_value(message, state=state, i18n=i18n)
 
     assert await get_reward_credits(session, tenant_id=tid) == DEFAULT_REWARD_CREDITS
     assert (await state.get_state()) == "OwnerReferrals:awaiting_value"
@@ -126,49 +139,38 @@ async def test_referrals_edit_validation_not_a_number(session: AsyncSession):
 async def test_referrals_reset_clears_override(session: AsyncSession):
     from quantuum.bot.handlers.owner_console import on_referrals_value
 
-    tid, aid = await _setup(session)
-    storage = MemoryStorage()
-    state = FSMContext(
-        storage=storage,
-        key=StorageKey(bot_id=1, chat_id=aid, user_id=aid),
-    )
+    tid, aid = await _setup(session, tg="9005")
+    i18n = await build_translator(session, tid, lang="en")
+    state = _make_fsm()
+    await state.update_data(tenant_id=tid)
 
     # set to 50
-    msg_set = MagicMock()
+    msg_set = _make_message("9005")
     msg_set.text = "50"
-    msg_set.answer = AsyncMock()
-    i18n = Translator(tenant_id=tid, lang="en")
-    await on_referrals_value(
-        msg_set, state=state, account_id=aid, tenant_id=tid, i18n=i18n
-    )
+    await on_referrals_value(msg_set, state=state, i18n=i18n)
     assert await get_reward_credits(session, tenant_id=tid) == 50
 
+    # state was cleared after save; restore tenant_id for next call
+    await state.update_data(tenant_id=tid)
+
     # reset
-    msg_reset = MagicMock()
+    msg_reset = _make_message("9005")
     msg_reset.text = "/reset"
-    msg_reset.answer = AsyncMock()
-    await on_referrals_value(
-        msg_reset, state=state, account_id=aid, tenant_id=tid, i18n=i18n
-    )
+    await on_referrals_value(msg_reset, state=state, i18n=i18n)
     assert await get_reward_credits(session, tenant_id=tid) == DEFAULT_REWARD_CREDITS
 
 
 async def test_referrals_config_set_writes_audit(session: AsyncSession):
     from quantuum.bot.handlers.owner_console import on_referrals_value
 
-    tid, aid = await _setup(session)
-    storage = MemoryStorage()
-    state = FSMContext(
-        storage=storage,
-        key=StorageKey(bot_id=1, chat_id=aid, user_id=aid),
-    )
-    message = MagicMock()
+    tid, aid = await _setup(session, tg="9006")
+    i18n = await build_translator(session, tid, lang="en")
+    state = _make_fsm()
+    await state.update_data(tenant_id=tid)
+
+    message = _make_message("9006")
     message.text = "33"
-    message.answer = AsyncMock()
-    i18n = Translator(tenant_id=tid, lang="en")
-    await on_referrals_value(
-        message, state=state, account_id=aid, tenant_id=tid, i18n=i18n
-    )
+    await on_referrals_value(message, state=state, i18n=i18n)
 
     rows = (
         (
