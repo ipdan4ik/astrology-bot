@@ -213,4 +213,11 @@ async def test_moderation_hit_aborts_without_quota_charge(
         select(Reading).where(Reading.account_id == acc.id)
     )).scalars().all()
     assert rows == []
+    # Verify a moderation event row was written for the hit.
+    from quantuum.db.models import ModerationEvent
+    mod_rows = (await session.execute(
+        select(ModerationEvent).where(ModerationEvent.account_id == acc.id)
+    )).scalars().all()
+    assert len(mod_rows) == 1
+    assert mod_rows[0].category == "self_harm"
     assert await state.get_state() is None
