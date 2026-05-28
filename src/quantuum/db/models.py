@@ -528,9 +528,6 @@ class StartToken(SQLModel, table=True):
 
 class StartTokenUse(SQLModel, table=True):
     __tablename__ = "start_token_uses"
-    __table_args__ = (
-        UniqueConstraint("account_id", name="uq_start_token_uses_account_id"),
-    )
 
     id: int | None = Field(default=None, primary_key=True)
     token_code: str = Field(foreign_key="start_tokens.code", index=True)
