@@ -6,7 +6,14 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlmodel import select
 
-from quantuum.bot.ui.callbacks import OwnerBrandingCb, OwnerFeatureCb, OwnerManageCb, OwnerReferralsCb, OwnerUserCb
+from quantuum.bot.ui.callbacks import (
+    OwnerBrandingCb,
+    OwnerFeatureCb,
+    OwnerGiftsCb,
+    OwnerManageCb,
+    OwnerReferralsCb,
+    OwnerUserCb,
+)
 from quantuum.db.models import Account, AccountIdentity, Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.audit import record_audit
@@ -32,6 +39,13 @@ from quantuum.domain.referrals import (
     get_reward_credits,
     reset_reward_credits,
     set_reward_credits,
+)
+from quantuum.domain.gifts import (
+    MAX_EXPIRY_DAYS,
+    MIN_EXPIRY_DAYS,
+    get_expiry_days,
+    reset_expiry_days,
+    set_expiry_days,
 )
 from quantuum.domain.tenant_features import (
     list_feature_states,
@@ -116,6 +130,12 @@ async def on_manage(message: Message, command: CommandObject, i18n: Translator) 
             callback_data=OwnerReferralsCb(
                 action="open", tenant_id=tenant.id
             ).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.gifts.menu_button"),
+            callback_data=OwnerGiftsCb(action="open", tenant_id=tenant.id).pack(),
         )
     )
     if tenant.status == "active":
@@ -868,3 +888,143 @@ async def on_referrals_value(
 
     await state.clear()
     await message.answer(await i18n("owner.referrals.saved", value=value))
+
+
+# ── SP5: Gifts submenu + edit FSM ───────────────────────────────────────────
+
+
+class OwnerGifts(StatesGroup):
+    awaiting_value = State()
+
+
+async def _gifts_keyboard(i18n: Translator, tenant_id: int) -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.button(
+        text=await i18n("owner.gifts.menu_button"),
+        callback_data=OwnerGiftsCb(action="edit", tenant_id=tenant_id).pack(),
+    )
+    b.button(
+        text=await i18n("owner.gifts.reset"),
+        callback_data=OwnerGiftsCb(action="reset", tenant_id=tenant_id).pack(),
+    )
+    b.adjust(1)
+    return b.as_markup()
+
+
+@router.callback_query(OwnerGiftsCb.filter(F.action == "open"))
+async def on_gifts_open(
+    query: CallbackQuery,
+    callback_data: OwnerGiftsCb,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        current = await get_expiry_days(session, tenant_id=callback_data.tenant_id)
+    body = (
+        f"{await i18n('owner.gifts.title')}\n\n"
+        f"{await i18n('owner.gifts.current_value', value=current)}"
+    )
+    await query.message.answer(
+        body, reply_markup=await _gifts_keyboard(i18n, callback_data.tenant_id)
+    )
+    await query.answer()
+
+
+@router.callback_query(OwnerGiftsCb.filter(F.action == "edit"))
+async def on_gifts_edit(
+    query: CallbackQuery,
+    callback_data: OwnerGiftsCb,
+    state: FSMContext,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+    await state.set_state(OwnerGifts.awaiting_value)
+    await state.update_data(tenant_id=callback_data.tenant_id)
+    await query.message.answer(
+        await i18n("owner.gifts.prompt", min=MIN_EXPIRY_DAYS, max=MAX_EXPIRY_DAYS)
+        + "\n"
+        + await i18n("owner.gifts.cancel_hint"),
+    )
+    await query.answer()
+
+
+@router.callback_query(OwnerGiftsCb.filter(F.action == "reset"))
+async def on_gifts_reset(
+    query: CallbackQuery,
+    callback_data: OwnerGiftsCb,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor_id is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        await reset_expiry_days(
+            session, tenant_id=callback_data.tenant_id, by_account_id=actor_id
+        )
+        await session.commit()
+    await query.message.answer(await i18n("owner.gifts.reset"))
+    await query.answer()
+
+
+@router.message(Command("cancel"), OwnerGifts.awaiting_value)
+async def on_gifts_cancel(
+    message: Message, state: FSMContext, i18n: Translator
+) -> None:
+    await state.clear()
+    await message.answer(await i18n("menu.cancelled"))
+
+
+@router.message(OwnerGifts.awaiting_value)
+async def on_gifts_value(
+    message: Message,
+    state: FSMContext,
+    i18n: Translator,
+) -> None:
+    data = await state.get_data()
+    tenant_id = data["tenant_id"]
+    tg_user_id = str(message.from_user.id)
+
+    raw = (message.text or "").strip()
+    try:
+        days = int(raw)
+    except ValueError:
+        await message.answer(await i18n("owner.gifts.not_a_number"))
+        return
+    if days < MIN_EXPIRY_DAYS:
+        await message.answer(await i18n("owner.gifts.too_small", min=MIN_EXPIRY_DAYS))
+        return
+    if days > MAX_EXPIRY_DAYS:
+        await message.answer(await i18n("owner.gifts.too_large", max=MAX_EXPIRY_DAYS))
+        return
+
+    async with get_sessionmaker()() as session:
+        actor_id = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=tenant_id
+        )
+        if actor_id is None:
+            await state.clear()
+            await message.answer(await i18n("owner.no_rights"))
+            return
+        await set_expiry_days(
+            session, tenant_id=tenant_id, days=days, by_account_id=actor_id
+        )
+        await session.commit()
+    await state.clear()
+    await message.answer(await i18n("owner.gifts.saved"))
