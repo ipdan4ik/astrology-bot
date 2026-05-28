@@ -37,14 +37,16 @@ async def test_reading_generate_branches_for_tarot(session, default_tenant, monk
     }
     r = await _seed_reading(session, default_tenant, kind="tarot", draw_jsonb=draw)
 
-    from quantuum.astrology import blueprint as bp_mod
     called = {"from_natal_profile": False}
 
     def _spy(*a, **kw):
         called["from_natal_profile"] = True
         raise AssertionError("from_natal_profile should not be called for tarot")
 
-    monkeypatch.setattr(bp_mod, "from_natal_profile", _spy)
+    # Patch the name as bound inside quantuum.tasks.reading (which did
+    # `from quantuum.astrology.blueprint import from_natal_profile`), not the
+    # source module attribute — otherwise the spy is never triggered.
+    monkeypatch.setattr("quantuum.tasks.reading.from_natal_profile", _spy)
     from quantuum.tasks import delivery as delivery_mod
     monkeypatch.setattr(delivery_mod, "deliver_via_tenant_bot", AsyncMock())
 

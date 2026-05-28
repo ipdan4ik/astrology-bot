@@ -1,6 +1,8 @@
 from quantuum.astrology.blueprint import from_natal_profile
 from quantuum.astrology.sections import build_reading_calc_md
+from quantuum.bot.rendering.signature import append_signature
 from quantuum.db.models import NatalProfile
+from quantuum.divination import build_divination_calc_md
 from quantuum.domain.llm_config import get_llm_config
 from quantuum.domain.quota import refund_quota
 from quantuum.domain.readings import get_reading, set_reading_status
@@ -8,7 +10,6 @@ from quantuum.domain.requests import complete_request
 from quantuum.i18n.strings import get_tenant_default_lang
 from quantuum.llm.reading_polish import polish_reading
 from quantuum.logging_setup import get_logger
-from quantuum.bot.rendering.signature import append_signature
 from quantuum.tasks.delivery import deliver_via_tenant_bot
 
 logger = get_logger("task.reading")
@@ -29,7 +30,6 @@ async def reading_generate(
             kind = reading.kind
 
             if reading.kind in ("tarot", "iching"):
-                from quantuum.divination import build_divination_calc_md
                 calc_md = build_divination_calc_md(reading.kind, reading.draw_jsonb)
             else:
                 profile = await session.get(NatalProfile, reading.natal_profile_id)
