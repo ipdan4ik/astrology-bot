@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -189,11 +190,9 @@ async def test_dispatch_unknown_kind_is_silent(session: AsyncSession):
 # ---------------------------------------------------------------------------
 # Gift dispatcher tests
 # ---------------------------------------------------------------------------
-import pytest
-
-from quantuum.bot.handlers.start_tokens import GiftClaimResult
-from quantuum.db.models import AccountBalance, AuditLog
-from quantuum.domain.gifts import GIFT_KIND, create_gift
+from quantuum.bot.handlers.start_tokens import GiftClaimResult  # noqa: E402
+from quantuum.db.models import AccountBalance  # noqa: E402
+from quantuum.domain.gifts import GIFT_KIND, create_gift  # noqa: E402
 
 
 async def _account_with_credits(session, tenant_id, tg, credits):

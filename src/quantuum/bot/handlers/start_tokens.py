@@ -77,12 +77,12 @@ async def handle_referral_token(
     accounts already attributed (UNIQUE constraint).
     """
     if token.owner_account_id == account_id:
-        return
+        return None
     existing = await session.execute(
         select(StartTokenUse).where(StartTokenUse.account_id == account_id)
     )
     if existing.scalars().one_or_none() is not None:
-        return
+        return None
     use = StartTokenUse(
         token_code=token.code,
         account_id=account_id,
@@ -160,7 +160,7 @@ async def handle_gift_token(
         return None
     bal.package_credits += amount
     locked.status = "claimed"
-    locked.used_count = (locked.used_count or 0) + 1
+    locked.used_count += 1
     await session.flush()
     await record_audit(
         session,
