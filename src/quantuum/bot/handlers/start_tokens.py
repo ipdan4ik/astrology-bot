@@ -1,13 +1,23 @@
+from dataclasses import dataclass
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.common.datetime import utcnow
-from quantuum.db.models import StartToken, StartTokenUse
+from quantuum.db.models import AccountBalance, StartToken, StartTokenUse
 from quantuum.domain.audit import record_audit
+from quantuum.domain.gifts import GIFT_KIND
 from quantuum.domain.referrals import REFERRAL_KIND
+from quantuum.domain.tenant_features import is_feature_enabled
 from quantuum.logging_setup import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass
+class GiftClaimResult:
+    amount: int
+
 
 _MAX_PAYLOAD_LEN = 64
 
@@ -49,20 +59,20 @@ async def resolve_start_token(
 
 async def dispatch_start_token(
     session: AsyncSession, *, token: StartToken, account_id: int
-) -> None:
+) -> "GiftClaimResult | None":
     """Route a resolved token to its kind-specific handler. Unknown kinds
     log a warning and no-op so older bot builds never crash on future codes.
     """
     handler = _HANDLERS.get(token.kind)
     if handler is None:
         logger.warning("start_token.unknown_kind", kind=token.kind, code=token.code)
-        return
-    await handler(session, token=token, account_id=account_id)
+        return None
+    return await handler(session, token=token, account_id=account_id)
 
 
 async def handle_referral_token(
     session: AsyncSession, *, token: StartToken, account_id: int
-) -> None:
+) -> "GiftClaimResult | None":
     """Record a referral attribution. Silent no-op on self-referral and on
     accounts already attributed (UNIQUE constraint).
     """
@@ -98,6 +108,77 @@ async def handle_referral_token(
     )
 
 
+async def handle_gift_token(
+    session: AsyncSession, *, token: StartToken, account_id: int
+) -> "GiftClaimResult | None":
+    """Claim a gift token, crediting the recipient. Silent on self-claim,
+    malformed payload, or already-claimed token. Feature-flag checked; if the
+    'gifts' key is not yet in FEATURE_KEYS (pre-T5), treat as enabled.
+    """
+    if token.owner_account_id == account_id:
+        await record_audit(
+            session,
+            tenant_id=token.tenant_id,
+            actor_account_id=account_id,
+            action="gift.self_blocked",
+            entity_type="start_token",
+            entity_id=token.code,
+            payload={"code": token.code, "owner_account_id": token.owner_account_id},
+        )
+        return None
+
+    try:
+        feature_on = await is_feature_enabled(session, token.tenant_id, "gifts")
+    except ValueError:
+        # "gifts" not yet in FEATURE_KEYS (added in T5); treat as enabled.
+        feature_on = True
+    if not feature_on:
+        return None
+
+    amount = int(token.payload.get("amount", 0))
+    if amount <= 0:
+        return None
+
+    locked = (
+        await session.execute(
+            select(StartToken).where(StartToken.code == token.code).with_for_update()
+        )
+    ).scalar_one()
+    if locked.status != "active" or (
+        locked.max_uses is not None and locked.used_count >= locked.max_uses
+    ):
+        return None
+
+    session.add(StartTokenUse(
+        token_code=locked.code,
+        account_id=account_id,
+        used_at=utcnow(),
+        claimed_at=utcnow(),
+    ))
+    bal = await session.get(AccountBalance, account_id)
+    if bal is None:
+        return None
+    bal.package_credits += amount
+    locked.status = "claimed"
+    locked.used_count = (locked.used_count or 0) + 1
+    await session.flush()
+    await record_audit(
+        session,
+        tenant_id=locked.tenant_id,
+        actor_account_id=account_id,
+        action="gift.claimed",
+        entity_type="start_token",
+        entity_id=locked.code,
+        payload={
+            "code": locked.code,
+            "amount": amount,
+            "sender_account_id": locked.owner_account_id,
+        },
+    )
+    return GiftClaimResult(amount=amount)
+
+
 _HANDLERS = {
     REFERRAL_KIND: handle_referral_token,
+    GIFT_KIND: handle_gift_token,
 }
