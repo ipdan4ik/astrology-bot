@@ -1,4 +1,4 @@
-from sqlalchemy import inspect
+from sqlalchemy import text
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.db.models import StartToken, StartTokenUse, Tenant
@@ -23,11 +23,27 @@ async def test_start_token_uses_has_no_unique_on_account(session):
     await session.flush()  # must NOT raise IntegrityError
 
 
-def test_start_token_uses_table_has_no_unique_index(engine):
-    """Static check: table has no unique constraint involving account_id alone."""
-    insp = inspect(engine.sync_engine)
-    uniques = insp.get_unique_constraints("start_token_uses")
-    for uc in uniques:
-        assert uc["column_names"] != ["account_id"], (
-            f"start_token_uses still has a UNIQUE(account_id): {uc}"
+async def test_start_token_uses_table_has_no_unique_on_account(session):
+    """Static check via information_schema: no UNIQUE(account_id) on the table."""
+    rows = (
+        await session.execute(
+            text(
+                """
+                SELECT tc.constraint_name, kcu.column_name
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                 AND tc.table_schema = kcu.table_schema
+                WHERE tc.table_name = 'start_token_uses'
+                  AND tc.constraint_type = 'UNIQUE'
+                """
+            )
+        )
+    ).all()
+    by_constraint: dict[str, list[str]] = {}
+    for cname, col in rows:
+        by_constraint.setdefault(cname, []).append(col)
+    for cname, cols in by_constraint.items():
+        assert cols != ["account_id"], (
+            f"start_token_uses still has a UNIQUE(account_id): {cname}"
         )
