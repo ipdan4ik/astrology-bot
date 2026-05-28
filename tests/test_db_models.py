@@ -76,3 +76,59 @@ async def test_reading_model_create_and_load(session, default_tenant):
     assert reading.id is not None
     assert reading.status == "pending"
     assert reading.kind == "bazi"
+
+
+async def test_reading_accepts_draw_jsonb(session, default_tenant):
+    from datetime import date, time
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import NatalProfile, Reading
+
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="1001"
+    )
+    profile = NatalProfile(
+        tenant_id=default_tenant.id, account_id=acc.id, full_name="X",
+        birth_date=date(1990, 1, 1), birth_time=time(12, 0),
+        birth_place="X", latitude=0, longitude=0, timezone="UTC",
+    )
+    session.add(profile)
+    await session.flush()
+
+    r = Reading(
+        tenant_id=default_tenant.id,
+        account_id=acc.id,
+        natal_profile_id=profile.id,
+        kind="tarot",
+        lang="en",
+        draw_jsonb={"question": "Is this a test?", "cards": []},
+    )
+    session.add(r)
+    await session.flush()
+
+    reloaded = await session.get(Reading, r.id)
+    assert reloaded.draw_jsonb == {"question": "Is this a test?", "cards": []}
+
+
+async def test_reading_draw_jsonb_default_none(session, default_tenant):
+    from datetime import date, time
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import NatalProfile, Reading
+
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="2001"
+    )
+    profile = NatalProfile(
+        tenant_id=default_tenant.id, account_id=acc.id, full_name="X",
+        birth_date=date(1990, 1, 1), birth_time=time(12, 0),
+        birth_place="X", latitude=0, longitude=0, timezone="UTC",
+    )
+    session.add(profile)
+    await session.flush()
+
+    r = Reading(
+        tenant_id=default_tenant.id, account_id=acc.id,
+        natal_profile_id=profile.id, kind="bazi",
+    )
+    session.add(r)
+    await session.flush()
+    assert (await session.get(Reading, r.id)).draw_jsonb is None

@@ -179,6 +179,9 @@ class Reading(SQLModel, table=True):
     error: str | None = None
     created_at: datetime = _dt_field(default_factory=utcnow)
     completed_at: datetime | None = _dt_field(default=None)
+    draw_jsonb: dict | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
 
 
 class ModerationEvent(SQLModel, table=True):
