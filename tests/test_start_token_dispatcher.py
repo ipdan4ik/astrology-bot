@@ -312,7 +312,6 @@ async def test_dispatch_gift_double_claim_aborts_second(session):
     assert bal_r2.package_credits == 0
 
 
-@pytest.mark.skip(reason="enabled after T5 adds gifts to FEATURE_KEYS")
 async def test_dispatch_gift_feature_flag_off_silent(session):
     from quantuum.domain.tenant_features import set_feature_enabled
 

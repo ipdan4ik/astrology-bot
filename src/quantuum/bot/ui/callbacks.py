@@ -83,3 +83,7 @@ class OwnerBrandingCb(CallbackData, prefix="obrand"):
 class OwnerReferralsCb(CallbackData, prefix="oref"):
     action: str       # open | edit
     tenant_id: int = 0
+
+
+class GiftCreateCb(CallbackData, prefix="gcre"):
+    action: str  # "start"

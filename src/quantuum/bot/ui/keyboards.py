@@ -76,6 +76,8 @@ async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
     _add(await i18n("btn.language"))
     if flags.get("referrals", True):
         _add(await i18n("btn.invite"))
+    if flags.get("gifts", True):
+        _add(await i18n("btn.gift"))
 
     layout: list[int] = []
     remaining = count

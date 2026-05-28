@@ -6,6 +6,7 @@ from quantuum.i18n.seed_strings import BASE_STRINGS
 MENU_BUTTON_KEYS = (
     "btn.generate", "btn.ask", "btn.readings", "btn.transits", "btn.daily",
     "btn.profile", "btn.history", "btn.help", "btn.language", "btn.invite",
+    "btn.gift",
 )
 
 

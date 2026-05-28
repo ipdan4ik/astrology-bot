@@ -112,8 +112,7 @@ async def handle_gift_token(
     session: AsyncSession, *, token: StartToken, account_id: int
 ) -> "GiftClaimResult | None":
     """Claim a gift token, crediting the recipient. Silent on self-claim,
-    malformed payload, or already-claimed token. Feature-flag checked; if the
-    'gifts' key is not yet in FEATURE_KEYS (pre-T5), treat as enabled.
+    malformed payload, or already-claimed token. Feature-flag checked.
     """
     if token.owner_account_id == account_id:
         await record_audit(
@@ -127,12 +126,7 @@ async def handle_gift_token(
         )
         return None
 
-    try:
-        feature_on = await is_feature_enabled(session, token.tenant_id, "gifts")
-    except ValueError:
-        # "gifts" not yet in FEATURE_KEYS (added in T5); treat as enabled.
-        feature_on = True
-    if not feature_on:
+    if not await is_feature_enabled(session, token.tenant_id, "gifts"):
         return None
 
     amount = int(token.payload.get("amount", 0))
