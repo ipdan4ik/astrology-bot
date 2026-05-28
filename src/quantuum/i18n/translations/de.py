@@ -416,8 +416,8 @@ TRANSLATIONS = {
     "owner.gifts.not_a_number": "Bitte ganze Zahl eingeben.",
     "owner.gifts.cancel_hint": "Sende /cancel zum Abbrechen.",
     # SP6 — Divination (Tarot + I-Ching)
-    "readings.kind.tarot": "Tarot",
-    "readings.kind.iching": "I Ging",
+    "readings.kind.tarot": "🔮 Tarot",
+    "readings.kind.iching": "☯ I Ging",
     "divination.question_prompt": "Stelle deine Frage oder sende /skip:",
     "divination.question_hint": "Oder tippe unten auf Überspringen.",
     "divination.skip_btn": "Überspringen",

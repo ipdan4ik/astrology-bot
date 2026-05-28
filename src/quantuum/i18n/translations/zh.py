@@ -414,8 +414,8 @@ TRANSLATIONS = {
     "owner.gifts.not_a_number": "请输入整数。",
     "owner.gifts.cancel_hint": "发送 /cancel 取消。",
     # SP6 — Divination (Tarot + I-Ching)
-    "readings.kind.tarot": "塔罗",
-    "readings.kind.iching": "易经",
+    "readings.kind.tarot": "🔮 塔罗",
+    "readings.kind.iching": "☯ 易经",
     "divination.question_prompt": "请提出你的问题或发送 /skip：",
     "divination.question_hint": "或点击下方的跳过。",
     "divination.skip_btn": "跳过",

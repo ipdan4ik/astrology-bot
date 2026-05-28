@@ -415,8 +415,8 @@ TRANSLATIONS = {
     "owner.gifts.not_a_number": "पूर्णांक दर्ज करें।",
     "owner.gifts.cancel_hint": "रद्द करने के लिए /cancel भेजें।",
     # SP6 — Divination (Tarot + I-Ching)
-    "readings.kind.tarot": "टैरो",
-    "readings.kind.iching": "आई चिंग",
+    "readings.kind.tarot": "🔮 टैरो",
+    "readings.kind.iching": "☯ आई चिंग",
     "divination.question_prompt": "अपना प्रश्न पूछें या /skip भेजें:",
     "divination.question_hint": "या नीचे छोड़ें बटन दबाएं।",
     "divination.skip_btn": "छोड़ें",

@@ -1311,12 +1311,12 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     # SP6 — Divination (Tarot + I-Ching) labels
     # -------------------------------------------------------------------------
     "readings.kind.tarot": {
-        "ru": "Таро",
-        "en": "Tarot",
+        "ru": "🔮 Таро",
+        "en": "🔮 Tarot",
     },
     "readings.kind.iching": {
-        "ru": "И-Цзин",
-        "en": "I-Ching",
+        "ru": "☯ И-Цзин",
+        "en": "☯ I-Ching",
     },
     "divination.question_prompt": {
         "ru": "Сформулируйте вопрос или отправьте /skip:",
