@@ -35,8 +35,9 @@ async def test_polish_reading_unknown_kind_raises():
                              model="m", temperature=0.5, max_tokens=1000)
 
 
-def test_all_eight_kinds_registered():
+def test_all_ten_kinds_registered():
     assert set(READING_PROMPTS.keys()) == {
         "bazi", "numerology", "human_design", "astrology",
         "vedic", "gene_keys", "mayan", "aspects",
+        "tarot", "iching",
     }

@@ -34,7 +34,7 @@ def _make_query(tg_user_id: str):
     return query
 
 
-async def test_features_open_renders_all_twelve_toggles(session, default_tenant):
+async def test_features_open_renders_all_fourteen_toggles(session, default_tenant):
     await _make_owner(session, default_tenant.id, tg="100")
     i18n = await build_translator(session, default_tenant.id, lang="ru")
     query = _make_query("100")
@@ -50,7 +50,8 @@ async def test_features_open_renders_all_twelve_toggles(session, default_tenant)
         if btn.callback_data is not None
     ]
     toggle_count = sum(1 for cd in button_data if cd.startswith("ofeat:toggle"))
-    assert toggle_count == 12
+    # 4 top-level (qa/blueprint/transits/daily) + 10 reading kinds (8 chart + tarot/iching)
+    assert toggle_count == 14
 
 
 async def test_features_toggle_persists_and_round_trips(session, default_tenant):
