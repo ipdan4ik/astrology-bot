@@ -1179,6 +1179,41 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Реферальная программа",
         "en": "Referrals",
     },
+    # -------------------------------------------------------------------------
+    # Gift-a-friend (SP5)
+    # -------------------------------------------------------------------------
+    "btn.gift": {"ru": "Подарок", "en": "Gift"},
+    "gift.title": {"ru": "Подарок другу", "en": "Gift a friend"},
+    "gift.balance_line": {"ru": "Доступно: {balance}", "en": "Available: {balance}"},
+    "gift.amount_prompt": {"ru": "Введите сумму подарка (1–{max}):", "en": "Enter gift amount (1–{max}):"},
+    "gift.cancel_hint": {"ru": "Отправьте /cancel чтобы отменить.", "en": "Send /cancel to abort."},
+    "gift.too_small": {"ru": "Минимум — 1 кредит.", "en": "Minimum is 1 credit."},
+    "gift.too_large": {"ru": "Максимум — {max} кредитов.", "en": "Maximum is {max} credits."},
+    "gift.not_a_number": {"ru": "Это не число. Введите целое число.", "en": "That's not a number. Enter a whole number."},
+    "gift.no_balance": {"ru": "У вас нет кредитов, чтобы подарить.", "en": "You have no credits to gift."},
+    "gift.created": {"ru": "Подарок на {amount} кредитов готов!\n\nСсылка: {link}", "en": "Gift of {amount} credits is ready!\n\nLink: {link}"},
+    "gift.share_text": {"ru": "Тебе подарок! Открой бота и получи кредиты.", "en": "A gift for you! Open the bot to claim your credits."},
+    "gift.disabled": {"ru": "Подарки сейчас недоступны.", "en": "Gifts are currently unavailable."},
+    "gift.received": {"ru": "Вы получили подарок: {amount} кредитов!", "en": "You received a gift: {amount} credits!"},
+    "gift.self_blocked": {"ru": "Нельзя получить собственный подарок.", "en": "You can't claim your own gift."},
+    "gift.history_title": {"ru": "Ваши подарки", "en": "Your gifts"},
+    "gift.history_empty": {"ru": "Пока пусто.", "en": "Nothing yet."},
+    "gift.history_row": {"ru": "{date} — {amount} кр. — {status}", "en": "{date} — {amount} cr. — {status}"},
+    "gift.status.active": {"ru": "ожидает", "en": "pending"},
+    "gift.status.claimed": {"ru": "получен", "en": "claimed"},
+    "gift.status.refunded": {"ru": "возвращён", "en": "refunded"},
+    "gift.btn.create_new": {"ru": "Создать новый", "en": "Create new"},
+    # Owner console — Gifts submenu
+    "owner.gifts.menu_button": {"ru": "Подарки", "en": "Gifts"},
+    "owner.gifts.title": {"ru": "Подарки", "en": "Gifts"},
+    "owner.gifts.current_value": {"ru": "Срок жизни подарка: {value} дней.", "en": "Gift lifetime: {value} days."},
+    "owner.gifts.prompt": {"ru": "Введите срок жизни подарка в днях ({min}–{max}):", "en": "Enter gift lifetime in days ({min}–{max}):"},
+    "owner.gifts.saved": {"ru": "Сохранено.", "en": "Saved."},
+    "owner.gifts.reset": {"ru": "Сброшено до значения по умолчанию.", "en": "Reset to default."},
+    "owner.gifts.too_small": {"ru": "Минимум — {min} день.", "en": "Minimum is {min} day."},
+    "owner.gifts.too_large": {"ru": "Максимум — {max} дней.", "en": "Maximum is {max} days."},
+    "owner.gifts.not_a_number": {"ru": "Введите целое число.", "en": "Enter a whole number."},
+    "owner.gifts.cancel_hint": {"ru": "Отправьте /cancel чтобы отменить.", "en": "Send /cancel to abort."},
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that
