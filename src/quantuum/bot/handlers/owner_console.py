@@ -455,6 +455,7 @@ async def _features_keyboard(
     for kind in (
         "bazi", "numerology", "human_design", "astrology",
         "vedic", "gene_keys", "mayan", "aspects",
+        "tarot", "iching",
     ):
         flag_key = f"reading.{kind}"
         text_label = f"{_mark(flags[flag_key])} {await i18n(f'readings.kind.{kind}')}"
@@ -465,7 +466,7 @@ async def _features_keyboard(
             ).pack(),
         )
 
-    b.adjust(2, 2, 2, 2, 2, 2)
+    b.adjust(2, 2, 2, 2, 2, 2, 2)
     return b.as_markup()
 
 

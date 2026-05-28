@@ -17,6 +17,8 @@ FEATURE_KEYS: tuple[str, ...] = (
     "reading.gene_keys",
     "reading.mayan",
     "reading.aspects",
+    "reading.tarot",
+    "reading.iching",
     "referrals",
     "gifts",
 )

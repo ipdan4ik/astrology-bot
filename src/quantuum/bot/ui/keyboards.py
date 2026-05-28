@@ -117,6 +117,7 @@ async def language_picker_kb(tenant_id: int, *, action: str) -> InlineKeyboardMa
 READING_KINDS: tuple[str, ...] = (
     "bazi", "numerology", "human_design", "astrology",
     "vedic", "gene_keys", "mayan", "aspects",
+    "tarot", "iching",
 )
 
 

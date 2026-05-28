@@ -20,6 +20,7 @@ def create_dispatcher() -> Dispatcher:
     from quantuum.bot.handlers import (
         buy,
         daily,
+        divination,
         generate,
         gift,
         history,
@@ -38,6 +39,7 @@ def create_dispatcher() -> Dispatcher:
     dp.include_router(language.router)
     dp.include_router(buy.router)
     dp.include_router(qa.router)
+    dp.include_router(divination.router)
     dp.include_router(readings.router)
     dp.include_router(transits.router)
     dp.include_router(daily.router)

@@ -92,3 +92,7 @@ class OwnerGiftsCb(CallbackData, prefix="ogft"):
 
 class GiftCreateCb(CallbackData, prefix="gcre"):
     action: str  # "start"
+
+
+class DivinationCb(CallbackData, prefix="div"):
+    action: str  # "skip"
