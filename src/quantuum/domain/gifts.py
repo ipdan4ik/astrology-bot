@@ -50,12 +50,18 @@ def _gen_code() -> str:
     return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(GIFT_CODE_LENGTH))
 
 
-async def _generate_gift_code(session: AsyncSession) -> str:
+async def _generate_gift_code(
+    session: AsyncSession, *, account_id: int, tenant_id: int
+) -> str:
     for _ in range(_GEN_MAX_RETRIES):
         code = _gen_code()
         if (await session.get(StartToken, code)) is None:
             return code
-    logger.warning("gift.code_collision_exhausted")
+    logger.warning(
+        "gift.code_collision_exhausted",
+        account_id=account_id,
+        tenant_id=tenant_id,
+    )
     raise RuntimeError("could not generate unique gift code after retries")
 
 
@@ -146,7 +152,9 @@ async def create_gift(
         )
 
     days = await get_expiry_days(session, tenant_id=tenant_id)
-    code = await _generate_gift_code(session)
+    code = await _generate_gift_code(
+        session, account_id=sender_account_id, tenant_id=tenant_id
+    )
 
     bal.package_credits -= amount
     token = StartToken(
@@ -238,6 +246,12 @@ async def sweep_expired_gifts(
     for tok in candidates:
         amount = int(tok.payload.get("amount", 0))
         if amount <= 0:
+            logger.warning(
+                "gift.malformed_payload_on_sweep",
+                code=tok.code,
+                sender_account_id=sender_account_id,
+                amount=amount,
+            )
             tok.status = "refunded"
             continue
         bal.package_credits += amount
