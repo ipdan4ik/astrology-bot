@@ -27,10 +27,14 @@ async def reading_generate(
             reading = await get_reading(session, reading_id)
             tenant_id = reading.tenant_id
             kind = reading.kind
-            profile = await session.get(NatalProfile, reading.natal_profile_id)
 
-            inp = from_natal_profile(profile)
-            calc_md = build_reading_calc_md(reading.kind, inp)
+            if reading.kind in ("tarot", "iching"):
+                from quantuum.divination import build_divination_calc_md
+                calc_md = build_divination_calc_md(reading.kind, reading.draw_jsonb)
+            else:
+                profile = await session.get(NatalProfile, reading.natal_profile_id)
+                inp = from_natal_profile(profile)
+                calc_md = build_reading_calc_md(reading.kind, inp)
             await set_reading_status(session, reading_id, "calculating", calc_md=calc_md)
             await set_reading_status(session, reading_id, "generating")
 

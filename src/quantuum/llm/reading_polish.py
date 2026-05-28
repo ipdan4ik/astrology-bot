@@ -11,6 +11,8 @@ READING_PROMPTS: dict[str, Path] = {
     "gene_keys":    _PROMPTS / "reading_gene_keys.txt",
     "mayan":        _PROMPTS / "reading_mayan.txt",
     "aspects":      _PROMPTS / "reading_aspects.txt",
+    "tarot":        _PROMPTS / "reading_tarot.txt",
+    "iching":       _PROMPTS / "reading_iching.txt",
 }
 
 
@@ -23,6 +25,8 @@ _KIND_LABEL: dict[str, str] = {
     "gene_keys": "Gene Keys",
     "mayan": "Mayan Tzolkin",
     "aspects": "Natal Aspects",
+    "tarot": "Tarot three-card spread",
+    "iching": "I-Ching three-coin cast",
 }
 
 
