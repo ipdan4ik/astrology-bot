@@ -204,7 +204,7 @@ async def on_amount_received(
     )
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=await i18n("gift.btn.create_new"), url=share_url)]
+            [InlineKeyboardButton(text=await i18n("btn.gift"), url=share_url)]
         ]
     )
     body = await i18n("gift.created", amount=amount, link=link)
