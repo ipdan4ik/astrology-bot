@@ -35,6 +35,7 @@ async def test_start_token_uses_table_has_no_unique_on_account(session):
                   ON tc.constraint_name = kcu.constraint_name
                  AND tc.table_schema = kcu.table_schema
                 WHERE tc.table_name = 'start_token_uses'
+                  AND tc.table_schema = 'public'
                   AND tc.constraint_type = 'UNIQUE'
                 """
             )
