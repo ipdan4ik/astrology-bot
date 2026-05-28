@@ -3,7 +3,8 @@ import random
 import pytest
 
 from quantuum.divination.iching import (
-    HEXAGRAMS, CastResult, Hexagram,  # noqa: F401
+    HEXAGRAMS,
+    CastResult,
     build_calc_md,
     build_calc_md_from_jsonb,
     cast_three_coins,
