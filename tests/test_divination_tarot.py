@@ -3,7 +3,8 @@ import random
 import pytest
 
 from quantuum.divination.tarot import (
-    TAROT_DECK, Card, CardDraw,  # noqa: F401
+    TAROT_DECK,
+    CardDraw,
     build_calc_md,
     build_calc_md_from_jsonb,
     draw_three,
@@ -90,6 +91,7 @@ def test_build_calc_md_no_question_renders_placeholder():
     ]
     md = build_calc_md(question=None, cards=cards)
     assert "None" not in md  # don't render the literal Python None
+    assert "(none)" in md  # explicit placeholder is present
 
 
 def test_build_calc_md_from_jsonb_round_trip():
