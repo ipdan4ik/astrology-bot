@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-import pytest
 from sqlalchemy import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
