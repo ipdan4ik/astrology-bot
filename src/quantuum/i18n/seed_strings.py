@@ -1307,6 +1307,69 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Отправьте /cancel чтобы отменить.",
         "en": "Send /cancel to abort.",
     },
+    # -------------------------------------------------------------------------
+    # SP6 — Divination (Tarot + I-Ching) labels
+    # -------------------------------------------------------------------------
+    "readings.kind.tarot": {
+        "ru": "Таро",
+        "en": "Tarot",
+    },
+    "readings.kind.iching": {
+        "ru": "И-Цзин",
+        "en": "I-Ching",
+    },
+    "divination.question_prompt": {
+        "ru": "Сформулируйте вопрос или отправьте /skip:",
+        "en": "Type your question or send /skip:",
+    },
+    "divination.question_hint": {
+        "ru": "Или нажмите кнопку «Пропустить» ниже.",
+        "en": "Or tap Skip below.",
+    },
+    "divination.skip_btn": {
+        "ru": "Пропустить",
+        "en": "Skip",
+    },
+    "divination.no_question": {
+        "ru": "(без вопроса)",
+        "en": "(no question)",
+    },
+    "tarot.position.past": {
+        "ru": "Прошлое",
+        "en": "Past",
+    },
+    "tarot.position.present": {
+        "ru": "Настоящее",
+        "en": "Present",
+    },
+    "tarot.position.future": {
+        "ru": "Будущее",
+        "en": "Future",
+    },
+    "tarot.orientation.upright": {
+        "ru": "прямая",
+        "en": "upright",
+    },
+    "tarot.orientation.reversed": {
+        "ru": "перевёрнутая",
+        "en": "reversed",
+    },
+    "iching.judgment_label": {
+        "ru": "Суждение",
+        "en": "Judgment",
+    },
+    "iching.image_label": {
+        "ru": "Образ",
+        "en": "Image",
+    },
+    "iching.changing_line_label": {
+        "ru": "Меняющаяся линия {n}",
+        "en": "Changing line {n}",
+    },
+    "iching.transformed_label": {
+        "ru": "Превращается в",
+        "en": "Becomes",
+    },
 }
 
 # Merge the per-language translation files into BASE_STRINGS. Only keys that
