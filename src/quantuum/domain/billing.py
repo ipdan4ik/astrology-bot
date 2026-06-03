@@ -3,6 +3,7 @@ from datetime import timedelta
 from sqlmodel import or_, select
 
 from quantuum.common.datetime import utcnow
+from quantuum.common.exceptions import NotFoundError
 from quantuum.db.models import (
     AccountBalance,
     AccountPackage,
@@ -50,6 +51,8 @@ async def get_payment_by_external_id(session, external_id: str) -> Payment | Non
 async def mark_payment_paid(session, *, payment_id: int, external_id: str) -> Payment:
     """Mark a payment paid (idempotent: re-marking a paid payment is a no-op)."""
     payment = await session.get(Payment, payment_id)
+    if payment is None:
+        raise NotFoundError(f"payment {payment_id} not found")
     if payment.status == "paid":
         return payment
     payment.status = "paid"

@@ -42,3 +42,12 @@ async def test_mark_payment_paid_idempotent(session, default_tenant):
 
     found = await get_payment_by_external_id(session, "charge_123")
     assert found is not None and found.id == pay.id
+
+
+async def test_mark_payment_paid_missing_payment_raises_notfound(session):
+    import pytest
+
+    from quantuum.common.exceptions import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        await mark_payment_paid(session, payment_id=999999, external_id="x")
