@@ -272,6 +272,32 @@ async def test_maybe_payout_referral_zero_reward_closes_loop(session: AsyncSessi
     assert use.claimed_at is not None
 
 
+async def test_maybe_payout_referral_ignores_other_tenant_payment(session: AsyncSession):
+    from quantuum.db.models import Payment
+
+    t1 = await _make_tenant(session)
+    t2 = Tenant(slug="t2", display_name="T2")
+    session.add(t2)
+    await session.flush()
+
+    referrer = await _make_account(session, t1.id, 81001)
+    referee = await _make_account(session, t1.id, 82001)
+    code = await generate_referral_code(session, account_id=referrer, tenant_id=t1.id)
+    session.add(StartTokenUse(token_code=code, account_id=referee))
+    await _zero_balance(session, referrer)
+    # paid payment, but scoped to the WRONG tenant
+    session.add(Payment(
+        tenant_id=t2.id, account_id=referee, amount_cents=100,
+        status="paid", paid_at=utcnow(),
+    ))
+    await session.flush()
+
+    fired = await maybe_payout_referral(session, referee_account_id=referee)
+    assert fired is False
+    bal = await session.get(AccountBalance, referrer)
+    assert bal is None or bal.package_credits == 0
+
+
 async def test_maybe_payout_referral_concurrent_pays_once(session, default_tenant):
     from quantuum.db.session import get_sessionmaker
 
