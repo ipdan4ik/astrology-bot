@@ -14,6 +14,10 @@ from quantuum.domain.tenants import grant_role
 GETME_TIMEOUT_S = 10.0
 
 
+class BotAlreadyInUseError(Exception):
+    """The bot_telegram_id is already claimed by another active TenantBot."""
+
+
 async def master_can_manage_bots(bot) -> bool:
     """True if the master bot may create managed bots programmatically (Bot API 9.6).
 
@@ -129,6 +133,20 @@ async def finalize_provisioning(
     tenant = await session.get(Tenant, tenant_id)
     result = await session.execute(select(TenantBot).where(TenantBot.tenant_id == tenant_id))
     tenant_bot = result.scalars().first()
+
+    clash = (
+        await session.execute(
+            select(TenantBot).where(
+                TenantBot.bot_telegram_id == bot_telegram_id,
+                TenantBot.status == "active",
+                TenantBot.tenant_id != tenant_id,
+            )
+        )
+    ).scalars().first()
+    if clash is not None:
+        raise BotAlreadyInUseError(
+            f"bot {bot_telegram_id} already used by tenant {clash.tenant_id}"
+        )
 
     was_provisioning = tenant.status == "provisioning"
 

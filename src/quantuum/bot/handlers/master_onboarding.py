@@ -17,6 +17,7 @@ from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.invites import get_invite_by_code, invite_is_usable
 from quantuum.domain.provisioning import (
+    BotAlreadyInUseError,
     create_tenant_from_onboarding,
     finalize_provisioning,
     validate_bot_token,
@@ -208,14 +209,18 @@ async def on_managed_bot_created(
         return
     token = await bot(GetManagedBotToken(user_id=created.bot_user.id))
     async with get_sessionmaker()() as session:
-        tenant_bot = await finalize_provisioning(
-            session,
-            tenant_id=tenant_id,
-            token=token,
-            bot_telegram_id=created.bot_user.id,
-            bot_username=created.bot_user.username,
-            default_lang=data.get("default_lang", "ru"),
-        )
+        try:
+            tenant_bot = await finalize_provisioning(
+                session,
+                tenant_id=tenant_id,
+                token=token,
+                bot_telegram_id=created.bot_user.id,
+                bot_username=created.bot_user.username,
+                default_lang=data.get("default_lang", "ru"),
+            )
+        except BotAlreadyInUseError:
+            await message.answer(await i18n("master.onboard.token_in_use"))
+            return
     await publish_bot_reload()
     await state.clear()
     await message.answer(
@@ -234,14 +239,18 @@ async def on_manual_token(message: Message, state: FSMContext, i18n: Translator)
     bot_id, username = result
     data = await state.get_data()
     async with get_sessionmaker()() as session:
-        tenant_bot = await finalize_provisioning(
-            session,
-            tenant_id=data["tenant_id"],
-            token=token,
-            bot_telegram_id=bot_id,
-            bot_username=username,
-            default_lang=data.get("default_lang", "ru"),
-        )
+        try:
+            tenant_bot = await finalize_provisioning(
+                session,
+                tenant_id=data["tenant_id"],
+                token=token,
+                bot_telegram_id=bot_id,
+                bot_username=username,
+                default_lang=data.get("default_lang", "ru"),
+            )
+        except BotAlreadyInUseError:
+            await message.answer(await i18n("master.onboard.token_in_use"))
+            return
     await publish_bot_reload()
     await state.clear()
     await message.answer(

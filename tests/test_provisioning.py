@@ -169,3 +169,37 @@ async def test_second_onboarding_reuses_provisioning_tenant(session):
         select(func.count()).select_from(TenantBot).where(TenantBot.tenant_id == t1.id)
     )).scalar()
     assert n_tenants == 1 and n_bots == 1
+
+
+async def test_finalize_rejects_bot_already_in_use(session):
+    import pytest
+    from quantuum.db.models import Tenant, TenantBot
+    from quantuum.domain.provisioning import (
+        BotAlreadyInUseError, finalize_provisioning,
+    )
+    # tenant A already active with bot id 600001
+    a = Tenant(slug="taken", display_name="Taken", status="active",
+               owner_tg_id="900", owner_chat_id="900")
+    session.add(a); await session.flush()
+    session.add(TenantBot(
+        tenant_id=a.id, bot_token_enc=b"x", transport="polling",
+        webhook_secret_path="s1", status="active", bot_telegram_id=600001,
+    ))
+    # tenant B provisioning, trying to claim the SAME bot id
+    b = Tenant(slug="claimer", display_name="Claimer", status="provisioning",
+               owner_tg_id="901", owner_chat_id="901")
+    session.add(b); await session.flush()
+    session.add(TenantBot(
+        tenant_id=b.id, bot_token_enc=b"", transport="polling",
+        webhook_secret_path="s2", status="provisioning",
+    ))
+    await session.commit()
+
+    with pytest.raises(BotAlreadyInUseError):
+        await finalize_provisioning(
+            session, tenant_id=b.id, token="123456:ABC-DEF",
+            bot_telegram_id=600001, bot_username="dupe", default_lang="en",
+        )
+    # B not activated
+    b2 = await session.get(Tenant, b.id); await session.refresh(b2)
+    assert b2.status == "provisioning"
