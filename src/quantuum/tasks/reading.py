@@ -94,7 +94,7 @@ async def reading_generate(
                 text=delivery_md,
                 filename=f"reading-{kind}.md",
                 preview_len=4000,
-                always_document=False,
+                always_document=True,
             )
         except Exception:
             logger.exception("reading_delivery_failed", reading_id=reading_id, chat_id=chat_id)

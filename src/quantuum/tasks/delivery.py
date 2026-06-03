@@ -35,7 +35,7 @@ async def deliver_via_tenant_bot(
         return
     bot = Bot(token=decrypt_token(tb.bot_token_enc))
     try:
-        await bot.send_message(chat_id, text[:preview_len])
+        await bot.send_message(chat_id, text[:preview_len], parse_mode="Markdown")
         if always_document or len(text) > preview_len:
             await bot.send_document(
                 chat_id, BufferedInputFile(text.encode(), filename=filename)
