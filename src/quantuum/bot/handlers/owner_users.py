@@ -175,7 +175,8 @@ async def on_user_grant_start(
 ) -> None:
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(query.from_user.id), tenant_id=callback_data.tenant_id
+            session, tg_user_id=str(query.from_user.id), tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -204,7 +205,8 @@ async def on_user_grant_amount(message: Message, state: FSMContext, i18n: Transl
     account_id = data["account_id"]
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await message.answer(await i18n("owner.no_rights"))
@@ -239,7 +241,8 @@ async def on_user_ban_start(
     account_id = callback_data.account_id
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(query.from_user.id), tenant_id=tenant_id
+            session, tg_user_id=str(query.from_user.id), tenant_id=tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -270,7 +273,8 @@ async def on_user_ban_reason(message: Message, state: FSMContext, i18n: Translat
     account_id = data["account_id"]
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await message.answer(await i18n("owner.no_rights"))
@@ -303,7 +307,8 @@ async def on_user_unban(
     account_id = callback_data.account_id
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(query.from_user.id), tenant_id=tenant_id
+            session, tg_user_id=str(query.from_user.id), tenant_id=tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
