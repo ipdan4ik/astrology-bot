@@ -34,9 +34,13 @@ class FakeMessage:
         self.from_user = SimpleNamespace(id=from_user_id)
         self.chat = SimpleNamespace(id=from_user_id)
         self.answers = []  # list of (text, reply_markup)
+        self.edits = []  # list of (text, reply_markup)
 
     async def answer(self, text, reply_markup=None, **kwargs):
         self.answers.append((text, reply_markup))
+
+    async def edit_text(self, text, reply_markup=None, **kwargs):
+        self.edits.append((text, reply_markup))
 
 
 class FakeCallbackQuery:
@@ -147,8 +151,8 @@ async def test_stats_callback(session, monkeypatch):
     query = FakeCallbackQuery(from_user_id=OWNER_TG)
     await oc.on_manage_stats(query, OwnerManageCb(action="stats", tenant_id=t.id), i18n=i18n)
 
-    assert query.message.answers, "stats text should be sent to the chat"
-    text = query.message.answers[0][0]
+    assert query.message.edits, "stats text should re-render in place"
+    text = query.message.edits[0][0]
     assert "Статистика" in text
     # numbers present
     assert "Активные" in text

@@ -166,6 +166,88 @@ async def test_manage_missing_args(session, default_tenant, monkeypatch):
     assert "Использование" in msg.answers[0][0]
 
 
+class FakeCallbackMessage:
+    def __init__(self, *, from_user_id):
+        self.from_user = SimpleNamespace(id=from_user_id)
+        self.answers = []
+        self.edits = []
+
+    async def answer(self, text, reply_markup=None, **kwargs):
+        self.answers.append((text, reply_markup))
+
+    async def edit_text(self, text, reply_markup=None, **kwargs):
+        self.edits.append((text, reply_markup))
+
+
+class FakeCallbackQuery:
+    def __init__(self, *, from_user_id):
+        self.from_user = SimpleNamespace(id=from_user_id)
+        self.message = FakeCallbackMessage(from_user_id=from_user_id)
+        self.answers = []
+
+    async def answer(self, text=None, **kwargs):
+        self.answers.append((text, kwargs))
+
+
+async def test_manage_menu_has_no_back_row(session, monkeypatch):
+    """The top-level manage menu must NOT carry a back-to-menu row."""
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t = await _make_tenant(session, "zeta", "Zeta", status="active")
+    await _seed_account_with_role(session, tenant=t, role="owner")
+    i18n = await build_translator(session, t.id)
+
+    msg = FakeMessage()
+    await oc.on_manage(msg, SimpleNamespace(args="zeta"), i18n=i18n)
+    _, markup = msg.answers[0]
+    actions = {
+        OwnerManageCb.unpack(b.callback_data).action
+        for b in _inline(markup)
+        if b.callback_data.startswith("omng:")
+    }
+    assert "menu" not in actions
+
+
+async def test_manage_menu_back_callback_rerenders(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t = await _make_tenant(session, "eta", "Eta", status="active")
+    await _seed_account_with_role(session, tenant=t, role="owner")
+    i18n = await build_translator(session, t.id)
+
+    q = FakeCallbackQuery(from_user_id=TG)
+    await oc.on_manage_menu(q, OwnerManageCb(action="menu", tenant_id=t.id), i18n=i18n)
+
+    assert q.message.edits, "back callback should re-render the menu in place"
+    text, markup = q.message.edits[0]
+    assert t.slug in text
+    actions = {
+        OwnerManageCb.unpack(b.callback_data).action
+        for b in _inline(markup)
+        if b.callback_data.startswith("omng:")
+    }
+    assert "stats" in actions and "transfer" in actions
+
+
+async def test_manage_menu_back_denied_for_non_owner(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t = await _make_tenant(session, "theta", "Theta", status="active")
+    i18n = await build_translator(session, t.id)
+
+    q = FakeCallbackQuery(from_user_id=98765)  # no role in t
+    await oc.on_manage_menu(q, OwnerManageCb(action="menu", tenant_id=t.id), i18n=i18n)
+
+    assert not q.message.edits
+    assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
 async def test_manage_shows_delete_button(session, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
     from quantuum.bot.ui.callbacks import OwnerManageCb

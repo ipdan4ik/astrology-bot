@@ -38,6 +38,7 @@ def _make_query(tg_user_id: str):
     query.from_user.id = tg_user_id
     query.message = MagicMock()
     query.message.answer = AsyncMock()
+    query.message.edit_text = AsyncMock()
     query.answer = AsyncMock()
     return query
 
@@ -78,10 +79,18 @@ async def test_referrals_open_renders_current_value(session: AsyncSession):
 
     await on_referrals_open(query, cb, i18n=i18n)
 
-    query.message.answer.assert_awaited_once()
-    args, kwargs = query.message.answer.call_args
+    query.message.edit_text.assert_awaited_once()
+    args, kwargs = query.message.edit_text.call_args
     body = args[0] if args else kwargs.get("text", "")
     assert str(DEFAULT_REWARD_CREDITS) in body
+    # Back-to-menu row present
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+    markup = kwargs.get("reply_markup")
+    cbs = [
+        btn.callback_data for row in markup.inline_keyboard for btn in row
+        if btn.callback_data is not None
+    ]
+    assert OwnerManageCb(action="menu", tenant_id=tid).pack() in cbs
 
 
 async def test_referrals_edit_saves_value(session: AsyncSession):
