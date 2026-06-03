@@ -157,6 +157,12 @@ async def _perform_draw_and_enqueue(
     kind = data["kind"]
 
     async with get_sessionmaker()() as session:
+        profile = await get_natal_profile(session, account.id)
+        if profile is None:
+            await message_for_reply.answer(await i18n("readings.no_profile"))
+            await state.clear()
+            return
+
         try:
             charged = await consume_quota(session, account.id, "reading", cost_units=1)
         except InsufficientFundsError:
@@ -164,12 +170,6 @@ async def _perform_draw_and_enqueue(
                 await i18n("readings.no_quota"),
                 reply_markup=await _buy_offer_kb(i18n),
             )
-            await state.clear()
-            return
-
-        profile = await get_natal_profile(session, account.id)
-        if profile is None:
-            await message_for_reply.answer(await i18n("readings.no_profile"))
             await state.clear()
             return
 
