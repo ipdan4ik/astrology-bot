@@ -268,3 +268,42 @@ async def test_maybe_payout_referral_zero_reward_closes_loop(session: AsyncSessi
         .one()
     )
     assert use.claimed_at is not None
+
+
+async def test_referral_payout_is_ledger_backed(session, default_tenant):
+    from sqlmodel import select
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import (
+        AccountPackage, Payment, StartToken, StartTokenUse,
+    )
+    from quantuum.domain.referrals import maybe_payout_referral
+
+    referrer = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="ref_owner"
+    )
+    referee = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="ref_ee"
+    )
+    token = StartToken(
+        code="refcode1", kind="referral", tenant_id=default_tenant.id,
+        owner_account_id=referrer.id, status="active",
+    )
+    session.add(token)
+    session.add(StartTokenUse(token_code="refcode1", account_id=referee.id))
+    session.add(Payment(
+        tenant_id=default_tenant.id, account_id=referee.id, provider_id=None,
+        amount_cents=100, currency="XTR", status="paid",
+    ))
+    await session.commit()
+
+    paid = await maybe_payout_referral(session, referee_account_id=referee.id)
+    await session.commit()
+
+    assert paid is True
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == referrer.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "referral" and r.requests_remaining > 0 for r in rows)

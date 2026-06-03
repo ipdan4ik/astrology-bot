@@ -11,7 +11,6 @@ from quantuum.db.models import (
     StartTokenUse,
     TenantConfig,
 )
-from quantuum.domain.accounts import adjust_package_credits
 from quantuum.domain.audit import record_audit
 from quantuum.logging_setup import get_logger
 
@@ -203,9 +202,17 @@ async def maybe_payout_referral(
     if not has_paid:
         return False
 
+    from quantuum.domain.billing import grant_credits
+
     amount = await get_reward_credits(session, tenant_id=token.tenant_id)
     if amount > 0:
-        await adjust_package_credits(session, token.owner_account_id, amount)
+        await grant_credits(
+            session,
+            account_id=token.owner_account_id,
+            tenant_id=token.tenant_id,
+            amount=amount,
+            source="referral",
+        )
     use.claimed_at = utcnow()
     session.add(use)
     await session.flush()
