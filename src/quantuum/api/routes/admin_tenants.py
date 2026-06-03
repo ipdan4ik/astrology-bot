@@ -939,7 +939,14 @@ async def patch_account_balance(
     }
 
     if body.package_credits is not None:
-        bal.package_credits = body.package_credits
+        from quantuum.domain.accounts import adjust_package_credits
+        from quantuum.domain.billing import _sum_valid_packages
+
+        current = await _sum_valid_packages(session, account_id)
+        delta = body.package_credits - current
+        if delta != 0:
+            await adjust_package_credits(session, account_id, delta)
+        await session.refresh(bal)
     if body.subscription_active_until is not None:
         bal.subscription_active_until = body.subscription_active_until
     bal.updated_at = utcnow()

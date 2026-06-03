@@ -542,3 +542,54 @@ async def test_ban_unknown_account_404(client, owner_headers, default_tenant):
         json={"reason": "x"},
     )
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# PATCH /{tenant_id}/accounts/{account_id}/balance — ledger reconciliation
+# ---------------------------------------------------------------------------
+
+
+async def test_patch_balance_reconciles_ledger(
+    client, owner_headers, default_tenant, session
+):
+    """PATCH package_credits must reconcile the AccountPackage ledger so a
+    later recompute_account_balance keeps the value instead of reverting it."""
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.domain.billing import _sum_valid_packages
+
+    customer = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="balancepatch_customer"
+    )
+    await session.commit()
+
+    # Case 1: set above the welcome-credit starting balance (10 → 25)
+    target = 25
+    r = await client.patch(
+        f"/admin/tenants/{default_tenant.id}/accounts/{customer.id}/balance",
+        headers=owner_headers,
+        json={"package_credits": target},
+    )
+    assert r.status_code == 200
+    assert r.json()["package_credits"] == target
+
+    ledger_sum = await _sum_valid_packages(session, customer.id)
+    assert ledger_sum == target, (
+        f"ledger sum {ledger_sum} != target {target} after PATCH up; "
+        "recompute would revert the balance"
+    )
+
+    # Case 2: set below current balance (25 → 5)
+    target2 = 5
+    r2 = await client.patch(
+        f"/admin/tenants/{default_tenant.id}/accounts/{customer.id}/balance",
+        headers=owner_headers,
+        json={"package_credits": target2},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["package_credits"] == target2
+
+    ledger_sum2 = await _sum_valid_packages(session, customer.id)
+    assert ledger_sum2 == target2, (
+        f"ledger sum {ledger_sum2} != target {target2} after PATCH down; "
+        "recompute would revert the balance"
+    )
