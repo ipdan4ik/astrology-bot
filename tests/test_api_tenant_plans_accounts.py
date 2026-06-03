@@ -530,6 +530,11 @@ async def test_patch_balance_partial_update_preserves_other_fields(
         subscription_active_until=until,
     )
     session.add(bal)
+    from quantuum.db.models import AccountPackage
+    session.add(AccountPackage(
+        tenant_id=default_tenant.id, account_id=acc.id, plan_id=None,
+        source="manual", requests_remaining=10,
+    ))
     await session.commit()
     await session.refresh(acc)
 
