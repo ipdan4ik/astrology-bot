@@ -40,7 +40,31 @@ async def create_tenant_from_onboarding(
     owner_chat_id: int | str,
     transport: str = "polling",
 ) -> Tenant:
-    """Atomically create a provisioning tenant + bot row and consume one invite use."""
+    """Create (or reuse) a provisioning tenant + bot row for this invite.
+
+    The invite use is consumed in finalize_provisioning (on success), not here,
+    so an abandoned onboarding leaves the invite usable. A second onboarding for
+    the same invite reuses the existing un-finalized tenant instead of spawning a
+    duplicate.
+    """
+    existing = (
+        await session.execute(
+            select(Tenant).where(
+                Tenant.invite_id == invite.id,
+                Tenant.status == "provisioning",
+            )
+        )
+    ).scalars().first()
+    if existing is not None:
+        existing.slug = slug
+        existing.display_name = display_name
+        existing.owner_tg_id = str(owner_tg_id)
+        existing.owner_chat_id = str(owner_chat_id)
+        session.add(existing)
+        await session.commit()
+        await session.refresh(existing)
+        return existing
+
     tenant = Tenant(
         slug=slug,
         display_name=display_name,
@@ -48,6 +72,7 @@ async def create_tenant_from_onboarding(
         status="provisioning",
         owner_tg_id=str(owner_tg_id),
         owner_chat_id=str(owner_chat_id),
+        invite_id=invite.id,
     )
     session.add(tenant)
     await session.flush()
@@ -60,11 +85,6 @@ async def create_tenant_from_onboarding(
             status="provisioning",
         )
     )
-    invite.used_count += 1
-    if invite.used_count >= invite.max_uses:
-        invite.status = "used"
-        invite.used_at = utcnow()
-    session.add(invite)
     await session.commit()
     await session.refresh(tenant)
     return tenant
@@ -110,6 +130,8 @@ async def finalize_provisioning(
     result = await session.execute(select(TenantBot).where(TenantBot.tenant_id == tenant_id))
     tenant_bot = result.scalars().first()
 
+    was_provisioning = tenant.status == "provisioning"
+
     owner_account = await find_or_create_account_by_tg(
         session, tenant_id=tenant_id, tg_user_id=str(tenant.owner_tg_id)
     )
@@ -124,6 +146,14 @@ async def finalize_provisioning(
     tenant.status = "active"
     session.add(tenant_bot)
     session.add(tenant)
+    if was_provisioning and tenant.invite_id is not None:
+        invite = await session.get(TenantInvite, tenant.invite_id)
+        if invite is not None:
+            invite.used_count += 1
+            if invite.used_count >= invite.max_uses:
+                invite.status = "used"
+                invite.used_at = utcnow()
+            session.add(invite)
     await seed_tenant_defaults(session, tenant_id=tenant_id, default_lang=default_lang)
     await session.commit()
     await session.refresh(tenant_bot)

@@ -39,9 +39,11 @@ async def test_create_tenant_from_onboarding(session):
     assert tb.webhook_secret_path
     assert tb.bot_telegram_id is None
 
+    # Invite use is now consumed at finalize, not at create (abandoned onboarding
+    # leaves the invite usable).
     await session.refresh(invite)
-    assert invite.used_count == 1
-    assert invite.status == "used"
+    assert invite.used_count == 0
+    assert invite.status == "active"
 
 
 async def test_create_tenant_multiuse_invite_stays_active(session):
@@ -50,8 +52,9 @@ async def test_create_tenant_multiuse_invite_stays_active(session):
         session, invite=invite, slug="a1", display_name="A1",
         default_lang="ru", owner_tg_id=1, owner_chat_id=1,
     )
+    # Create no longer consumes the invite.
     await session.refresh(invite)
-    assert invite.used_count == 1
+    assert invite.used_count == 0
     assert invite.status == "active"
 
 
@@ -114,3 +117,55 @@ async def test_tenant_has_invite_id_column(session, default_tenant):
     # column exists and defaults to None
     assert hasattr(t, "invite_id")
     assert t.invite_id is None
+
+
+async def test_create_onboarding_does_not_consume_invite(session):
+    invite = await create_invite(session, created_by_account_id=None, max_uses=1)
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="cabbage", display_name="Cabbage",
+        default_lang="en", owner_tg_id=111, owner_chat_id=111,
+    )
+    await session.refresh(invite)
+    assert invite.used_count == 0          # NOT consumed at start
+    assert invite.status == "active"
+    assert tenant.invite_id == invite.id   # linked
+
+
+async def test_finalize_consumes_invite(session):
+    from quantuum.domain.provisioning import finalize_provisioning
+
+    invite = await create_invite(session, created_by_account_id=None, max_uses=1)
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="kale", display_name="Kale",
+        default_lang="en", owner_tg_id=222, owner_chat_id=222,
+    )
+    await finalize_provisioning(
+        session, tenant_id=tenant.id, token="123456:ABC-DEF",
+        bot_telegram_id=500001, bot_username="kalebot", default_lang="en",
+    )
+    await session.refresh(invite)
+    assert invite.used_count == 1
+    assert invite.status == "used"
+
+
+async def test_second_onboarding_reuses_provisioning_tenant(session):
+    invite = await create_invite(session, created_by_account_id=None, max_uses=1)
+    t1 = await create_tenant_from_onboarding(
+        session, invite=invite, slug="leek1", display_name="Leek",
+        default_lang="en", owner_tg_id=333, owner_chat_id=333,
+    )
+    t2 = await create_tenant_from_onboarding(
+        session, invite=invite, slug="leek2", display_name="Leek2",
+        default_lang="en", owner_tg_id=333, owner_chat_id=333,
+    )
+    assert t2.id == t1.id            # reused, not duplicated
+    assert t2.slug == "leek2"        # details updated to latest attempt
+    from sqlalchemy import func, select
+    from quantuum.db.models import Tenant, TenantBot
+    n_tenants = (await session.execute(
+        select(func.count()).select_from(Tenant).where(Tenant.invite_id == invite.id)
+    )).scalar()
+    n_bots = (await session.execute(
+        select(func.count()).select_from(TenantBot).where(TenantBot.tenant_id == t1.id)
+    )).scalar()
+    assert n_tenants == 1 and n_bots == 1
