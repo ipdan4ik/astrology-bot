@@ -588,6 +588,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Это не похоже на валидный токен бота. Пришли токен от @BotFather ещё раз:",
         "en": "This doesn't look like a valid bot token. Send the token from @BotFather again:",
     },
+    "master.onboard.token_in_use": {
+        "ru": "Этот бот уже привязан к другому проекту. Используй другого бота.",
+        "en": "This bot is already linked to another project. Use a different bot.",
+    },
     # Done message — {username} is the activated bot username (without @)
     "master.onboard.done": {
         "ru": "Готово! Бот @{username} активирован. Он станет доступен после перезапуска воркера.",

@@ -183,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "Tenant wird erstellt… Prüfe, ob der Bot automatisch angelegt werden kann.",
     "master.onboard.cancelled": "Onboarding abgebrochen.",
     "master.onboard.token_invalid": "Das sieht nicht wie ein gültiger Bot-Token aus. Sende den Token von @BotFather erneut:",
+    "master.onboard.token_in_use": "Dieser Bot ist bereits mit einem anderen Projekt verknüpft. Verwende einen anderen Bot.",
     "master.onboard.done": "Fertig! Bot @{username} ist aktiviert. Er wird nach dem Neustart des Workers verfügbar.",
     "master.kb.cancel": "Abbrechen",
     "master.kb.create_bot": "Bot erstellen",

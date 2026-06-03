@@ -183,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "टेनेंट बना रहे हैं… बॉट का स्वचालित निर्माण जाँच रहे हैं।",
     "master.onboard.cancelled": "ऑनबोर्डिंग रद्द की गई।",
     "master.onboard.token_invalid": "यह वैध बॉट टोकन नहीं लगता। @BotFather से टोकन फिर भेजें:",
+    "master.onboard.token_in_use": "यह बॉट पहले से किसी अन्य प्रोजेक्ट से जुड़ा है। कोई दूसरा बॉट इस्तेमाल करें।",
     "master.onboard.done": "हो गया! बॉट @{username} सक्रिय हो गया। वर्कर रिस्टार्ट होने के बाद उपलब्ध होगा।",
     "master.kb.cancel": "रद्द करें",
     "master.kb.create_bot": "बॉट बनाएँ",

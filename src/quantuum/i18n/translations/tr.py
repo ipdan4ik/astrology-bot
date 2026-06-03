@@ -183,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "Kiracı oluşturuluyor… Botun otomatik oluşturulabilirliği kontrol ediliyor.",
     "master.onboard.cancelled": "Onboarding iptal edildi.",
     "master.onboard.token_invalid": "Bu geçerli bir bot tokeni gibi görünmüyor. @BotFather'dan tokeninizi tekrar gönderin:",
+    "master.onboard.token_in_use": "Bu bot zaten başka bir projeye bağlı. Farklı bir bot kullan.",
     "master.onboard.done": "Hazır! @{username} botu etkinleştirildi. Worker yeniden başlatıldıktan sonra kullanılabilir olacak.",
     "master.kb.cancel": "İptal",
     "master.kb.create_bot": "Bot oluştur",

@@ -183,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "正在创建租户… 正在检查是否可以自动创建机器人。",
     "master.onboard.cancelled": "入驻已取消。",
     "master.onboard.token_invalid": "这不像是有效的机器人 token。请重新发送来自 @BotFather 的 token：",
+    "master.onboard.token_in_use": "该机器人已绑定到另一个项目。请使用其他机器人。",
     "master.onboard.done": "完成！机器人 @{username} 已激活。重启 worker 后即可使用。",
     "master.kb.cancel": "取消",
     "master.kb.create_bot": "创建机器人",
