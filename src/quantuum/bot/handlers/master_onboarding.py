@@ -1,5 +1,5 @@
 from aiogram import Bot, F, Router
-from aiogram.filters import CommandObject, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.methods import GetManagedBotToken
@@ -207,8 +207,30 @@ async def on_cancel(
     query: CallbackQuery, callback_data: OwnerOnboardCb, state: FSMContext, i18n: Translator
 ) -> None:
     await state.clear()
-    await query.message.answer(await i18n("master.onboard.cancelled"))
+    await query.message.answer(
+        await i18n("master.onboard.cancelled"), reply_markup=ReplyKeyboardRemove()
+    )
     await query.answer()
+
+
+@router.message(
+    Command("cancel"),
+    StateFilter(
+        OwnerOnboarding.slug,
+        OwnerOnboarding.display_name,
+        OwnerOnboarding.default_lang,
+        OwnerOnboarding.confirm,
+        ManualToken.awaiting,
+    ),
+)
+async def on_onboarding_cancel_cmd(
+    message: Message, state: FSMContext, i18n: Translator
+) -> None:
+    """Blanket /cancel covering every onboarding state; also drops any reply keyboard."""
+    await state.clear()
+    await message.answer(
+        await i18n("master.onboard.cancelled"), reply_markup=ReplyKeyboardRemove()
+    )
 
 
 @router.message(ManualToken.awaiting, F.managed_bot_created)
@@ -269,5 +291,6 @@ async def on_manual_token(message: Message, state: FSMContext, i18n: Translator)
     await publish_bot_reload()
     await state.clear()
     await message.answer(
-        await i18n("master.onboard.done", username=tenant_bot.bot_username)
+        await i18n("master.onboard.done", username=tenant_bot.bot_username),
+        reply_markup=ReplyKeyboardRemove(),
     )
