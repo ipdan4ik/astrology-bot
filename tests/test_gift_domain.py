@@ -38,11 +38,16 @@ async def _tenant(session: AsyncSession) -> Tenant:
 
 
 async def _account_with_credits(session, tenant_id, tg, credits):
+    from quantuum.domain.accounts import adjust_package_credits
+
     acc = await find_or_create_account_by_tg(
         session, tenant_id=tenant_id, tg_user_id=tg
     )
     bal = await session.get(AccountBalance, acc.id)
-    bal.package_credits = credits
+    current = bal.package_credits if bal is not None else 0
+    delta = credits - current
+    if delta != 0:
+        await adjust_package_credits(session, acc.id, delta)
     await session.flush()
     return acc
 
@@ -278,6 +283,29 @@ async def test_expiry_days_set_rejects_out_of_range(session: AsyncSession, days)
         await set_expiry_days(
             session, tenant_id=t.id, days=days, by_account_id=acc.id
         )
+
+
+async def test_create_gift_debit_survives_recompute(session, default_tenant):
+    """Funding a gift must drain the ledger, not just the counter, so a later
+    recompute does not refund the sender (credit duplication)."""
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import AccountBalance
+    from quantuum.domain.billing import recompute_account_balance
+    from quantuum.domain.gifts import create_gift
+
+    sender = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="giftcreator"
+    )
+    start = (await session.get(AccountBalance, sender.id)).package_credits  # welcome credits
+
+    await create_gift(session, sender_account_id=sender.id, tenant_id=default_tenant.id, amount=4)
+    await session.commit()
+    after_create = (await session.get(AccountBalance, sender.id)).package_credits
+    assert after_create == start - 4
+
+    await recompute_account_balance(session, sender.id)
+    after_recompute = (await session.get(AccountBalance, sender.id)).package_credits
+    assert after_recompute == start - 4  # NOT snapped back up
 
 
 async def test_expiry_days_reset_removes_override(session: AsyncSession):

@@ -144,7 +144,7 @@ async def create_gift(
             f"amount must be int in [{MIN_GIFT_AMOUNT}, {MAX_GIFT_AMOUNT}], got {amount!r}"
         )
 
-    bal = await session.get(AccountBalance, sender_account_id)
+    bal = await session.get(AccountBalance, sender_account_id, with_for_update=True)
     if bal is None or bal.package_credits < amount:
         raise InsufficientCreditsError(
             f"sender {sender_account_id} has "
@@ -156,7 +156,9 @@ async def create_gift(
         session, account_id=sender_account_id, tenant_id=tenant_id
     )
 
-    bal.package_credits -= amount
+    from quantuum.domain.accounts import adjust_package_credits
+
+    await adjust_package_credits(session, sender_account_id, -amount)
     token = StartToken(
         code=code,
         kind=GIFT_KIND,
