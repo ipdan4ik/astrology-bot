@@ -53,3 +53,27 @@ async def test_mark_payout_paid(session, default_tenant):
     assert updated.external_ref == "bank-tx-1"
     assert updated.paid_at is not None
     assert await mark_payout_paid(session, 999999, external_ref="x") is None
+
+
+async def test_calculate_payout_is_idempotent(session, default_tenant):
+    from datetime import datetime, timezone
+
+    from sqlalchemy import func, select
+
+    from quantuum.db.models import Payout
+
+    start = datetime(2026, 5, 1, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    p1 = await calculate_payout(
+        session, tenant_id=default_tenant.id, period_start=start, period_end=end,
+        fee_pct=10, calculated_by_account_id=None,
+    )
+    p2 = await calculate_payout(
+        session, tenant_id=default_tenant.id, period_start=start, period_end=end,
+        fee_pct=10, calculated_by_account_id=None,
+    )
+    assert p2.id == p1.id  # reused, not duplicated
+    n = (await session.execute(
+        select(func.count()).select_from(Payout).where(Payout.tenant_id == default_tenant.id)
+    )).scalar()
+    assert n == 1

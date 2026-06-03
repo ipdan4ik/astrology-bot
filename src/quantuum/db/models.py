@@ -418,6 +418,12 @@ class AccountPackage(SQLModel, table=True):
 
 class Payout(SQLModel, table=True):
     __tablename__ = "payouts"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "period_start", "period_end",
+            name="uq_payout_tenant_period",
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: int = Field(foreign_key="tenants.id", index=True)
