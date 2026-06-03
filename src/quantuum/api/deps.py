@@ -4,7 +4,7 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.auth.jwt_tokens import verify_access_token
-from quantuum.db.models import Account
+from quantuum.db.models import Account, Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.tenants import account_has_role
 
@@ -56,6 +56,9 @@ def require_tenant_role(roles: tuple[str, ...] = ("owner", "admin")):
     ) -> Account:
         if account.is_superadmin:
             return account
+        tenant = await session.get(Tenant, tenant_id)
+        if tenant is None or tenant.status != "active":
+            raise HTTPException(status_code=403, detail="tenant not active")
         if account.tenant_id != tenant_id:
             raise HTTPException(status_code=403, detail="forbidden")
         for role in roles:

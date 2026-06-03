@@ -636,3 +636,44 @@ async def test_admin_cannot_create_subscription_plan(client, admin_headers, defa
         },
     )
     assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Task 7: management endpoints reject non-active tenants
+# ---------------------------------------------------------------------------
+
+
+async def test_suspended_tenant_rejects_management(client, owner_headers, default_tenant, session):
+    from quantuum.db.models import Tenant
+
+    t = await session.get(Tenant, default_tenant.id)
+    t.status = "suspended"
+    session.add(t)
+    await session.commit()
+
+    r = await client.get(f"/admin/tenants/{default_tenant.id}/plans", headers=owner_headers)
+    assert r.status_code == 403
+
+
+async def test_archived_tenant_rejects_management(client, owner_headers, default_tenant, session):
+    from quantuum.db.models import Tenant
+
+    t = await session.get(Tenant, default_tenant.id)
+    t.status = "archived"
+    session.add(t)
+    await session.commit()
+
+    r = await client.get(f"/admin/tenants/{default_tenant.id}/plans", headers=owner_headers)
+    assert r.status_code == 403
+
+
+async def test_suspended_tenant_superadmin_bypass(client, sa_headers, default_tenant, session):
+    from quantuum.db.models import Tenant
+
+    t = await session.get(Tenant, default_tenant.id)
+    t.status = "suspended"
+    session.add(t)
+    await session.commit()
+
+    r = await client.get(f"/admin/tenants/{default_tenant.id}/plans", headers=sa_headers)
+    assert r.status_code == 200
