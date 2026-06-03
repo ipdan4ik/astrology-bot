@@ -128,13 +128,7 @@ async def recompute_account_balance(session, account_id: int) -> AccountBalance:
     now = utcnow()
     balance = await _ensure_balance(session, account_id)
 
-    pkg_result = await session.execute(
-        select(AccountPackage.requests_remaining).where(
-            AccountPackage.account_id == account_id,
-            or_(AccountPackage.expires_at.is_(None), AccountPackage.expires_at > now),
-        )
-    )
-    balance.package_credits = sum(pkg_result.scalars().all())
+    balance.package_credits = await _sum_valid_packages(session, account_id)
 
     sub_result = await session.execute(
         select(AccountSubscription.status, AccountSubscription.ends_at).where(
