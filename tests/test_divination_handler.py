@@ -139,6 +139,39 @@ async def test_skip_path_creates_reading_with_null_question(session, default_ten
     assert await state.get_state() is None
 
 
+async def test_divination_enqueue_failure_refunds_credit(session, default_tenant, monkeypatch):
+    acc = await _seed_account_with_profile_and_credits(session, default_tenant)
+    state = _state(42)
+    await state.set_state(Divination.awaiting_question)
+    await state.update_data(kind="tarot")
+
+    msg = MagicMock()
+    msg.from_user = MagicMock(id=42)
+    msg.chat = MagicMock(id=42)
+    msg.answer = AsyncMock()
+
+    monkeypatch.setattr(
+        "quantuum.bot.handlers.divination.enqueue_reading",
+        AsyncMock(side_effect=RuntimeError("redis down")),
+    )
+
+    i18n = AsyncMock(side_effect=lambda k, **kw: f"<{k}>")
+    i18n.lang = "en"
+    await on_divination_skip(
+        msg, account=MagicMock(id=acc.id, tenant_id=default_tenant.id),
+        state=state, i18n=i18n,
+    )
+
+    answers = [c.args[0] for c in msg.answer.await_args_list]
+    assert any("errors.queue_failed" in a for a in answers)
+
+    bal = await session.get(AccountBalance, acc.id)
+    await session.refresh(bal)
+    assert bal.package_credits == 10  # refunded back to starting value
+
+    assert await state.get_state() is None
+
+
 async def test_text_question_path_creates_reading_with_question(
     session, default_tenant, monkeypatch
 ):
@@ -314,6 +347,47 @@ async def test_divination_question_prompt_has_no_hint_text(session, default_tena
     text = q.message.answer.await_args.args[0]
     assert "Или нажмите кнопку" not in text
     assert "Or tap Skip" not in text
+
+
+async def test_no_profile_does_not_charge_quota(session, default_tenant, monkeypatch):
+    """An account with no NatalProfile must not be charged when a draw is attempted."""
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.bot.handlers import divination
+
+    _patch_sessionmaker(monkeypatch, divination, session)
+    monkeypatch.setattr("quantuum.bot.handlers.divination.enqueue_reading", AsyncMock())
+
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="99"
+    )
+    await session.commit()
+
+    bal_before = await session.get(AccountBalance, acc.id)
+    credits_before = bal_before.package_credits
+
+    state = _state(99)
+    await state.set_state(Divination.awaiting_question)
+    await state.update_data(kind="tarot")
+
+    msg = MagicMock()
+    msg.from_user = MagicMock(id=99)
+    msg.chat = MagicMock(id=99)
+    msg.answer = AsyncMock()
+
+    i18n = AsyncMock(side_effect=lambda k, **kw: f"<{k}>")
+    i18n.lang = "en"
+
+    await on_divination_skip(
+        msg,
+        account=MagicMock(id=acc.id, tenant_id=default_tenant.id),
+        state=state,
+        i18n=i18n,
+    )
+
+    await session.refresh(bal_before)
+    assert bal_before.package_credits == credits_before, (
+        "quota must not be consumed when the account has no natal profile"
+    )
 
 
 async def test_divination_moderation_block_attaches_menu_kb(session, default_tenant, monkeypatch):

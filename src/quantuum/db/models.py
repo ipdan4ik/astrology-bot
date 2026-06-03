@@ -33,6 +33,7 @@ class Tenant(SQLModel, table=True):
     )
     owner_tg_id: str | None = None
     owner_chat_id: str | None = None
+    invite_id: int | None = Field(default=None, foreign_key="tenant_invites.id", index=True)
     created_at: datetime = _dt_field(default_factory=utcnow)
 
 
@@ -49,6 +50,7 @@ class TenantBot(SQLModel, table=True):
     bot_token_enc: bytes
     transport: str = "polling"  # polling|webhook
     webhook_secret_path: str = Field(unique=True, index=True)
+    webhook_secret_token: str | None = Field(default=None)
     status: str = "active"  # active|paused|error
     created_at: datetime = _dt_field(default_factory=utcnow)
     updated_at: datetime = _dt_field(default_factory=utcnow)
@@ -377,6 +379,7 @@ class AccountSubscription(SQLModel, table=True):
     __table_args__ = (
         Index(
             "uq_active_subscription_per_plan",
+            "tenant_id",
             "account_id",
             "plan_id",
             unique=True,
@@ -404,7 +407,8 @@ class AccountPackage(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: int = Field(foreign_key="tenants.id", index=True)
     account_id: int = Field(foreign_key="accounts.id", index=True)
-    plan_id: int = Field(foreign_key="package_plans.id")
+    plan_id: int | None = Field(default=None, foreign_key="package_plans.id")
+    source: str = "purchase"  # purchase|gift|referral|welcome|manual|backfill
     requests_remaining: int
     purchased_at: datetime = _dt_field(default_factory=utcnow)
     expires_at: datetime | None = _dt_field(default=None)
@@ -414,6 +418,12 @@ class AccountPackage(SQLModel, table=True):
 
 class Payout(SQLModel, table=True):
     __tablename__ = "payouts"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "period_start", "period_end",
+            name="uq_payout_tenant_period",
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: int = Field(foreign_key="tenants.id", index=True)

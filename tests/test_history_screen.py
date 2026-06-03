@@ -166,6 +166,59 @@ async def test_history_lists_recent_readings(session, default_tenant, monkeypatc
     assert "BaZi" in rendered or "bazi" in rendered or "\U0001f409" in rendered
 
 
+async def test_history_readings_localizes_status(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from quantuum.domain.readings import create_reading
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc, profile = await _acc(session, default_tenant.id)
+
+    # A reading still pending: its status must be rendered LOCALIZED, not raw.
+    await create_reading(
+        session,
+        tenant_id=default_tenant.id,
+        account_id=acc.id,
+        natal_profile_id=profile.id,
+        kind="bazi",
+        lang="ru",
+    )
+
+    msg = SimpleNamespace(answer=AsyncMock())
+    await hist.show_history(msg, acc, i18n, page=0)
+
+    answers = [str(call.args[0]) for call in msg.answer.call_args_list]
+    localized = await i18n("status.pending")
+    assert localized != "pending"  # sanity: locale actually resolved
+    assert any(localized in a for a in answers)
+    # The raw English status token must not leak into any row.
+    assert not any("pending" in a for a in answers)
+
+
+async def test_history_readings_unknown_kind_does_not_crash(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from quantuum.domain.readings import create_reading
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc, profile = await _acc(session, default_tenant.id)
+
+    await create_reading(
+        session,
+        tenant_id=default_tenant.id,
+        account_id=acc.id,
+        natal_profile_id=profile.id,
+        kind="totally_unknown_kind",
+        lang="ru",
+    )
+
+    msg = SimpleNamespace(answer=AsyncMock())
+    # Must not raise (no i18n key for the kind → falls back to the raw kind).
+    await hist.show_history(msg, acc, i18n, page=0)
+    answers = [str(call.args[0]) for call in msg.answer.call_args_list]
+    assert any("totally_unknown_kind" in a for a in answers)
+
+
 async def test_history_open_renders_localised_detail(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import history as hist
     from quantuum.bot.ui.callbacks import HistoryCb

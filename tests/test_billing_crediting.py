@@ -117,3 +117,50 @@ async def test_renewal_resets_reminder_sent_at(session, default_tenant):
     )
     assert sub2.id == sub1.id
     assert sub2.reminder_sent_at is None  # renewal re-arms the reminder
+
+
+async def test_apply_subscription_payment_scopes_dedup_by_tenant(session, default_tenant):
+    from datetime import timedelta
+    from sqlalchemy import select
+    from quantuum.common.datetime import utcnow
+    from quantuum.db.models import (
+        Account, AccountSubscription, SubscriptionPlan, Tenant,
+    )
+    from quantuum.domain.billing import apply_subscription_payment
+
+    other = Tenant(slug="other-sub", display_name="Other")
+    session.add(other)
+    await session.flush()
+
+    acc = Account(tenant_id=default_tenant.id)
+    session.add(acc)
+    plan = SubscriptionPlan(
+        tenant_id=default_tenant.id, slug="pro-dedup", name="Pro", price_cents=500,
+        period_days=30, currency="XTR",
+    )
+    session.add(plan)
+    await session.flush()
+
+    # Pre-existing active sub for the SAME account+plan but the WRONG tenant.
+    stale = AccountSubscription(
+        tenant_id=other.id, account_id=acc.id, plan_id=plan.id,
+        status="active", started_at=utcnow(),
+        ends_at=utcnow() + timedelta(days=30),
+    )
+    session.add(stale)
+    await session.commit()
+
+    await apply_subscription_payment(
+        session, account_id=acc.id, tenant_id=default_tenant.id,
+        plan=plan, payment_id=None,
+    )
+
+    subs = (
+        await session.execute(
+            select(AccountSubscription).where(AccountSubscription.account_id == acc.id)
+        )
+    ).scalars().all()
+    # A new sub for the correct tenant must exist; the stale one is untouched.
+    assert len(subs) == 2
+    assert any(s.tenant_id == default_tenant.id for s in subs)
+    assert any(s.tenant_id == other.id for s in subs)

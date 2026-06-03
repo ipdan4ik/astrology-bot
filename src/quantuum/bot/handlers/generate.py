@@ -5,6 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from quantuum.bot.handlers._guard import enqueue_or_refund
 from quantuum.bot.ui.callbacks import BuyCb
 from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
@@ -60,7 +61,10 @@ async def request_blueprint_for_account(
         kind="blueprint",
         charged_against=charged,
     )
-    await enqueue(blueprint.id, chat_id, request.id)
+    if not await enqueue_or_refund(
+        enqueue(blueprint.id, chat_id, request.id), request_id=request.id
+    ):
+        return "queue_failed", None
     return "queued", blueprint.id
 
 
@@ -94,6 +98,8 @@ async def run_generate(
             await i18n("generate.no_quota"),
             reply_markup=await _buy_offer_kb(i18n),
         )
+    elif status == "queue_failed":
+        await message.answer(await i18n("errors.queue_failed"))
     else:
         await message.answer(await i18n("generate.queued"))
 

@@ -2,6 +2,7 @@ from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from quantuum.bot.handlers._guard import enqueue_or_refund
 from quantuum.bot.handlers.generate import _buy_offer_kb
 from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
@@ -68,7 +69,12 @@ async def run_transits(
             window_days=window,
             lang=i18n.lang,
         )
-    await enqueue_transit(report.id, message.chat.id, request.id)
+    if not await enqueue_or_refund(
+        enqueue_transit(report.id, message.chat.id, request.id),
+        request_id=request.id,
+    ):
+        await message.answer(await i18n("errors.queue_failed"))
+        return
     await message.answer(await i18n("transit.thinking"))
 
 

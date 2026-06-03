@@ -117,6 +117,35 @@ async def test_ask_with_quota_consumes_and_enqueues(session, default_tenant, mon
     assert text == "Думаю над ответом… ⏳"
 
 
+async def test_qa_enqueue_failure_refunds_credit(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import qa
+
+    _patch_sessionmaker(monkeypatch, qa, session)
+    monkeypatch.setattr(
+        qa, "enqueue_qa",
+        AsyncMock(side_effect=RuntimeError("redis down")),
+    )
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "199", credits=2)
+
+    msg = FakeMessage(text="/ask Что меня ждёт?", chat_id=199)
+    command = SimpleNamespace(args="Что меня ждёт?")
+    await qa.on_ask(msg, command, FakeFSM(), acc, i18n)
+
+    expected = await i18n("errors.queue_failed")
+    answers = [c.args[0] for c in msg.answer.await_args_list]
+    assert expected in answers
+
+    balance = await session.get(AccountBalance, acc.id)
+    await session.refresh(balance)
+    assert balance.package_credits == 2  # refunded back to starting value
+
+    req_rows = (await session.execute(select(Request).where(Request.kind == "qa"))).scalars().all()
+    assert len(req_rows) == 1
+    await session.refresh(req_rows[0])
+    assert req_rows[0].charged_against == "none"
+
+
 async def test_ask_no_quota_offers_buy_button(session, default_tenant, monkeypatch):
     from quantuum.bot.handlers import qa
 

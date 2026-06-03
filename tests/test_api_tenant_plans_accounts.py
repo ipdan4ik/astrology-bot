@@ -500,6 +500,38 @@ async def test_patch_balance_writes_audit(client, owner_headers, default_tenant,
     assert "after" in log.payload_jsonb
 
 
+async def test_balance_rejects_negative_credits(client, owner_headers, default_tenant, session):
+    acc = Account(tenant_id=default_tenant.id)
+    session.add(acc)
+    await session.commit()
+    await session.refresh(acc)
+
+    r = await client.patch(
+        f"/admin/tenants/{default_tenant.id}/accounts/{acc.id}/balance",
+        json={"package_credits": -5},
+        headers=owner_headers,
+    )
+    assert r.status_code == 422
+
+
+async def test_subscription_plan_rejects_negative_price(client, owner_headers, default_tenant):
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/plans/subscription",
+        json={"slug": "bad", "name": "Bad", "period_days": 30, "price_cents": -1},
+        headers=owner_headers,
+    )
+    assert r.status_code == 422
+
+
+async def test_package_plan_rejects_zero_request_count(client, owner_headers, default_tenant):
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/plans/package",
+        json={"slug": "bad", "name": "Bad", "request_count": 0, "price_cents": 100},
+        headers=owner_headers,
+    )
+    assert r.status_code == 422
+
+
 async def test_customer_cannot_patch_balance_403(
     client, customer_headers, default_tenant, session
 ):
@@ -530,6 +562,11 @@ async def test_patch_balance_partial_update_preserves_other_fields(
         subscription_active_until=until,
     )
     session.add(bal)
+    from quantuum.db.models import AccountPackage
+    session.add(AccountPackage(
+        tenant_id=default_tenant.id, account_id=acc.id, plan_id=None,
+        source="manual", requests_remaining=10,
+    ))
     await session.commit()
     await session.refresh(acc)
 

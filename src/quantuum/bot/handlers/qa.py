@@ -5,6 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 from openai import AsyncOpenAI
 
+from quantuum.bot.handlers._guard import enqueue_or_refund
 from quantuum.bot.handlers.generate import _buy_offer_kb
 from quantuum.bot.ui.keyboards import cancel_kb, main_menu_kb, profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
@@ -146,7 +147,12 @@ async def _submit(message: Message, raw: str, account: Account, i18n: Translator
             lang=i18n.lang,
         )
 
-    await enqueue_qa(qa.id, message.chat.id, request.id)
+    if not await enqueue_or_refund(
+        enqueue_qa(qa.id, message.chat.id, request.id),
+        request_id=request.id,
+    ):
+        await message.answer(await i18n("errors.queue_failed"))
+        return
     await message.answer(await i18n("qa.thinking"))
 
 

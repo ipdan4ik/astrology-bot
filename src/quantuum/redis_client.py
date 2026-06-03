@@ -15,6 +15,22 @@ def get_redis() -> aioredis.Redis:
     return _redis
 
 
+DEDUP_TTL_SECONDS = 3600
+
+
+async def mark_update_seen(bot_id: int, update_id: int) -> bool:
+    """Return True if this (bot_id, update_id) is NEW (claim it), False if already seen.
+
+    Uses SETNX with a TTL so replayed/duplicate Telegram deliveries are dropped.
+    A missing update_id (None) is always treated as new (cannot dedup).
+    """
+    if update_id is None:
+        return True
+    key = f"tg:dedup:{bot_id}:{update_id}"
+    created = await get_redis().set(key, "1", nx=True, ex=DEDUP_TTL_SECONDS)
+    return bool(created)
+
+
 async def push_update(bot_id: int, update: dict) -> None:
     await get_redis().rpush(UPDATE_QUEUE_KEY, json.dumps({"bot_id": bot_id, "update": update}))
 

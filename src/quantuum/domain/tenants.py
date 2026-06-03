@@ -73,8 +73,12 @@ async def get_default_tenant_id(session) -> int:
 
 async def resolve_tenant_id_by_bot(session, bot_telegram_id: int) -> int | None:
     result = await session.execute(
-        select(TenantBot.tenant_id).where(
-            TenantBot.bot_telegram_id == bot_telegram_id, TenantBot.status == "active"
+        select(TenantBot.tenant_id)
+        .join(Tenant, Tenant.id == TenantBot.tenant_id)
+        .where(
+            TenantBot.bot_telegram_id == bot_telegram_id,
+            TenantBot.status == "active",
+            Tenant.status == "active",
         )
     )
     return result.scalar_one_or_none()
@@ -82,8 +86,12 @@ async def resolve_tenant_id_by_bot(session, bot_telegram_id: int) -> int | None:
 
 async def get_tenant_bot_by_webhook_secret(session, secret: str) -> TenantBot | None:
     result = await session.execute(
-        select(TenantBot).where(
-            TenantBot.webhook_secret_path == secret, TenantBot.status == "active"
+        select(TenantBot)
+        .join(Tenant, Tenant.id == TenantBot.tenant_id)
+        .where(
+            TenantBot.webhook_secret_path == secret,
+            TenantBot.status == "active",
+            Tenant.status == "active",
         )
     )
     return result.scalar_one_or_none()

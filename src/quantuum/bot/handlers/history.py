@@ -6,7 +6,8 @@ from sqlmodel import select
 from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb, ReadingDownloadCb
 from quantuum.bot.ui.keyboards import blueprint_detail_kb, history_list_kb
 from quantuum.bot.ui.paging import page_slice
-from quantuum.bot.ui.text import render_detail, render_history_label
+from quantuum.bot.ui.text import render_detail, render_history_label, status_label
+from quantuum.i18n.resolver import safe_format
 from quantuum.db.models import Account, Blueprint, Reading
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.readings import list_readings
@@ -35,12 +36,13 @@ async def _render_readings(target, account: Account, i18n: Translator) -> None:
         return
     await target.answer(await i18n("history.readings_title"))
     for r in readings:
-        kind_label = await i18n(f"readings.kind.{r.kind}")
-        row_text = (await i18n("history.reading_row")).format(
-            kind=kind_label,
-            status=r.status,
-            date=r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—",
-        )
+        kind_label = await i18n(f"readings.kind.{r.kind}", default=r.kind)
+        template = await i18n("history.reading_row")
+        row_text = safe_format(template, {
+            "kind": kind_label,
+            "status": await status_label(i18n, r.status),
+            "date": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—",
+        })
         b = InlineKeyboardBuilder()
         if r.llm_md:
             b.button(

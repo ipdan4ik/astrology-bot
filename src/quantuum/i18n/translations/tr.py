@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ İptal",
+    "errors.queue_failed": "İsteğin kuyruğa alınamadı. Kredin iade edildi — lütfen birazdan tekrar dene.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------
@@ -182,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "Kiracı oluşturuluyor… Botun otomatik oluşturulabilirliği kontrol ediliyor.",
     "master.onboard.cancelled": "Onboarding iptal edildi.",
     "master.onboard.token_invalid": "Bu geçerli bir bot tokeni gibi görünmüyor. @BotFather'dan tokeninizi tekrar gönderin:",
+    "master.onboard.token_in_use": "Bu bot zaten başka bir projeye bağlı. Farklı bir bot kullan.",
     "master.onboard.done": "Hazır! @{username} botu etkinleştirildi. Worker yeniden başlatıldıktan sonra kullanılabilir olacak.",
     "master.kb.cancel": "İptal",
     "master.kb.create_bot": "Bot oluştur",
@@ -437,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "İmge",
     "iching.changing_line_label": "Değişen çizgi {n}",
     "iching.transformed_label": "Şuna dönüşür",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ Menüye dön",
+    "owner.features.label.referrals": "Davetler",
+    "owner.features.label.gifts": "Hediyeler",
+    "master.provision.manual_prompt": (
+        "Otomatik bot oluşturma kullanılamıyor. @BotFather üzerinden yeni bir bot oluştur "
+        "ve token'ını buraya tek bir mesajda gönder."
+    ),
+    "master.provision.managed_prompt": (
+        "Aşağıdaki düğmeye dokun — Telegram botu oluşturacak ve ben onu otomatik olarak "
+        "alacağım. Kullanıcı adını oluşturma ekranında ayarlayabilirsin."
+    ),
+    "master.provision.managed_button": "🤖 Bot oluştur",
 }

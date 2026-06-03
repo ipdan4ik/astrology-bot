@@ -90,6 +90,47 @@ async def test_consume_decrements_oldest_package_row(session, default_tenant):
     assert bal.package_credits == 1
 
 
+async def test_signup_credits_are_ledger_backed(session, default_tenant):
+    from quantuum.db.models import AccountPackage
+    from sqlmodel import select
+
+    acc = await _make_account(session, default_tenant.id)
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == acc.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "welcome" and r.requests_remaining > 0 for r in rows)
+
+
+async def test_refund_is_idempotent(session, default_tenant):
+    """A second refund of the same request must not credit again."""
+    from quantuum.db.models import AccountBalance, Request
+
+    acc = await _make_account(session, default_tenant.id)
+    await consume_quota(session, acc.id, "blueprint")
+    req = Request(
+        tenant_id=default_tenant.id, account_id=acc.id, kind="blueprint",
+        charged_against="package", cost_units=1,
+    )
+    session.add(req)
+    await session.commit()
+    await session.refresh(req)
+
+    await refund_quota(session, req.id)
+    once = (await session.get(AccountBalance, acc.id)).package_credits
+    await refund_quota(session, req.id)  # second call must be a no-op
+    twice = (await session.get(AccountBalance, acc.id)).package_credits
+    assert twice == once
+
+
+async def test_consume_never_returns_trial(session, default_tenant):
+    """The legacy one-shot trial is gone; first spend is always a package spend."""
+    acc = await _make_account(session, default_tenant.id)
+    charged = await consume_quota(session, acc.id, "blueprint")
+    assert charged == "package"
+
+
 async def test_refund_package_restores_credit(session, default_tenant):
     from datetime import timedelta
 

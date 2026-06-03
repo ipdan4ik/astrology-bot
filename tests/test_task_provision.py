@@ -77,3 +77,48 @@ async def test_provision_falls_back_to_manual_token(session):
 async def test_provision_unknown_tenant_is_safe(session):
     ctx = {"sessionmaker": _Maker(session), "master_bot": _master_bot(can_manage=False)}
     await provision_tenant(ctx, 999999)  # no exception
+
+
+async def test_managed_prompt_is_localized(session):
+    """An English tenant must get the English prompt (not the hardcoded RU constant)."""
+    from tests.conftest import build_translator
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="loc", display_name="Loc",
+        default_lang="en", owner_tg_id=42, owner_chat_id=42,
+    )
+    master_bot = _master_bot(can_manage=True)
+    ctx = {"sessionmaker": _Maker(session), "master_bot": master_bot}
+
+    await provision_tenant(ctx, tenant.id)
+
+    i18n = await build_translator(session, tenant.id, lang="en")
+    sent_text = master_bot.send_message.await_args.args[1]
+    assert sent_text == await i18n("master.provision.managed_prompt")
+    assert "Tap the button" in sent_text  # English, not Russian
+    # button label localized too
+    kb = master_bot.send_message.await_args.kwargs["reply_markup"]
+    assert kb.keyboard[0][0].text == await i18n("master.provision.managed_button")
+
+
+async def test_manual_prompt_is_localized(session):
+    """An English tenant must get the English prompt (not the hardcoded RU constant)."""
+    from tests.conftest import build_translator
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="locm", display_name="LocM",
+        default_lang="en", owner_tg_id=42, owner_chat_id=42,
+    )
+    master_bot = _master_bot(can_manage=False)
+    ctx = {"sessionmaker": _Maker(session), "master_bot": master_bot}
+
+    await provision_tenant(ctx, tenant.id)
+
+    i18n = await build_translator(session, tenant.id, lang="en")
+    sent_text = master_bot.send_message.await_args.args[1]
+    assert sent_text == await i18n("master.provision.manual_prompt")
+    assert "Automatic bot creation" in sent_text  # English, not Russian

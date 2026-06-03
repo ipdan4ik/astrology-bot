@@ -12,11 +12,16 @@ def test_btn_gift_in_menu_button_keys():
 
 async def _seed_sender(session, t_id, tg="1001", credits=50):
     from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.domain.accounts import adjust_package_credits
+    from quantuum.domain.billing import _sum_valid_packages
+
     acc = await find_or_create_account_by_tg(
         session, tenant_id=t_id, tg_user_id=tg
     )
-    bal = await session.get(AccountBalance, acc.id)
-    bal.package_credits = credits
+    current = await _sum_valid_packages(session, acc.id)
+    delta = credits - current
+    if delta:
+        await adjust_package_credits(session, acc.id, delta)
     await session.flush()
     return acc
 

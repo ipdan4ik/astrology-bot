@@ -1,7 +1,7 @@
 import secrets
 import string
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.common.datetime import utcnow
@@ -11,7 +11,6 @@ from quantuum.db.models import (
     StartTokenUse,
     TenantConfig,
 )
-from quantuum.domain.accounts import adjust_package_credits
 from quantuum.domain.audit import record_audit
 from quantuum.logging_setup import get_logger
 
@@ -195,6 +194,7 @@ async def maybe_payout_referral(
             select(
                 exists().where(
                     Payment.account_id == referee_account_id,
+                    Payment.tenant_id == token.tenant_id,
                     Payment.status == "paid",
                 )
             )
@@ -203,11 +203,29 @@ async def maybe_payout_referral(
     if not has_paid:
         return False
 
+    # Atomic claim gate: only one concurrent caller wins the row. Under READ
+    # COMMITTED the loser's UPDATE re-evaluates the WHERE after the winner
+    # commits and matches 0 rows, so we never pay out twice.
+    claim = await session.execute(
+        update(StartTokenUse)
+        .where(StartTokenUse.id == use.id, StartTokenUse.claimed_at.is_(None))
+        .values(claimed_at=utcnow())
+    )
+    await session.flush()
+    if claim.rowcount != 1:
+        return False
+
+    from quantuum.domain.billing import grant_credits
+
     amount = await get_reward_credits(session, tenant_id=token.tenant_id)
     if amount > 0:
-        await adjust_package_credits(session, token.owner_account_id, amount)
-    use.claimed_at = utcnow()
-    session.add(use)
+        await grant_credits(
+            session,
+            account_id=token.owner_account_id,
+            tenant_id=token.tenant_id,
+            amount=amount,
+            source="referral",
+        )
     await session.flush()
     await record_audit(
         session,

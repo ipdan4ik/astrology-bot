@@ -510,6 +510,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "✖️ Отмена",
         "en": "✖️ Cancel",
     },
+    "errors.queue_failed": {
+        "ru": "Не удалось поставить запрос в очередь. Кредит возвращён — попробуй ещё раз чуть позже.",
+        "en": "Couldn't queue your request. Your credit was refunded — please try again shortly.",
+    },
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding (master_onboarding.py)
     # -------------------------------------------------------------------------
@@ -584,6 +588,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Это не похоже на валидный токен бота. Пришли токен от @BotFather ещё раз:",
         "en": "This doesn't look like a valid bot token. Send the token from @BotFather again:",
     },
+    "master.onboard.token_in_use": {
+        "ru": "Этот бот уже привязан к другому проекту. Используй другого бота.",
+        "en": "This bot is already linked to another project. Use a different bot.",
+    },
     # Done message — {username} is the activated bot username (without @)
     "master.onboard.done": {
         "ru": "Готово! Бот @{username} активирован. Он станет доступен после перезапуска воркера.",
@@ -597,6 +605,31 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "master.kb.create_bot": {
         "ru": "Создать бота",
         "en": "Create bot",
+    },
+    # Provisioning prompts (tasks/provision.py)
+    "master.provision.manual_prompt": {
+        "ru": (
+            "Автосоздание бота недоступно. Создай нового бота через @BotFather "
+            "и пришли сюда его токен одним сообщением."
+        ),
+        "en": (
+            "Automatic bot creation is unavailable. Create a new bot via @BotFather "
+            "and send its token here in one message."
+        ),
+    },
+    "master.provision.managed_prompt": {
+        "ru": (
+            "Нажми кнопку ниже — Telegram создаст бота, а я подхвачу его автоматически. "
+            "Имя пользователя можно поправить на экране создания."
+        ),
+        "en": (
+            "Tap the button below — Telegram will create the bot and I'll pick it up "
+            "automatically. You can adjust the username on the creation screen."
+        ),
+    },
+    "master.provision.managed_button": {
+        "ru": "🤖 Создать бота",
+        "en": "🤖 Create bot",
     },
     # -------------------------------------------------------------------------
     # Master bot — owner console (owner_console.py)
@@ -649,6 +682,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "owner.manage.kb.transfer": {
         "ru": "🔁 Передать владение",
         "en": "🔁 Transfer ownership",
+    },
+    "owner.manage.kb.back": {
+        "ru": "⬅️ Назад в меню",
+        "en": "⬅️ Back to menu",
     },
     # Stats text — see module docstring for placeholders
     "owner.stats.text": {
@@ -1059,6 +1096,14 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Ежедневное",
         "en": "Daily",
     },
+    "owner.features.label.referrals": {
+        "ru": "Рефералы",
+        "en": "Referrals",
+    },
+    "owner.features.label.gifts": {
+        "ru": "Подарки",
+        "en": "Gifts",
+    },
     # -------------------------------------------------------------------------
     # White-label branding (SP3)
     # -------------------------------------------------------------------------
@@ -1396,3 +1441,16 @@ for _lang, _mapping in _EXTRA_LANGUAGES.items():
     for _key, _text in _mapping.items():
         if _key in BASE_STRINGS:
             BASE_STRINGS[_key][_lang] = _text
+
+
+# Keys whose text was renamed AFTER initial seed; ensure_base_strings is
+# insert-only, so these must be force-updated on already-seeded DBs.
+# Covers btn.generate, help.text, and every key carrying the "Blueprint" rename.
+RESYNC_KEYS: list[str] = [
+    "btn.generate",
+    "help.text",
+    "history.empty",
+    "history.detail_header",
+    "onb.done",
+    "owner.features.label.blueprint",
+]

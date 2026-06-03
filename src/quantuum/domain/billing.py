@@ -3,6 +3,7 @@ from datetime import timedelta
 from sqlmodel import or_, select
 
 from quantuum.common.datetime import utcnow
+from quantuum.common.exceptions import NotFoundError
 from quantuum.db.models import (
     AccountBalance,
     AccountPackage,
@@ -50,6 +51,8 @@ async def get_payment_by_external_id(session, external_id: str) -> Payment | Non
 async def mark_payment_paid(session, *, payment_id: int, external_id: str) -> Payment:
     """Mark a payment paid (idempotent: re-marking a paid payment is a no-op)."""
     payment = await session.get(Payment, payment_id)
+    if payment is None:
+        raise NotFoundError(f"payment {payment_id} not found")
     if payment.status == "paid":
         return payment
     payment.status = "paid"
@@ -70,19 +73,65 @@ async def _ensure_balance(session, account_id: int) -> AccountBalance:
     return balance
 
 
+async def _sum_valid_packages(session, account_id: int) -> int:
+    now = utcnow()
+    result = await session.execute(
+        select(AccountPackage.requests_remaining).where(
+            AccountPackage.account_id == account_id,
+            or_(AccountPackage.expires_at.is_(None), AccountPackage.expires_at > now),
+        )
+    )
+    return int(sum(result.scalars().all()))
+
+
+async def grant_credits(
+    session,
+    *,
+    account_id: int,
+    tenant_id: int,
+    amount: int,
+    source: str,
+    expires_at=None,
+    payment_id: int | None = None,
+    plan_id: int | None = None,
+) -> AccountPackage:
+    """Add a credit ledger row from any source and sync the cached counter.
+
+    The AccountPackage ledger is the single source of truth for package_credits;
+    every non-purchase grant (gift, referral, welcome, manual) must go through here
+    so a later recompute_account_balance does not erase the credits. Flush-only:
+    the caller commits.
+    """
+    if amount < 1:
+        raise ValueError(f"amount must be >= 1, got {amount}")
+    now = utcnow()
+    pkg = AccountPackage(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        plan_id=plan_id,
+        source=source,
+        requests_remaining=amount,
+        purchased_at=now,
+        expires_at=expires_at,
+        payment_id=payment_id,
+    )
+    session.add(pkg)
+    await session.flush()
+    balance = await _ensure_balance(session, account_id)
+    balance.package_credits = balance.package_credits + amount
+    balance.updated_at = now
+    session.add(balance)
+    await session.flush()
+    return pkg
+
+
 async def recompute_account_balance(session, account_id: int) -> AccountBalance:
     """Recompute package_credits (sum of valid package rows) and subscription_active_until
     (latest active/grace subscription end) from the ledger tables."""
     now = utcnow()
     balance = await _ensure_balance(session, account_id)
 
-    pkg_result = await session.execute(
-        select(AccountPackage.requests_remaining).where(
-            AccountPackage.account_id == account_id,
-            or_(AccountPackage.expires_at.is_(None), AccountPackage.expires_at > now),
-        )
-    )
-    balance.package_credits = sum(pkg_result.scalars().all())
+    balance.package_credits = await _sum_valid_packages(session, account_id)
 
     sub_result = await session.execute(
         select(AccountSubscription.status, AccountSubscription.ends_at).where(
@@ -111,6 +160,7 @@ async def apply_subscription_payment(
     result = await session.execute(
         select(AccountSubscription).where(
             AccountSubscription.account_id == account_id,
+            AccountSubscription.tenant_id == tenant_id,
             AccountSubscription.plan_id == plan.id,
             AccountSubscription.status.in_(("active", "grace")),
         )
@@ -147,19 +197,18 @@ async def apply_package_payment(
     expires_at = (
         now + timedelta(days=plan.expires_after_days) if plan.expires_after_days else None
     )
-    pkg = AccountPackage(
-        tenant_id=tenant_id,
+    pkg = await grant_credits(
+        session,
         account_id=account_id,
-        plan_id=plan.id,
-        requests_remaining=plan.request_count,
-        purchased_at=now,
+        tenant_id=tenant_id,
+        amount=plan.request_count,
+        source="purchase",
         expires_at=expires_at,
         payment_id=payment_id,
+        plan_id=plan.id,
     )
-    session.add(pkg)
     await session.commit()
     await session.refresh(pkg)
-    await recompute_account_balance(session, account_id)
     return pkg
 
 
@@ -185,14 +234,14 @@ async def fulfill_payment(session, *, payment_id: int, external_id: str) -> bool
     kind = meta.get("kind")
     plan_id = meta.get("plan_id")
     if kind == "subscription" and plan_id is not None:
-        plan = await get_subscription_plan(session, plan_id)
+        plan = await get_subscription_plan(session, plan_id, tenant_id=payment.tenant_id)
         if plan is not None:
             await apply_subscription_payment(
                 session, account_id=payment.account_id, tenant_id=payment.tenant_id,
                 plan=plan, payment_id=payment.id,
             )
     elif kind == "package" and plan_id is not None:
-        plan = await get_package_plan(session, plan_id)
+        plan = await get_package_plan(session, plan_id, tenant_id=payment.tenant_id)
         if plan is not None:
             await apply_package_payment(
                 session, account_id=payment.account_id, tenant_id=payment.tenant_id,

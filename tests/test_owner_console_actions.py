@@ -23,6 +23,7 @@ from .conftest import build_translator
 
 OWNER_TG = 111
 CUSTOMER_TG = 222
+ADMIN_TG = 333
 
 
 # ── fakes ─────────────────────────────────────────────────────────────────────
@@ -33,9 +34,13 @@ class FakeMessage:
         self.from_user = SimpleNamespace(id=from_user_id)
         self.chat = SimpleNamespace(id=from_user_id)
         self.answers = []  # list of (text, reply_markup)
+        self.edits = []  # list of (text, reply_markup)
 
     async def answer(self, text, reply_markup=None, **kwargs):
         self.answers.append((text, reply_markup))
+
+    async def edit_text(self, text, reply_markup=None, **kwargs):
+        self.edits.append((text, reply_markup))
 
 
 class FakeCallbackQuery:
@@ -146,8 +151,8 @@ async def test_stats_callback(session, monkeypatch):
     query = FakeCallbackQuery(from_user_id=OWNER_TG)
     await oc.on_manage_stats(query, OwnerManageCb(action="stats", tenant_id=t.id), i18n=i18n)
 
-    assert query.message.answers, "stats text should be sent to the chat"
-    text = query.message.answers[0][0]
+    assert query.message.edits, "stats text should re-render in place"
+    text = query.message.edits[0][0]
     assert "Статистика" in text
     # numbers present
     assert "Активные" in text
@@ -211,6 +216,27 @@ async def test_pause_by_non_owner_denied(session, monkeypatch):
     assert q.answers[-1][1].get("show_alert") is True
 
 
+async def test_admin_cannot_pause_tenant(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, bot, _owner, _cust = await _seed_owner_tenant(session)
+    await _seed_account(session, tenant=t, tg=ADMIN_TG, role="admin")
+    i18n = await build_translator(session, t.id)
+
+    q = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await oc.on_manage_pause(q, OwnerManageCb(action="pause", tenant_id=t.id), i18n=i18n)
+
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "active"  # unchanged
+    assert bot.status == "active"
+    assert await _audit_rows(session, t.id, "tenant.pause") == []
+    assert q.answers and q.answers[-1][0] == "Нет прав"
+    assert q.answers[-1][1].get("show_alert") is True
+
+
 async def test_pause_platform_tenant_blocked(session, monkeypatch):
     from quantuum.bot.handlers import owner_console as oc
     from quantuum.bot.ui.callbacks import OwnerManageCb
@@ -230,6 +256,47 @@ async def test_pause_platform_tenant_blocked(session, monkeypatch):
     assert bot.status == "active"
     assert await _audit_rows(session, t.id, "tenant.pause") == []
     assert q.answers and q.answers[-1][1].get("show_alert") is True
+
+
+# ── Workstream F: Transfer button wires the FSM ─────────────────────────────────
+
+async def test_transfer_button_enters_fsm_for_owner(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    query = FakeCallbackQuery(from_user_id=OWNER_TG)
+    await oc.on_manage_transfer(
+        query, OwnerManageCb(action="transfer", tenant_id=t.id), state, i18n=i18n
+    )
+
+    assert state.state == oc.OwnerTransfer.awaiting_target
+    assert (await state.get_data())["tenant_id"] == t.id
+    assert query.message.answers, "transfer prompt should be sent"
+
+
+async def test_transfer_button_denied_for_admin(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    await _seed_account(session, tenant=t, tg=ADMIN_TG, role="admin")
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    query = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await oc.on_manage_transfer(
+        query, OwnerManageCb(action="transfer", tenant_id=t.id), state, i18n=i18n
+    )
+
+    assert state.state is None  # no FSM entered
+    assert query.answers and query.answers[-1][0] == "Нет прав"
+    assert query.answers[-1][1].get("show_alert") is True
 
 
 # ── Task 5: /transfer FSM ───────────────────────────────────────────────────────
@@ -492,6 +559,26 @@ async def test_delete_by_non_owner_denied(session, monkeypatch):
     q = FakeCallbackQuery(from_user_id=CUSTOMER_TG)
     await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
 
+    assert state.state is None  # FSM not entered
+    assert q.answers and q.answers[-1][0] == "Нет прав"
+    assert q.answers[-1][1].get("show_alert") is True
+
+
+async def test_admin_cannot_delete_tenant(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    await _seed_account(session, tenant=t, tg=ADMIN_TG, role="admin")
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # unchanged
     assert state.state is None  # FSM not entered
     assert q.answers and q.answers[-1][0] == "Нет прав"
     assert q.answers[-1][1].get("show_alert") is True

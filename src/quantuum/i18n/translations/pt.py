@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Cancelar",
+    "errors.queue_failed": "Não foi possível colocar seu pedido na fila. Seu crédito foi devolvido — tente novamente em instantes.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------
@@ -182,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "Criando o tenant… Verificando se o bot pode ser criado automaticamente.",
     "master.onboard.cancelled": "Onboarding cancelado.",
     "master.onboard.token_invalid": "Isso não parece um token de bot válido. Envie o token do @BotFather novamente:",
+    "master.onboard.token_in_use": "Este bot já está vinculado a outro projeto. Use um bot diferente.",
     "master.onboard.done": "Pronto! O bot @{username} está ativado. Ficará disponível após a reinicialização do worker.",
     "master.kb.cancel": "Cancelar",
     "master.kb.create_bot": "Criar bot",
@@ -437,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "Imagem",
     "iching.changing_line_label": "Linha mutante {n}",
     "iching.transformed_label": "Torna-se",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ Voltar ao menu",
+    "owner.features.label.referrals": "Indicações",
+    "owner.features.label.gifts": "Presentes",
+    "master.provision.manual_prompt": (
+        "A criação automática do bot não está disponível. Crie um novo bot pelo "
+        "@BotFather e envie o token dele aqui em uma única mensagem."
+    ),
+    "master.provision.managed_prompt": (
+        "Toque no botão abaixo — o Telegram criará o bot e eu o assumirei automaticamente. "
+        "Você pode ajustar o nome de usuário na tela de criação."
+    ),
+    "master.provision.managed_button": "🤖 Criar bot",
 }

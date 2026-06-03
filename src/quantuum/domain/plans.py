@@ -27,11 +27,23 @@ async def list_package_plans(session, *, tenant_id: int | None) -> list[PackageP
     return list(result.scalars().all())
 
 
-async def get_subscription_plan(session, plan_id: int) -> SubscriptionPlan | None:
+async def get_subscription_plan(
+    session, plan_id: int, *, tenant_id: int | None = None
+) -> SubscriptionPlan | None:
     plan = await session.get(SubscriptionPlan, plan_id)
-    return plan if plan is not None and plan.active else None
+    if plan is None or not plan.active:
+        return None
+    if tenant_id is not None and plan.tenant_id is not None and plan.tenant_id != tenant_id:
+        return None
+    return plan
 
 
-async def get_package_plan(session, plan_id: int) -> PackagePlan | None:
+async def get_package_plan(
+    session, plan_id: int, *, tenant_id: int | None = None
+) -> PackagePlan | None:
     plan = await session.get(PackagePlan, plan_id)
-    return plan if plan is not None and plan.active else None
+    if plan is None or not plan.active:
+        return None
+    if tenant_id is not None and plan.tenant_id is not None and plan.tenant_id != tenant_id:
+        return None
+    return plan

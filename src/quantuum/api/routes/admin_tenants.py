@@ -739,7 +739,7 @@ async def get_tenant_plans(
 async def create_tenant_subscription_plan(
     tenant_id: int,
     body: SubscriptionPlanCreateIn,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> SubscriptionPlanAdminOut:
     plan = SubscriptionPlan(
@@ -773,7 +773,7 @@ async def create_tenant_subscription_plan(
 async def create_tenant_package_plan(
     tenant_id: int,
     body: PackagePlanCreateIn,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> PackagePlanAdminOut:
     plan = PackagePlan(
@@ -807,7 +807,7 @@ async def patch_tenant_subscription_plan(
     tenant_id: int,
     plan_id: int,
     body: SubscriptionPlanPatchIn,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> SubscriptionPlanAdminOut:
     plan = await session.get(SubscriptionPlan, plan_id)
@@ -842,7 +842,7 @@ async def patch_tenant_package_plan(
     tenant_id: int,
     plan_id: int,
     body: PackagePlanPatchIn,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> PackagePlanAdminOut:
     plan = await session.get(PackagePlan, plan_id)
@@ -916,7 +916,7 @@ async def patch_account_balance(
     tenant_id: int,
     account_id: int,
     body: BalancePatchIn,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> AccountSummaryOut:
     target = await session.get(Account, account_id)
@@ -939,7 +939,14 @@ async def patch_account_balance(
     }
 
     if body.package_credits is not None:
-        bal.package_credits = body.package_credits
+        from quantuum.domain.accounts import adjust_package_credits
+        from quantuum.domain.billing import _sum_valid_packages
+
+        current = await _sum_valid_packages(session, account_id)
+        delta = body.package_credits - current
+        if delta != 0:
+            await adjust_package_credits(session, account_id, delta)
+        await session.refresh(bal)
     if body.subscription_active_until is not None:
         bal.subscription_active_until = body.subscription_active_until
     bal.updated_at = utcnow()
@@ -1014,7 +1021,7 @@ async def ban_account(
     tenant_id: int,
     account_id: int,
     body: BanIn,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> AccountDetailOut:
     target = await session.get(Account, account_id)
@@ -1042,7 +1049,7 @@ async def ban_account(
 async def unban_account(
     tenant_id: int,
     account_id: int,
-    account: Account = Depends(require_tenant_role(("owner", "admin"))),
+    account: Account = Depends(require_tenant_role(("owner",))),
     session: AsyncSession = Depends(get_session),
 ) -> AccountDetailOut:
     target = await session.get(Account, account_id)

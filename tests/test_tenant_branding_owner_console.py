@@ -107,6 +107,25 @@ async def test_branding_submenu_renders_four_entries(session, default_tenant):
     assert len(edit_callbacks) == 4
 
 
+async def test_branding_submenu_has_back_to_menu(session, default_tenant):
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    await _make_owner(session, default_tenant.id, tg="211")
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    query = _make_query("211")
+    cb = OwnerBrandingCb(action="open", tenant_id=default_tenant.id, key="")
+    await on_branding_open(query, cb, i18n)
+
+    _, kwargs = query.message.edit_text.await_args
+    markup = kwargs.get("reply_markup")
+    cbs = [
+        btn.callback_data for row in markup.inline_keyboard for btn in row
+        if btn.callback_data is not None
+    ]
+    back = OwnerManageCb(action="menu", tenant_id=default_tenant.id).pack()
+    assert back in cbs
+
+
 async def test_non_owner_cannot_open_branding(session, default_tenant):
     await find_or_create_account_by_tg(
         session, tenant_id=default_tenant.id, tg_user_id="999b"

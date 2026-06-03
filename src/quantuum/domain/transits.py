@@ -7,6 +7,12 @@ from quantuum.db.models import Blueprint, NatalProfile, TransitReport
 
 _TERMINAL = {"done", "failed"}
 
+# Content fields a worker may set alongside status; anything else is rejected.
+_STATUS_FIELDS = frozenset({
+    "transit_md", "report_md", "lang", "error", "blueprint_id", "as_of",
+    "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out",
+})
+
 
 async def create_transit(
     session,
@@ -52,6 +58,9 @@ async def list_transits(
 
 
 async def set_transit_status(session, report_id: int, status: str, **fields) -> None:
+    unknown = set(fields) - _STATUS_FIELDS
+    if unknown:
+        raise ValueError(f"set_transit_status: disallowed fields {sorted(unknown)}")
     row = await get_transit(session, report_id)
     row.status = status
     for key, value in fields.items():

@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Abbrechen",
+    "errors.queue_failed": "Anfrage konnte nicht eingereiht werden. Dein Guthaben wurde erstattet — bitte versuche es gleich noch einmal.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------
@@ -182,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "Tenant wird erstellt… Prüfe, ob der Bot automatisch angelegt werden kann.",
     "master.onboard.cancelled": "Onboarding abgebrochen.",
     "master.onboard.token_invalid": "Das sieht nicht wie ein gültiger Bot-Token aus. Sende den Token von @BotFather erneut:",
+    "master.onboard.token_in_use": "Dieser Bot ist bereits mit einem anderen Projekt verknüpft. Verwende einen anderen Bot.",
     "master.onboard.done": "Fertig! Bot @{username} ist aktiviert. Er wird nach dem Neustart des Workers verfügbar.",
     "master.kb.cancel": "Abbrechen",
     "master.kb.create_bot": "Bot erstellen",
@@ -437,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "Bild",
     "iching.changing_line_label": "Wandelnde Linie {n}",
     "iching.transformed_label": "Wird zu",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ Zurück zum Menü",
+    "owner.features.label.referrals": "Empfehlungen",
+    "owner.features.label.gifts": "Geschenke",
+    "master.provision.manual_prompt": (
+        "Automatische Bot-Erstellung ist nicht verfügbar. Erstelle einen neuen Bot "
+        "über @BotFather und sende seinen Token hier in einer Nachricht."
+    ),
+    "master.provision.managed_prompt": (
+        "Tippe auf die Schaltfläche unten — Telegram erstellt den Bot und ich übernehme "
+        "ihn automatisch. Den Benutzernamen kannst du im Erstellungsbildschirm anpassen."
+    ),
+    "master.provision.managed_button": "🤖 Bot erstellen",
 }

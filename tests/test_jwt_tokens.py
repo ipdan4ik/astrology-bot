@@ -39,6 +39,29 @@ async def test_refresh_token_revoked(session, default_tenant):
         await jwt_tokens.consume_refresh_token(session, token)
 
 
+async def test_rotate_refresh_token_rotates_and_detects_reuse(session, default_tenant):
+    from quantuum.auth import jwt_tokens
+    from quantuum.common.exceptions import NotFoundError
+    from quantuum.auth.identity import find_or_create_account_by_tg
+
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="rot1"
+    )
+    r1 = await jwt_tokens.issue_refresh_token(session, acc.id)
+
+    # rotate: returns a new token; r1 becomes invalid
+    account, r2 = await jwt_tokens.rotate_refresh_token(session, r1)
+    assert account.id == acc.id
+    assert r2 != r1
+
+    with pytest.raises(NotFoundError):
+        await jwt_tokens.rotate_refresh_token(session, r1)  # reuse of consumed token
+
+    # reuse detection revokes the whole chain: r2 is now also dead
+    with pytest.raises(NotFoundError):
+        await jwt_tokens.rotate_refresh_token(session, r2)
+
+
 def test_access_token_carries_superadmin_claim():
     from quantuum.auth.jwt_tokens import issue_access_token, verify_access_token
 

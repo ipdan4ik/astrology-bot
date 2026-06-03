@@ -32,3 +32,55 @@ async def test_webhook_pushes_update_with_bot_id(client):
     item = await redis_client.pop_update(timeout=2)
     assert item["bot_id"] == 4242
     assert item["update"]["update_id"] == 9
+
+
+async def test_webhook_dedupes_repeated_update(client, session, default_tenant):
+    from quantuum.db.models import TenantBot
+    from quantuum.redis_client import get_redis, UPDATE_QUEUE_KEY
+    bot = TenantBot(
+        tenant_id=default_tenant.id, bot_telegram_id=700001, bot_token_enc=b"x",
+        transport="webhook", webhook_secret_path="wh-dedupe", status="active",
+    )
+    session.add(bot)
+    await session.commit()
+
+    payload = {"update_id": 555, "message": {"text": "hi"}}
+    r1 = await client.post("/tg/wh-dedupe", json=payload)
+    r2 = await client.post("/tg/wh-dedupe", json=payload)
+    assert r1.status_code == 200 and r2.status_code == 200
+
+    qlen = await get_redis().llen(UPDATE_QUEUE_KEY)
+    assert qlen == 1  # second (duplicate) update was dropped
+
+
+async def test_webhook_rejects_wrong_secret_token(client, session, default_tenant):
+    from quantuum.db.models import TenantBot
+    bot = TenantBot(
+        tenant_id=default_tenant.id, bot_telegram_id=700002, bot_token_enc=b"x",
+        transport="webhook", webhook_secret_path="wh-sec",
+        webhook_secret_token="expected-token", status="active",
+    )
+    session.add(bot); await session.commit()
+    # missing header -> 403
+    r = await client.post("/tg/wh-sec", json={"update_id": 1})
+    assert r.status_code == 403
+    # wrong header -> 403
+    r = await client.post("/tg/wh-sec", json={"update_id": 2},
+                          headers={"X-Telegram-Bot-Api-Secret-Token": "nope"})
+    assert r.status_code == 403
+    # correct header -> 200
+    r = await client.post("/tg/wh-sec", json={"update_id": 3},
+                          headers={"X-Telegram-Bot-Api-Secret-Token": "expected-token"})
+    assert r.status_code == 200
+
+
+async def test_webhook_legacy_null_token_skips_header_check(client, session, default_tenant):
+    from quantuum.db.models import TenantBot
+    bot = TenantBot(
+        tenant_id=default_tenant.id, bot_telegram_id=700003, bot_token_enc=b"x",
+        transport="webhook", webhook_secret_path="wh-legacy",
+        webhook_secret_token=None, status="active",
+    )
+    session.add(bot); await session.commit()
+    r = await client.post("/tg/wh-legacy", json={"update_id": 9})
+    assert r.status_code == 200  # NULL token => no header required (backward compat)

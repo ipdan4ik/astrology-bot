@@ -6,13 +6,14 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.bot.ui.callbacks import OwnerUserCb
-from quantuum.db.models import Account, AccountBalance, AccountIdentity
+from quantuum.db.models import Account, AccountBalance, AccountIdentity, Tenant
 from quantuum.domain.accounts import set_account_ban
 from quantuum.domain.tenants import grant_role
 
 from .conftest import build_translator
 
 TG = 222
+ADMIN_TG = 333
 
 
 class FakeMessage:
@@ -62,6 +63,18 @@ async def _owner(session, tenant):
     session.add(AccountIdentity(account_id=acc.id, provider="tg_chat", provider_user_id=str(TG)))
     await session.commit()
     await grant_role(session, tenant_id=tenant.id, account_id=acc.id, role="owner")
+    await session.commit()
+    return acc
+
+
+async def _admin(session, tenant):
+    acc = Account(tenant_id=tenant.id)
+    session.add(acc)
+    await session.commit()
+    await session.refresh(acc)
+    session.add(AccountIdentity(account_id=acc.id, provider="tg_chat", provider_user_id=str(ADMIN_TG)))
+    await session.commit()
+    await grant_role(session, tenant_id=tenant.id, account_id=acc.id, role="admin")
     await session.commit()
     return acc
 
@@ -156,15 +169,27 @@ async def test_grant_adds_credits(session, default_tenant, monkeypatch):
 
 
 async def test_grant_deduct_clamps(session, default_tenant, monkeypatch):
+    from sqlmodel import select
+
     from quantuum.bot.handlers import owner_users as ou
+    from quantuum.db.models import AccountPackage
 
     _patch_sessionmaker(monkeypatch, ou, session)
     await _owner(session, default_tenant)
     target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
-    # zero out welcome credits so deduct-clamp behaviour is unambiguous
+    # zero out welcome credits (both the balance counter and all ledger rows)
+    # so deduct-clamp behaviour is unambiguous with the ledger-backed implementation
     bal = await session.get(AccountBalance, target.id)
     bal.package_credits = 0
     session.add(bal)
+    pkgs = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == target.id)
+        )
+    ).scalars().all()
+    for pkg in pkgs:
+        pkg.requests_remaining = 0
+        session.add(pkg)
     await session.commit()
     i18n = await build_translator(session, default_tenant.id)
     state = _fsm()
@@ -244,3 +269,130 @@ async def test_unban_clears(session, default_tenant, monkeypatch):
     row = await session.get(Account, target.id)
     await session.refresh(row)
     assert row.status == "active" and row.ban_reason is None
+
+
+# ── Task 3: admin denied for financial actions ──────────────────────────────────
+
+async def test_admin_cannot_grant(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    await _admin(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    bal = await session.get(AccountBalance, target.id)
+    bal.package_credits = 0
+    session.add(bal)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await ou.on_user_grant_start(query, OwnerUserCb(action="grant", tenant_id=default_tenant.id, account_id=target.id), state, i18n)
+
+    assert query.answers and query.answers[-1][1] is True  # no_rights alert
+    assert await state.get_state() is None  # FSM not entered
+    bal = await session.get(AccountBalance, target.id)
+    assert bal.package_credits == 0  # unchanged
+
+
+async def test_admin_cannot_ban(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    await _admin(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await ou.on_user_ban_start(query, OwnerUserCb(action="ban", tenant_id=default_tenant.id, account_id=target.id), state, i18n)
+
+    assert query.answers and query.answers[-1][1] is True  # no_rights alert
+    assert await state.get_state() is None  # FSM not entered
+    row = await session.get(Account, target.id)
+    await session.refresh(row)
+    assert row.status == "active" and row.ban_reason is None  # not banned
+
+
+async def test_admin_cannot_unban(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    await _admin(session, default_tenant)
+    target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
+    await set_account_ban(session, target.id, reason="x")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    query = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await ou.on_user_unban(query, OwnerUserCb(action="unban", tenant_id=default_tenant.id, account_id=target.id), i18n)
+
+    assert query.answers and query.answers[-1][1] is True  # no_rights alert
+    row = await session.get(Account, target.id)
+    await session.refresh(row)
+    assert row.status == "disabled" and row.ban_reason == "x"  # still banned
+
+
+# ── Task 4: cross-tenant ban/unban guard ─────────────────────────────────────────
+
+async def test_owner_cannot_ban_cross_tenant_account(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    other = Tenant(slug="d-other", display_name="Other")
+    session.add(other)
+    await session.flush()
+    victim = Account(tenant_id=other.id, status="active")
+    session.add(victim)
+    await session.commit()
+    await session.refresh(victim)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery()  # owner of default_tenant (TG=222)
+    await ou.on_user_ban_start(
+        query,
+        OwnerUserCb(action="ban", tenant_id=default_tenant.id, account_id=victim.id),
+        state,
+        i18n,
+    )
+
+    assert query.answers and query.answers[-1][1] is True  # denial alert
+    assert await state.get_state() is None  # FSM not entered
+    v = await session.get(Account, victim.id)
+    await session.refresh(v)
+    assert v.status == "active" and v.ban_reason is None  # not banned
+
+
+async def test_owner_cannot_unban_cross_tenant_account(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    other = Tenant(slug="d-other2", display_name="Other2")
+    session.add(other)
+    await session.flush()
+    victim = Account(tenant_id=other.id, status="active")
+    session.add(victim)
+    await session.commit()
+    await session.refresh(victim)
+    await set_account_ban(session, victim.id, reason="foreign")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    query = FakeCallbackQuery()  # owner of default_tenant (TG=222)
+    await ou.on_user_unban(
+        query,
+        OwnerUserCb(action="unban", tenant_id=default_tenant.id, account_id=victim.id),
+        i18n,
+    )
+
+    assert query.answers and query.answers[-1][1] is True  # denial alert
+    v = await session.get(Account, victim.id)
+    await session.refresh(v)
+    assert v.status == "disabled" and v.ban_reason == "foreign"  # still banned

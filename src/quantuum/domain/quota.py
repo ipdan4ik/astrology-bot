@@ -44,13 +44,6 @@ async def consume_quota(session, account_id: int, kind: str, *, cost_units: int 
         balance = AccountBalance(account_id=account_id)
         session.add(balance)
 
-    if not balance.free_trial_used and kind == "blueprint":
-        balance.free_trial_used = True
-        balance.updated_at = utcnow()
-        session.add(balance)
-        await session.commit()
-        return "trial"
-
     if balance.subscription_active_until and balance.subscription_active_until > utcnow():
         await session.commit()
         return "subscription"
@@ -85,7 +78,7 @@ async def consume_quota(session, account_id: int, kind: str, *, cost_units: int 
 
 
 async def refund_quota(session, request_id: int) -> None:
-    request = await session.get(Request, request_id)
+    request = await session.get(Request, request_id, with_for_update=True)
     if request is None or request.charged_against in (None, "none"):
         return
 

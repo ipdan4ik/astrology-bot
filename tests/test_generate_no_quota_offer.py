@@ -85,3 +85,34 @@ async def test_no_quota_offers_buy_button_en(session, default_tenant, monkeypatc
     assert text == "Your free generation has already been used. Buy a package or subscription:"
     kb = message.answer.await_args.kwargs["reply_markup"]
     assert kb.inline_keyboard[0][0].text == "💳 Buy readings"
+
+
+async def test_run_generate_enqueue_failure_reports_and_refunds(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import generate as gen
+    from quantuum.db.models import AccountBalance
+
+    _patch_sessionmaker(monkeypatch, gen, session)
+    monkeypatch.setattr(
+        gen, "enqueue_blueprint",
+        AsyncMock(side_effect=RuntimeError("redis down")),
+    )
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="29")
+    await upsert_natal_profile(
+        session, tenant_id=default_tenant.id, account_id=acc.id, full_name="A",
+        birth_date=date(1990, 1, 1), birth_time=time(12, 0), birth_place="Moscow",
+        latitude=Decimal("55"), longitude=Decimal("37"), timezone="Europe/Moscow",
+    )
+    bal = await session.get(AccountBalance, acc.id)
+    starting = bal.package_credits  # 10 welcome credits
+
+    message = SimpleNamespace(answer=AsyncMock())
+    await gen.run_generate(message, acc, chat_id=29, i18n=i18n)
+
+    expected = await i18n("errors.queue_failed")
+    answers = [c.args[0] for c in message.answer.await_args_list]
+    assert expected in answers
+
+    bal = await session.get(AccountBalance, acc.id)
+    await session.refresh(bal)
+    assert bal.package_credits == starting  # refunded

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -150,11 +150,17 @@ async def create_blueprint_route(
 
 @router.get("/blueprints", response_model=list[BlueprintOut])
 async def list_blueprints(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ) -> list[BlueprintOut]:
     result = await session.execute(
-        select(Blueprint).where(Blueprint.account_id == account.id).order_by(Blueprint.id.desc())
+        select(Blueprint)
+        .where(Blueprint.account_id == account.id)
+        .order_by(Blueprint.id.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return [
         BlueprintOut(
@@ -267,8 +273,8 @@ async def create_qa_route(
 
 @router.get("/qa", response_model=list[QaOut])
 async def list_qa_route(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ) -> list[QaOut]:
@@ -351,8 +357,8 @@ async def create_transit_route(
 
 @router.get("/transits", response_model=list[TransitOut])
 async def list_transits_route(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ) -> list[TransitOut]:
@@ -418,8 +424,8 @@ async def write_daily_settings(
 
 @router.get("/daily/horoscopes", response_model=list[DailyHoroscopeOut])
 async def list_daily_horoscopes(
-    limit: int = 30,
-    offset: int = 0,
+    limit: int = Query(default=30, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ) -> list[DailyHoroscopeOut]:
@@ -474,6 +480,8 @@ async def get_plans(
 
 @router.get("/subscriptions", response_model=list[SubscriptionOut])
 async def list_subscriptions(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ) -> list[SubscriptionOut]:
@@ -481,6 +489,8 @@ async def list_subscriptions(
         select(AccountSubscription)
         .where(AccountSubscription.account_id == account.id)
         .order_by(AccountSubscription.id.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return [
         SubscriptionOut(
@@ -493,11 +503,17 @@ async def list_subscriptions(
 
 @router.get("/payments", response_model=list[PaymentOut])
 async def list_payments(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ) -> list[PaymentOut]:
     result = await session.execute(
-        select(Payment).where(Payment.account_id == account.id).order_by(Payment.id.desc())
+        select(Payment)
+        .where(Payment.account_id == account.id)
+        .order_by(Payment.id.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return [
         PaymentOut(
@@ -543,7 +559,7 @@ async def buy_subscription(
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ):
-    plan = await get_subscription_plan(session, body.plan_id)
+    plan = await get_subscription_plan(session, body.plan_id, tenant_id=account.tenant_id)
     if plan is None:
         raise HTTPException(status_code=404, detail="plan not found")
     await _create_invoice_via_provider(session, account, plan_kind="subscription", plan=plan)
@@ -556,7 +572,7 @@ async def buy_package(
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ):
-    plan = await get_package_plan(session, body.plan_id)
+    plan = await get_package_plan(session, body.plan_id, tenant_id=account.tenant_id)
     if plan is None:
         raise HTTPException(status_code=404, detail="plan not found")
     await _create_invoice_via_provider(session, account, plan_kind="package", plan=plan)

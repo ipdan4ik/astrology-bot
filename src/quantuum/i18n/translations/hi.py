@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ रद्द करें",
+    "errors.queue_failed": "आपका अनुरोध कतार में नहीं डाला जा सका। आपका क्रेडिट लौटा दिया गया — कृपया थोड़ी देर में फिर से प्रयास करें।",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------
@@ -182,6 +183,7 @@ TRANSLATIONS = {
     "master.onboard.creating": "टेनेंट बना रहे हैं… बॉट का स्वचालित निर्माण जाँच रहे हैं।",
     "master.onboard.cancelled": "ऑनबोर्डिंग रद्द की गई।",
     "master.onboard.token_invalid": "यह वैध बॉट टोकन नहीं लगता। @BotFather से टोकन फिर भेजें:",
+    "master.onboard.token_in_use": "यह बॉट पहले से किसी अन्य प्रोजेक्ट से जुड़ा है। कोई दूसरा बॉट इस्तेमाल करें।",
     "master.onboard.done": "हो गया! बॉट @{username} सक्रिय हो गया। वर्कर रिस्टार्ट होने के बाद उपलब्ध होगा।",
     "master.kb.cancel": "रद्द करें",
     "master.kb.create_bot": "बॉट बनाएँ",
@@ -437,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "छवि",
     "iching.changing_line_label": "बदलती रेखा {n}",
     "iching.transformed_label": "बदलता है",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ मेनू पर वापस",
+    "owner.features.label.referrals": "रेफ़रल",
+    "owner.features.label.gifts": "उपहार",
+    "master.provision.manual_prompt": (
+        "स्वचालित बॉट निर्माण उपलब्ध नहीं है। @BotFather के ज़रिए एक नया बॉट बनाएँ "
+        "और उसका टोकन यहाँ एक ही संदेश में भेजें।"
+    ),
+    "master.provision.managed_prompt": (
+        "नीचे दिए बटन पर टैप करें — Telegram बॉट बना देगा और मैं उसे अपने आप उठा लूँगा। "
+        "उपयोगकर्ता नाम को निर्माण स्क्रीन पर समायोजित किया जा सकता है।"
+    ),
+    "master.provision.managed_button": "🤖 बॉट बनाएँ",
 }

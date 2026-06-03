@@ -1,6 +1,7 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
+from quantuum.bot.handlers._guard import enqueue_or_refund
 from quantuum.bot.handlers.generate import _buy_offer_kb, run_generate
 from quantuum.bot.handlers.transits import run_transits
 from quantuum.bot.ui.callbacks import ReadingCb
@@ -92,6 +93,12 @@ async def on_reading_choice(
             charged_against=charged,
         )
 
-    await enqueue_reading(reading.id, query.message.chat.id, request.id)
+    if not await enqueue_or_refund(
+        enqueue_reading(reading.id, query.message.chat.id, request.id),
+        request_id=request.id,
+    ):
+        await query.message.answer(await i18n("errors.queue_failed"))
+        await query.answer()
+        return
     await query.message.answer(await i18n("readings.queued"))
     await query.answer()

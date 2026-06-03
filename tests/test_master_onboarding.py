@@ -206,6 +206,108 @@ async def test_managed_bot_created_finalizes(session, default_tenant, monkeypatc
     assert tb.status == "active"
 
 
+async def test_slug_prompt_carries_cancel_keyboard(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({})
+    message = SimpleNamespace(text="acmebot", answer=AsyncMock())
+
+    await mo.on_slug(message, state, i18n=i18n)
+
+    assert state.state == mo.OwnerOnboarding.display_name
+    _, kwargs = message.answer.await_args
+    markup = kwargs.get("reply_markup")
+    assert markup is not None
+    cb = markup.inline_keyboard[0][0].callback_data
+    assert OwnerOnboardCb.unpack(cb).action == "cancel"
+
+
+async def test_display_name_prompt_carries_cancel_keyboard(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({"slug": "acme"})
+    message = SimpleNamespace(text="Acme Co", answer=AsyncMock())
+
+    await mo.on_display_name(message, state, i18n=i18n)
+
+    assert state.state == mo.OwnerOnboarding.default_lang
+    _, kwargs = message.answer.await_args
+    markup = kwargs.get("reply_markup")
+    assert markup is not None
+    cb = markup.inline_keyboard[0][0].callback_data
+    assert OwnerOnboardCb.unpack(cb).action == "cancel"
+
+
+async def test_cancel_command_clears_any_onboarding_state(session, default_tenant, monkeypatch):
+    from aiogram.types import ReplyKeyboardRemove
+
+    from quantuum.bot.handlers import master_onboarding as mo
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({"tenant_id": 7})
+    state.state = mo.ManualToken.awaiting
+    message = SimpleNamespace(answer=AsyncMock())
+
+    await mo.on_onboarding_cancel_cmd(message, state, i18n=i18n)
+
+    assert state.state is None
+    assert await state.get_data() == {}
+    _, kwargs = message.answer.await_args
+    assert isinstance(kwargs.get("reply_markup"), ReplyKeyboardRemove)
+
+
+async def test_callback_cancel_removes_reply_keyboard(session, default_tenant, monkeypatch):
+    from aiogram.types import ReplyKeyboardRemove
+
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({"slug": "x"})
+    query = AsyncMock()
+    query.message = SimpleNamespace(answer=AsyncMock())
+    await mo.on_cancel(query, OwnerOnboardCb(action="cancel"), state, i18n=i18n)
+
+    assert state.state is None
+    _, kwargs = query.message.answer.await_args
+    assert isinstance(kwargs.get("reply_markup"), ReplyKeyboardRemove)
+
+
+async def test_manual_token_success_removes_keyboard(session, default_tenant, monkeypatch):
+    from aiogram.types import ReplyKeyboardRemove
+
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    monkeypatch.setattr(mo, "validate_bot_token", AsyncMock(return_value=(902, "done_bot")))
+    monkeypatch.setattr(mo, "publish_bot_reload", AsyncMock())
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="dn", display_name="Dn",
+        default_lang="ru", owner_tg_id=779, owner_chat_id=779,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+    message = SimpleNamespace(text="902:tok", answer=AsyncMock())
+
+    await mo.on_manual_token(message, state, i18n=i18n)
+
+    _, kwargs = message.answer.await_args
+    assert isinstance(kwargs.get("reply_markup"), ReplyKeyboardRemove)
+
+
 async def test_default_lang_renders_confirm(session, default_tenant, monkeypatch):
     """Regression: the confirm summary must render. The template uses {language}, not
     {lang} — passing lang= as a format var collides with the Translator's reserved
@@ -255,6 +357,56 @@ async def test_finalize_publishes_bot_reload(session, default_tenant, monkeypatc
     await mo.on_managed_bot_created(message, state, i18n=i18n, bot=bot)
 
     published.assert_awaited_once()
+
+
+async def test_manual_token_rejects_bot_already_in_use(session, default_tenant, monkeypatch):
+    """If the pasted token's bot id is already an active TenantBot for another tenant,
+    finalize raises BotAlreadyInUseError; the handler shows token_in_use and the tenant
+    stays provisioning so the owner can paste a different token."""
+    from sqlmodel import select
+
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.db.models import Tenant, TenantBot
+    from quantuum.domain.invites import create_invite
+    from quantuum.domain.provisioning import create_tenant_from_onboarding
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+
+    # An existing active tenant already owns bot id 600002.
+    taken = Tenant(slug="alreadytaken", display_name="Taken", status="active",
+                   owner_tg_id="800", owner_chat_id="800")
+    session.add(taken)
+    await session.flush()
+    session.add(TenantBot(
+        tenant_id=taken.id, bot_token_enc=b"x", transport="polling",
+        webhook_secret_path="taken-secret", status="active", bot_telegram_id=600002,
+    ))
+    await session.commit()
+
+    monkeypatch.setattr(mo, "validate_bot_token", AsyncMock(return_value=(600002, "dupe_bot")))
+    published = AsyncMock()
+    monkeypatch.setattr(mo, "publish_bot_reload", published)
+
+    invite = await create_invite(session, created_by_account_id=None)
+    await session.commit()
+    tenant = await create_tenant_from_onboarding(
+        session, invite=invite, slug="claimer", display_name="Claimer",
+        default_lang="ru", owner_tg_id=801, owner_chat_id=801,
+    )
+    state = _FakeState({"tenant_id": tenant.id, "default_lang": "ru"})
+    message = SimpleNamespace(text="600002:dupetoken", answer=AsyncMock())
+
+    await mo.on_manual_token(message, state, i18n=i18n)
+
+    expected = await i18n("master.onboard.token_in_use")
+    message.answer.assert_awaited_once_with(expected)
+    published.assert_not_awaited()
+
+    await session.refresh(tenant)
+    assert tenant.status == "provisioning"  # not activated
+    # FSM left awaiting so the owner can paste a different token
+    assert state.state == mo.ManualToken.awaiting or state.state is None
 
 
 async def test_manual_token_publishes_bot_reload(session, default_tenant, monkeypatch):

@@ -82,19 +82,13 @@ async def on_tenants(message: Message, i18n: Translator) -> None:
     await message.answer("\n".join(lines))
 
 
-@router.message(Command("manage"))
-async def on_manage(message: Message, command: CommandObject, i18n: Translator) -> None:
-    slug = (command.args or "").strip()
-    if not slug:
-        await message.answer(await i18n("owner.manage.usage"))
-        return
-    tg_user_id = str(message.from_user.id)
-    async with get_sessionmaker()() as session:
-        resolved = await resolve_managed_tenant_by_slug(session, tg_user_id=tg_user_id, slug=slug)
-    if resolved is None:
-        await message.answer(await i18n("owner.manage.not_found"))
-        return
-    tenant, _actor = resolved
+async def _manage_menu(
+    tenant: Tenant, i18n: Translator
+) -> tuple[str, InlineKeyboardMarkup]:
+    """Render the manage-menu text + inline keyboard for a tenant.
+
+    Shared by ``/manage`` (first render via ``answer``) and the ``menu``
+    back-callback (in-place re-render via ``edit_text``)."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -164,15 +158,52 @@ async def on_manage(message: Message, command: CommandObject, i18n: Translator) 
             callback_data=OwnerManageCb(action="delete", tenant_id=tenant.id).pack(),
         )
     )
-    await message.answer(
-        await i18n(
-            "owner.manage.title",
-            display_name=tenant.display_name,
-            slug=tenant.slug,
-            status=tenant.status,
-        ),
-        reply_markup=builder.as_markup(),
+    text = await i18n(
+        "owner.manage.title",
+        display_name=tenant.display_name,
+        slug=tenant.slug,
+        status=tenant.status,
     )
+    return text, builder.as_markup()
+
+
+@router.message(Command("manage"))
+async def on_manage(message: Message, command: CommandObject, i18n: Translator) -> None:
+    slug = (command.args or "").strip()
+    if not slug:
+        await message.answer(await i18n("owner.manage.usage"))
+        return
+    tg_user_id = str(message.from_user.id)
+    async with get_sessionmaker()() as session:
+        resolved = await resolve_managed_tenant_by_slug(session, tg_user_id=tg_user_id, slug=slug)
+    if resolved is None:
+        await message.answer(await i18n("owner.manage.not_found"))
+        return
+    tenant, _actor = resolved
+    text, markup = await _manage_menu(tenant, i18n)
+    await message.answer(text, reply_markup=markup)
+
+
+@router.callback_query(OwnerManageCb.filter(F.action == "menu"))
+async def on_manage_menu(
+    query: CallbackQuery, callback_data: OwnerManageCb, i18n: Translator
+) -> None:
+    """In-place ``‹ Back`` from any submenu: re-render the manage menu."""
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+        )
+        if actor is None:
+            await query.answer(await i18n("owner.no_rights"), show_alert=True)
+            return
+        tenant = await session.get(Tenant, callback_data.tenant_id)
+    if tenant is None:
+        await query.answer(await i18n("owner.manage.not_found"), show_alert=True)
+        return
+    text, markup = await _manage_menu(tenant, i18n)
+    await query.message.edit_text(text, reply_markup=markup)
+    await query.answer()
 
 
 # ── Task 4: manage callbacks (stats / pause / resume) ───────────────────────────
@@ -203,7 +234,16 @@ async def on_manage_stats(
         mrr_cents=s["mrr_cents"],
         requests_by_kind=s["requests_by_kind"],
     )
-    await query.message.answer(text)
+    b = InlineKeyboardBuilder()
+    b.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.manage.kb.back"),
+            callback_data=OwnerManageCb(
+                action="menu", tenant_id=callback_data.tenant_id
+            ).pack(),
+        )
+    )
+    await query.message.edit_text(text, reply_markup=b.as_markup())
     await query.answer()
 
 
@@ -214,7 +254,8 @@ async def on_manage_pause(
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -246,7 +287,8 @@ async def on_manage_resume(
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -292,6 +334,30 @@ async def on_transfer_cmd(
     await state.set_state(OwnerTransfer.awaiting_target)
     await state.update_data(tenant_id=tenant.id)
     await message.answer(await i18n("owner.transfer.prompt"))
+
+
+@router.callback_query(OwnerManageCb.filter(F.action == "transfer"))
+async def on_manage_transfer(
+    query: CallbackQuery,
+    callback_data: OwnerManageCb,
+    state: FSMContext,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session,
+            tg_user_id=tg_user_id,
+            tenant_id=callback_data.tenant_id,
+            roles=("owner",),
+        )
+    if actor is None:
+        await query.answer(await i18n("owner.no_rights"), show_alert=True)
+        return
+    await state.set_state(OwnerTransfer.awaiting_target)
+    await state.update_data(tenant_id=callback_data.tenant_id)
+    await query.message.answer(await i18n("owner.transfer.prompt"))
+    await query.answer()
 
 
 @router.message(Command("cancel"), OwnerTransfer.awaiting_target)
@@ -372,7 +438,8 @@ async def on_manage_delete(
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -405,7 +472,8 @@ async def on_delete_confirm(message: Message, state: FSMContext, i18n: Translato
     async with get_sessionmaker()() as session:
         # Re-authorize at apply time (the role may have changed since the tap).
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await message.answer(await i18n("owner.no_rights"))
@@ -466,7 +534,25 @@ async def _features_keyboard(
             ).pack(),
         )
 
-    b.adjust(2, 2, 2, 2, 2, 2, 2)
+    for key, label_key in (
+        ("referrals", "owner.features.label.referrals"),
+        ("gifts", "owner.features.label.gifts"),
+    ):
+        text_label = f"{_mark(flags[key])} {await i18n(label_key)}"
+        b.button(
+            text=text_label,
+            callback_data=OwnerFeatureCb(
+                action="toggle", tenant_id=tenant_id, key=key
+            ).pack(),
+        )
+
+    b.adjust(2, 2, 2, 2, 2, 2, 2, 2)  # 16 toggles, 8 rows of 2
+    b.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.manage.kb.back"),
+            callback_data=OwnerManageCb(action="menu", tenant_id=tenant_id).pack(),
+        )
+    )
     return b.as_markup()
 
 
@@ -591,6 +677,12 @@ async def _branding_keyboard(
             ).pack(),
         )
     b.adjust(1, 1, 1, 1)
+    b.row(
+        InlineKeyboardButton(
+            text=await i18n("owner.manage.kb.back"),
+            callback_data=OwnerManageCb(action="menu", tenant_id=tenant_id).pack(),
+        )
+    )
     return b.as_markup()
 
 
@@ -770,6 +862,10 @@ async def _referrals_keyboard(i18n: Translator, tenant_id: int) -> InlineKeyboar
         text=await i18n("owner.referrals.menu_button"),
         callback_data=OwnerReferralsCb(action="edit", tenant_id=tenant_id).pack(),
     )
+    b.button(
+        text=await i18n("owner.manage.kb.back"),
+        callback_data=OwnerManageCb(action="menu", tenant_id=tenant_id).pack(),
+    )
     b.adjust(1)
     return b.as_markup()
 
@@ -793,7 +889,9 @@ async def on_referrals_open(
         f"{await i18n('owner.referrals.title')}\n\n"
         f"{await i18n('owner.referrals.current_value', value=current)}"
     )
-    await query.message.answer(body, reply_markup=await _referrals_keyboard(i18n, callback_data.tenant_id))
+    await query.message.edit_text(
+        body, reply_markup=await _referrals_keyboard(i18n, callback_data.tenant_id)
+    )
     await query.answer()
 
 
@@ -908,6 +1006,10 @@ async def _gifts_keyboard(i18n: Translator, tenant_id: int) -> InlineKeyboardMar
         text=await i18n("owner.gifts.reset"),
         callback_data=OwnerGiftsCb(action="reset", tenant_id=tenant_id).pack(),
     )
+    b.button(
+        text=await i18n("owner.manage.kb.back"),
+        callback_data=OwnerManageCb(action="menu", tenant_id=tenant_id).pack(),
+    )
     b.adjust(1)
     return b.as_markup()
 
@@ -931,7 +1033,7 @@ async def on_gifts_open(
         f"{await i18n('owner.gifts.title')}\n\n"
         f"{await i18n('owner.gifts.current_value', value=current)}"
     )
-    await query.message.answer(
+    await query.message.edit_text(
         body, reply_markup=await _gifts_keyboard(i18n, callback_data.tenant_id)
     )
     await query.answer()

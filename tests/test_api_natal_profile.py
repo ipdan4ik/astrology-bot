@@ -39,3 +39,19 @@ async def test_natal_profile_put_then_get(auth_client):
 
 async def test_natal_profile_missing_returns_404(auth_client):
     assert (await auth_client.get("/v1/me/natal-profile")).status_code == 404
+
+
+async def test_natal_profile_rejects_out_of_range_latitude(auth_client):
+    resp = await auth_client.put("/v1/me/natal-profile", json={
+        "full_name": "X", "birth_date": "1990-01-01", "birth_time": "12:00:00",
+        "birth_place": "Y", "latitude": 200, "longitude": 0, "timezone": "UTC",
+    })
+    assert resp.status_code == 422
+
+
+async def test_natal_profile_rejects_out_of_range_longitude(auth_client):
+    resp = await auth_client.put("/v1/me/natal-profile", json={
+        "full_name": "X", "birth_date": "1990-01-01", "birth_time": "12:00:00",
+        "birth_place": "Y", "latitude": 0, "longitude": 500, "timezone": "UTC",
+    })
+    assert resp.status_code == 422

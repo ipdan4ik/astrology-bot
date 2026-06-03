@@ -32,6 +32,11 @@ async def calculate_payout(
     """Sum a tenant's PAID payments in [period_start, period_end) and create a payout row.
 
     net = gross - floor(gross * fee_pct / 100). Returns the persisted Payout (status=calculated)."""
+    existing = await find_payout_for_period(
+        session, tenant_id=tenant_id, period_start=period_start, period_end=period_end
+    )
+    if existing is not None:
+        return existing
     result = await session.execute(
         select(func.coalesce(func.sum(Payment.amount_cents), 0)).where(
             Payment.tenant_id == tenant_id,

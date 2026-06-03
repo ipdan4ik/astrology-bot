@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from sqlalchemy import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -268,3 +270,102 @@ async def test_maybe_payout_referral_zero_reward_closes_loop(session: AsyncSessi
         .one()
     )
     assert use.claimed_at is not None
+
+
+async def test_maybe_payout_referral_ignores_other_tenant_payment(session: AsyncSession):
+    from quantuum.db.models import Payment
+
+    t1 = await _make_tenant(session)
+    t2 = Tenant(slug="t2", display_name="T2")
+    session.add(t2)
+    await session.flush()
+
+    referrer = await _make_account(session, t1.id, 81001)
+    referee = await _make_account(session, t1.id, 82001)
+    code = await generate_referral_code(session, account_id=referrer, tenant_id=t1.id)
+    session.add(StartTokenUse(token_code=code, account_id=referee))
+    await _zero_balance(session, referrer)
+    # paid payment, but scoped to the WRONG tenant
+    session.add(Payment(
+        tenant_id=t2.id, account_id=referee, amount_cents=100,
+        status="paid", paid_at=utcnow(),
+    ))
+    await session.flush()
+
+    fired = await maybe_payout_referral(session, referee_account_id=referee)
+    assert fired is False
+    bal = await session.get(AccountBalance, referrer)
+    assert bal is None or bal.package_credits == 0
+
+
+async def test_maybe_payout_referral_concurrent_pays_once(session, default_tenant):
+    from quantuum.db.session import get_sessionmaker
+
+    referrer = await _make_account(session, default_tenant.id, 71001)
+    referee = await _make_account(session, default_tenant.id, 72001)
+    code = await generate_referral_code(
+        session, account_id=referrer, tenant_id=default_tenant.id
+    )
+    session.add(StartTokenUse(token_code=code, account_id=referee))
+    await _zero_balance(session, referrer)
+    await _mark_paid(session, tenant_id=default_tenant.id, account_id=referee)
+    await session.commit()  # make setup visible to independent sessions
+
+    async def _payout():
+        async with get_sessionmaker()() as s:
+            fired = await maybe_payout_referral(s, referee_account_id=referee)
+            await s.commit()
+            return fired
+
+    results = await asyncio.gather(_payout(), _payout())
+
+    assert sorted(results) == [False, True]  # exactly one payout fired
+    bal = await session.get(AccountBalance, referrer)
+    await session.refresh(bal)
+    assert bal.package_credits == DEFAULT_REWARD_CREDITS  # bumped exactly once
+
+    uses = (
+        await session.execute(
+            select(StartTokenUse).where(StartTokenUse.account_id == referee)
+        )
+    ).scalars().all()
+    assert len(uses) == 1 and uses[0].claimed_at is not None
+
+
+async def test_referral_payout_is_ledger_backed(session, default_tenant):
+    from sqlmodel import select
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import (
+        AccountPackage, Payment, StartToken, StartTokenUse,
+    )
+    from quantuum.domain.referrals import maybe_payout_referral
+
+    referrer = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="ref_owner"
+    )
+    referee = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="ref_ee"
+    )
+    token = StartToken(
+        code="refcode1", kind="referral", tenant_id=default_tenant.id,
+        owner_account_id=referrer.id, status="active",
+    )
+    session.add(token)
+    session.add(StartTokenUse(token_code="refcode1", account_id=referee.id))
+    session.add(Payment(
+        tenant_id=default_tenant.id, account_id=referee.id, provider_id=None,
+        amount_cents=100, currency="XTR", status="paid",
+    ))
+    await session.commit()
+
+    paid = await maybe_payout_referral(session, referee_account_id=referee.id)
+    await session.commit()
+
+    assert paid is True
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == referrer.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "referral" and r.requests_remaining > 0 for r in rows)

@@ -28,6 +28,46 @@ async def _account(session, tenant_id: int, tg_id: int) -> int:
     return acct.id
 
 
+async def test_handle_referral_token_concurrent_attributes_once(session, default_tenant):
+    import asyncio
+    from quantuum.db.models import StartToken, StartTokenUse
+    from quantuum.db.session import get_sessionmaker
+    from quantuum.bot.handlers.start_tokens import handle_referral_token
+    from sqlalchemy import select
+
+    # referrer + referee accounts (reuse this file's account helper if present)
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    referrer = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="attr_owner"
+    )
+    referee = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="attr_ee"
+    )
+    session.add(StartToken(
+        code="attrcode1", kind="referral", tenant_id=default_tenant.id,
+        owner_account_id=referrer.id, status="active",
+    ))
+    await session.commit()
+
+    async def _attribute():
+        async with get_sessionmaker()() as s:
+            tok = await s.get(StartToken, "attrcode1")
+            await handle_referral_token(s, token=tok, account_id=referee.id)
+            await s.commit()
+
+    await asyncio.gather(_attribute(), _attribute())
+
+    uses = (
+        await session.execute(
+            select(StartTokenUse).where(StartTokenUse.account_id == referee.id)
+        )
+    ).scalars().all()
+    assert len(uses) == 1
+    tok = await session.get(StartToken, "attrcode1")
+    await session.refresh(tok)
+    assert tok.used_count == 1
+
+
 def test_parse_start_payload_extracts_code():
     assert parse_start_payload("/start ABC23K7Q") == "ABC23K7Q"
     assert parse_start_payload("/start  ABC23K7Q  ") == "ABC23K7Q"
@@ -309,6 +349,36 @@ async def test_dispatch_gift_double_claim_aborts_second(session):
     assert result2 is None
     bal_r2 = await session.get(AccountBalance, r2.id)
     assert bal_r2.package_credits == 0
+
+
+async def test_claimed_gift_is_ledger_backed(session, default_tenant):
+    """A redeemed gift must create a ledger row so it survives recompute."""
+    from sqlmodel import select
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import AccountPackage, StartToken
+    from quantuum.bot.handlers.start_tokens import handle_gift_token
+
+    recipient = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="giftee"
+    )
+    token = StartToken(
+        code="giftcode1", kind="gift", tenant_id=default_tenant.id,
+        owner_account_id=None, payload={"amount": 4}, status="active",
+    )
+    session.add(token)
+    await session.commit()
+
+    result = await handle_gift_token(session, token=token, account_id=recipient.id)
+    await session.commit()
+
+    assert result is not None and result.amount == 4
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == recipient.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "gift" and r.requests_remaining == 4 for r in rows)
 
 
 async def test_dispatch_gift_feature_flag_off_silent(session):

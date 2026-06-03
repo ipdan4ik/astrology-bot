@@ -38,6 +38,7 @@ def _query(tg_id: int):
     q.from_user = MagicMock(id=tg_id)
     q.message = MagicMock()
     q.message.answer = AsyncMock()
+    q.message.edit_text = AsyncMock()
     q.answer = AsyncMock()
     return q
 
@@ -56,9 +57,17 @@ async def test_open_shows_current_value(session, default_tenant):
         callback_data=OwnerGiftsCb(action="open", tenant_id=default_tenant.id),
         i18n=i18n,
     )
-    body = q.message.answer.await_args.args[0]
+    body = q.message.edit_text.await_args.args[0]
     assert "owner.gifts.title" in body
     assert f"value': {DEFAULT_EXPIRY_DAYS}" in body
+    # Back-to-menu row present
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+    markup = q.message.edit_text.await_args.kwargs.get("reply_markup")
+    cbs = [
+        btn.callback_data for row in markup.inline_keyboard for btn in row
+        if btn.callback_data is not None
+    ]
+    assert OwnerManageCb(action="menu", tenant_id=default_tenant.id).pack() in cbs
 
 
 async def test_open_rejects_non_owner(session, default_tenant):

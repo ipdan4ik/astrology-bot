@@ -258,3 +258,28 @@ async def test_on_reading_choice_transits_dispatches_to_run_transits(
     assert call_args.args[1] is None  # raw_arg
     assert call_args.args[2] is acc
     query.answer.assert_awaited()
+
+
+async def test_reading_enqueue_failure_refunds_credit(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import readings
+    from quantuum.db.models import AccountBalance
+
+    _patch_sessionmaker(monkeypatch, readings, session)
+    monkeypatch.setattr(
+        readings, "enqueue_reading",
+        AsyncMock(side_effect=RuntimeError("redis down")),
+    )
+
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "rfail", credits=2)
+
+    query = FakeQuery(ReadingCb(action="generate", kind="bazi").pack(), chat_id=555)
+    await readings.on_reading_choice(query, acc, i18n)
+
+    expected = await i18n("errors.queue_failed")
+    answers = [c.args[0] for c in query.message.answer.await_args_list]
+    assert expected in answers
+
+    bal = await session.get(AccountBalance, acc.id)
+    await session.refresh(bal)
+    assert bal.package_credits == 2  # refunded back to starting value

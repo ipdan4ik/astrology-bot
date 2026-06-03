@@ -1,3 +1,7 @@
+import asyncio
+
+from aiogram import Bot
+from aiogram.utils.token import TokenValidationError, validate_token
 from sqlmodel import select
 
 from quantuum.auth.identity import find_or_create_account_by_tg
@@ -6,6 +10,12 @@ from quantuum.common.datetime import utcnow
 from quantuum.common.ids import url_safe_token
 from quantuum.db.models import Tenant, TenantBot, TenantInvite
 from quantuum.domain.tenants import grant_role
+
+GETME_TIMEOUT_S = 10.0
+
+
+class BotAlreadyInUseError(Exception):
+    """The bot_telegram_id is already claimed by another active TenantBot."""
 
 
 async def master_can_manage_bots(bot) -> bool:
@@ -16,7 +26,10 @@ async def master_can_manage_bots(bot) -> bool:
     onboarding can mint a bot via the request_managed_bot button + getManagedBotToken
     instead of asking the owner to paste a BotFather token.
     """
-    me = await bot.get_me()
+    try:
+        me = await asyncio.wait_for(bot.get_me(), timeout=GETME_TIMEOUT_S)
+    except (asyncio.TimeoutError, Exception):
+        return False
     return bool(getattr(me, "can_manage_bots", False))
 
 
@@ -31,7 +44,31 @@ async def create_tenant_from_onboarding(
     owner_chat_id: int | str,
     transport: str = "polling",
 ) -> Tenant:
-    """Atomically create a provisioning tenant + bot row and consume one invite use."""
+    """Create (or reuse) a provisioning tenant + bot row for this invite.
+
+    The invite use is consumed in finalize_provisioning (on success), not here,
+    so an abandoned onboarding leaves the invite usable. A second onboarding for
+    the same invite reuses the existing un-finalized tenant instead of spawning a
+    duplicate.
+    """
+    existing = (
+        await session.execute(
+            select(Tenant).where(
+                Tenant.invite_id == invite.id,
+                Tenant.status == "provisioning",
+            )
+        )
+    ).scalars().first()
+    if existing is not None:
+        existing.slug = slug
+        existing.display_name = display_name
+        existing.owner_tg_id = str(owner_tg_id)
+        existing.owner_chat_id = str(owner_chat_id)
+        session.add(existing)
+        await session.commit()
+        await session.refresh(existing)
+        return existing
+
     tenant = Tenant(
         slug=slug,
         display_name=display_name,
@@ -39,6 +76,7 @@ async def create_tenant_from_onboarding(
         status="provisioning",
         owner_tg_id=str(owner_tg_id),
         owner_chat_id=str(owner_chat_id),
+        invite_id=invite.id,
     )
     session.add(tenant)
     await session.flush()
@@ -48,14 +86,10 @@ async def create_tenant_from_onboarding(
             bot_token_enc=b"",
             transport=transport,
             webhook_secret_path=url_safe_token(16),
+            webhook_secret_token=url_safe_token(16),
             status="provisioning",
         )
     )
-    invite.used_count += 1
-    if invite.used_count >= invite.max_uses:
-        invite.status = "used"
-        invite.used_at = utcnow()
-    session.add(invite)
     await session.commit()
     await session.refresh(tenant)
     return tenant
@@ -63,16 +97,13 @@ async def create_tenant_from_onboarding(
 
 async def validate_bot_token(token: str) -> tuple[int, str] | None:
     """Validate a Telegram bot token via get_me(). Returns (bot_id, username) or None."""
-    from aiogram import Bot
-    from aiogram.utils.token import TokenValidationError, validate_token
-
     try:
         validate_token(token)
     except TokenValidationError:
         return None
     bot = Bot(token=token)
     try:
-        me = await bot.get_me()
+        me = await asyncio.wait_for(bot.get_me(), timeout=GETME_TIMEOUT_S)
         return me.id, me.username
     except Exception:
         return None
@@ -104,6 +135,22 @@ async def finalize_provisioning(
     result = await session.execute(select(TenantBot).where(TenantBot.tenant_id == tenant_id))
     tenant_bot = result.scalars().first()
 
+    clash = (
+        await session.execute(
+            select(TenantBot).where(
+                TenantBot.bot_telegram_id == bot_telegram_id,
+                TenantBot.status == "active",
+                TenantBot.tenant_id != tenant_id,
+            )
+        )
+    ).scalars().first()
+    if clash is not None:
+        raise BotAlreadyInUseError(
+            f"bot {bot_telegram_id} already used by tenant {clash.tenant_id}"
+        )
+
+    was_provisioning = tenant.status == "provisioning"
+
     owner_account = await find_or_create_account_by_tg(
         session, tenant_id=tenant_id, tg_user_id=str(tenant.owner_tg_id)
     )
@@ -118,6 +165,14 @@ async def finalize_provisioning(
     tenant.status = "active"
     session.add(tenant_bot)
     session.add(tenant)
+    if was_provisioning and tenant.invite_id is not None:
+        invite = await session.get(TenantInvite, tenant.invite_id)
+        if invite is not None:
+            invite.used_count += 1
+            if invite.used_count >= invite.max_uses:
+                invite.status = "used"
+                invite.used_at = utcnow()
+            session.add(invite)
     await seed_tenant_defaults(session, tenant_id=tenant_id, default_lang=default_lang)
     await session.commit()
     await session.refresh(tenant_bot)

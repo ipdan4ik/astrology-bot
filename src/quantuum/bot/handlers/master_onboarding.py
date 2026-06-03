@@ -1,5 +1,5 @@
 from aiogram import Bot, F, Router
-from aiogram.filters import CommandObject, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.methods import GetManagedBotToken
@@ -17,6 +17,7 @@ from quantuum.db.models import Tenant
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.invites import get_invite_by_code, invite_is_usable
 from quantuum.domain.provisioning import (
+    BotAlreadyInUseError,
     create_tenant_from_onboarding,
     finalize_provisioning,
     validate_bot_token,
@@ -110,26 +111,41 @@ async def on_plain_start(message: Message, i18n: Translator) -> None:
 async def on_slug(message: Message, state: FSMContext, i18n: Translator) -> None:
     slug = (message.text or "").strip().lower()
     if not slug or " " in slug:
-        await message.answer(await i18n("master.onboard.slug_invalid"))
+        await message.answer(
+            await i18n("master.onboard.slug_invalid"),
+            reply_markup=await master_cancel_kb(i18n),
+        )
         return
     async with get_sessionmaker()() as session:
         if not await slug_is_available(session, slug):
-            await message.answer(await i18n("master.onboard.slug_taken"))
+            await message.answer(
+                await i18n("master.onboard.slug_taken"),
+                reply_markup=await master_cancel_kb(i18n),
+            )
             return
     await state.update_data(slug=slug)
     await state.set_state(OwnerOnboarding.display_name)
-    await message.answer(await i18n("master.onboard.display_name_prompt"))
+    await message.answer(
+        await i18n("master.onboard.display_name_prompt"),
+        reply_markup=await master_cancel_kb(i18n),
+    )
 
 
 @router.message(OwnerOnboarding.display_name)
 async def on_display_name(message: Message, state: FSMContext, i18n: Translator) -> None:
     name = (message.text or "").strip()
     if not name:
-        await message.answer(await i18n("master.onboard.display_name_empty"))
+        await message.answer(
+            await i18n("master.onboard.display_name_empty"),
+            reply_markup=await master_cancel_kb(i18n),
+        )
         return
     await state.update_data(display_name=name)
     await state.set_state(OwnerOnboarding.default_lang)
-    await message.answer(await i18n("master.onboard.lang_prompt"))
+    await message.answer(
+        await i18n("master.onboard.lang_prompt"),
+        reply_markup=await master_cancel_kb(i18n),
+    )
 
 
 @router.message(OwnerOnboarding.default_lang)
@@ -191,8 +207,30 @@ async def on_cancel(
     query: CallbackQuery, callback_data: OwnerOnboardCb, state: FSMContext, i18n: Translator
 ) -> None:
     await state.clear()
-    await query.message.answer(await i18n("master.onboard.cancelled"))
+    await query.message.answer(
+        await i18n("master.onboard.cancelled"), reply_markup=ReplyKeyboardRemove()
+    )
     await query.answer()
+
+
+@router.message(
+    Command("cancel"),
+    StateFilter(
+        OwnerOnboarding.slug,
+        OwnerOnboarding.display_name,
+        OwnerOnboarding.default_lang,
+        OwnerOnboarding.confirm,
+        ManualToken.awaiting,
+    ),
+)
+async def on_onboarding_cancel_cmd(
+    message: Message, state: FSMContext, i18n: Translator
+) -> None:
+    """Blanket /cancel covering every onboarding state; also drops any reply keyboard."""
+    await state.clear()
+    await message.answer(
+        await i18n("master.onboard.cancelled"), reply_markup=ReplyKeyboardRemove()
+    )
 
 
 @router.message(ManualToken.awaiting, F.managed_bot_created)
@@ -208,14 +246,18 @@ async def on_managed_bot_created(
         return
     token = await bot(GetManagedBotToken(user_id=created.bot_user.id))
     async with get_sessionmaker()() as session:
-        tenant_bot = await finalize_provisioning(
-            session,
-            tenant_id=tenant_id,
-            token=token,
-            bot_telegram_id=created.bot_user.id,
-            bot_username=created.bot_user.username,
-            default_lang=data.get("default_lang", "ru"),
-        )
+        try:
+            tenant_bot = await finalize_provisioning(
+                session,
+                tenant_id=tenant_id,
+                token=token,
+                bot_telegram_id=created.bot_user.id,
+                bot_username=created.bot_user.username,
+                default_lang=data.get("default_lang", "ru"),
+            )
+        except BotAlreadyInUseError:
+            await message.answer(await i18n("master.onboard.token_in_use"))
+            return
     await publish_bot_reload()
     await state.clear()
     await message.answer(
@@ -234,16 +276,21 @@ async def on_manual_token(message: Message, state: FSMContext, i18n: Translator)
     bot_id, username = result
     data = await state.get_data()
     async with get_sessionmaker()() as session:
-        tenant_bot = await finalize_provisioning(
-            session,
-            tenant_id=data["tenant_id"],
-            token=token,
-            bot_telegram_id=bot_id,
-            bot_username=username,
-            default_lang=data.get("default_lang", "ru"),
-        )
+        try:
+            tenant_bot = await finalize_provisioning(
+                session,
+                tenant_id=data["tenant_id"],
+                token=token,
+                bot_telegram_id=bot_id,
+                bot_username=username,
+                default_lang=data.get("default_lang", "ru"),
+            )
+        except BotAlreadyInUseError:
+            await message.answer(await i18n("master.onboard.token_in_use"))
+            return
     await publish_bot_reload()
     await state.clear()
     await message.answer(
-        await i18n("master.onboard.done", username=tenant_bot.bot_username)
+        await i18n("master.onboard.done", username=tenant_bot.bot_username),
+        reply_markup=ReplyKeyboardRemove(),
     )
