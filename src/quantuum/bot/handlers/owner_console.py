@@ -214,7 +214,8 @@ async def on_manage_pause(
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -246,7 +247,8 @@ async def on_manage_resume(
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -372,7 +374,8 @@ async def on_manage_delete(
     tg_user_id = str(query.from_user.id)
     async with get_sessionmaker()() as session:
         actor = await authorize_tenant_action(
-            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id
+            session, tg_user_id=tg_user_id, tenant_id=callback_data.tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await query.answer(await i18n("owner.no_rights"), show_alert=True)
@@ -405,7 +408,8 @@ async def on_delete_confirm(message: Message, state: FSMContext, i18n: Translato
     async with get_sessionmaker()() as session:
         # Re-authorize at apply time (the role may have changed since the tap).
         actor = await authorize_tenant_action(
-            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id
+            session, tg_user_id=str(message.from_user.id), tenant_id=tenant_id,
+            roles=("owner",),
         )
         if actor is None:
             await message.answer(await i18n("owner.no_rights"))

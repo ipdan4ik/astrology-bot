@@ -23,6 +23,7 @@ from .conftest import build_translator
 
 OWNER_TG = 111
 CUSTOMER_TG = 222
+ADMIN_TG = 333
 
 
 # ── fakes ─────────────────────────────────────────────────────────────────────
@@ -207,6 +208,27 @@ async def test_pause_by_non_owner_denied(session, monkeypatch):
     assert bot.status == "active"
     assert await _audit_rows(session, t.id, "tenant.pause") == []
     # alert raised
+    assert q.answers and q.answers[-1][0] == "Нет прав"
+    assert q.answers[-1][1].get("show_alert") is True
+
+
+async def test_admin_cannot_pause_tenant(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, bot, _owner, _cust = await _seed_owner_tenant(session)
+    await _seed_account(session, tenant=t, tg=ADMIN_TG, role="admin")
+    i18n = await build_translator(session, t.id)
+
+    q = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await oc.on_manage_pause(q, OwnerManageCb(action="pause", tenant_id=t.id), i18n=i18n)
+
+    await session.refresh(t)
+    await session.refresh(bot)
+    assert t.status == "active"  # unchanged
+    assert bot.status == "active"
+    assert await _audit_rows(session, t.id, "tenant.pause") == []
     assert q.answers and q.answers[-1][0] == "Нет прав"
     assert q.answers[-1][1].get("show_alert") is True
 
@@ -492,6 +514,26 @@ async def test_delete_by_non_owner_denied(session, monkeypatch):
     q = FakeCallbackQuery(from_user_id=CUSTOMER_TG)
     await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
 
+    assert state.state is None  # FSM not entered
+    assert q.answers and q.answers[-1][0] == "Нет прав"
+    assert q.answers[-1][1].get("show_alert") is True
+
+
+async def test_admin_cannot_delete_tenant(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    await _seed_account(session, tenant=t, tg=ADMIN_TG, role="admin")
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    q = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await oc.on_manage_delete(q, OwnerManageCb(action="delete", tenant_id=t.id), state, i18n=i18n)
+
+    await session.refresh(t)
+    assert t.status == "active"  # unchanged
     assert state.state is None  # FSM not entered
     assert q.answers and q.answers[-1][0] == "Нет прав"
     assert q.answers[-1][1].get("show_alert") is True
