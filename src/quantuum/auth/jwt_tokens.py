@@ -66,6 +66,45 @@ async def consume_refresh_token(session, token: str) -> Account:
     return account
 
 
+async def _revoke_all_for_account(session, account_id: int) -> None:
+    from sqlalchemy import update
+    await session.execute(
+        update(AccountRefreshToken)
+        .where(
+            AccountRefreshToken.account_id == account_id,
+            AccountRefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=utcnow())
+    )
+    await session.commit()
+
+
+async def rotate_refresh_token(session, token: str) -> tuple[Account, str]:
+    """Validate a refresh token, revoke it, and issue a fresh one.
+
+    Reuse of an already-consumed (revoked) token revokes the entire chain for
+    that account and raises — a presented-but-revoked token signals theft.
+    """
+    result = await session.execute(
+        select(AccountRefreshToken).where(AccountRefreshToken.token_hash == _hash(token))
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise NotFoundError("refresh token invalid")
+    if row.revoked_at is not None:
+        await _revoke_all_for_account(session, row.account_id)
+        raise NotFoundError("refresh token reuse detected")
+    if row.expires_at < utcnow():
+        raise NotFoundError("refresh token expired")
+    account = await session.get(Account, row.account_id)
+    if account is None:
+        raise NotFoundError("account not found")
+    row.revoked_at = utcnow()
+    session.add(row)
+    new_token = await issue_refresh_token(session, account.id)  # commits both rows
+    return account, new_token
+
+
 async def revoke_refresh_token(session, token: str) -> None:
     result = await session.execute(
         select(AccountRefreshToken).where(AccountRefreshToken.token_hash == _hash(token))

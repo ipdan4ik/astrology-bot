@@ -40,6 +40,26 @@ async def test_magic_login_flow(client, default_tenant, monkeypatch):
     assert me.json()["tenant_id"] == default_tenant.id
 
 
+async def test_refresh_rotates_token_and_rejects_reuse(client, default_tenant, monkeypatch):
+    async def fake_send(to_email, link):
+        return None
+
+    monkeypatch.setattr(magic_link, "send_magic_email", fake_send)
+    token = await magic_link.create_magic_token("rot@example.com")
+    r = await client.get(f"/auth/magic/consume?token={token}")
+    assert r.status_code == 200
+    old_refresh = r.json()["refresh_token"]
+
+    r2 = await client.post("/auth/refresh", json={"refresh_token": old_refresh})
+    assert r2.status_code == 200
+    new_refresh = r2.json()["refresh_token"]
+    assert new_refresh != old_refresh  # token was rotated
+
+    # reusing the old (now consumed) refresh token is rejected
+    r3 = await client.post("/auth/refresh", json={"refresh_token": old_refresh})
+    assert r3.status_code == 401
+
+
 async def test_superadmin_magic_login_issues_sa_token(client, session, monkeypatch):
     from quantuum.auth import jwt_tokens, magic_link
     from quantuum.db.models import Account, AccountIdentity

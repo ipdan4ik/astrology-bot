@@ -34,11 +34,11 @@ async def magic_consume(token: str, session: AsyncSession = Depends(get_session)
 @router.post("/refresh", response_model=TokenOut)
 async def refresh(body: RefreshIn, session: AsyncSession = Depends(get_session)) -> TokenOut:
     try:
-        account = await jwt_tokens.consume_refresh_token(session, body.refresh_token)
+        account, new_refresh = await jwt_tokens.rotate_refresh_token(session, body.refresh_token)
     except NotFoundError as exc:
         raise HTTPException(status_code=401, detail="invalid refresh token") from exc
     access = jwt_tokens.issue_access_token(account.id, account.tenant_id, account.is_superadmin)
-    return TokenOut(access_token=access, refresh_token=body.refresh_token)
+    return TokenOut(access_token=access, refresh_token=new_refresh)
 
 
 @router.post("/logout")
