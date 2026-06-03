@@ -1404,3 +1404,16 @@ for _lang, _mapping in _EXTRA_LANGUAGES.items():
     for _key, _text in _mapping.items():
         if _key in BASE_STRINGS:
             BASE_STRINGS[_key][_lang] = _text
+
+
+# Keys whose text was renamed AFTER initial seed; ensure_base_strings is
+# insert-only, so these must be force-updated on already-seeded DBs.
+# Covers btn.generate, help.text, and every key carrying the "Blueprint" rename.
+RESYNC_KEYS: list[str] = [
+    "btn.generate",
+    "help.text",
+    "history.empty",
+    "history.detail_header",
+    "onb.done",
+    "owner.features.label.blueprint",
+]

@@ -207,6 +207,29 @@ async def ensure_base_strings(session) -> None:
         await session.commit()
 
 
+async def force_update_strings(session, keys) -> None:
+    """Force platform_strings text for *keys* to match BASE_STRINGS (UPDATE existing,
+    INSERT missing), then invalidate i18n caches. Unlike ensure_base_strings this
+    OVERWRITES existing rows — use only for keys renamed after the initial seed."""
+    from quantuum.i18n.cache import invalidate_i18n_all
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+
+    changed = False
+    for key in keys:
+        for lang, text in BASE_STRINGS.get(key, {}).items():
+            row = await session.get(PlatformString, (key, lang))
+            if row is None:
+                session.add(PlatformString(key=key, lang=lang, text=text))
+                changed = True
+            elif row.text != text:
+                row.text = text
+                session.add(row)
+                changed = True
+    if changed:
+        await session.commit()
+    await invalidate_i18n_all()
+
+
 async def ensure_tenant_default_language(
     session,
     tenant_id: int,
