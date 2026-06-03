@@ -26,13 +26,17 @@ TRANSLATIONS = {
     # Help text
     # -------------------------------------------------------------------------
     "help.text": (
-        "Je génère une lecture astrologique personnalisée (Quantuum Blueprint) à partir de tes "
-        "données natales.\n\n"
-        "Menu du bas :\n"
-        "🔮 Lecture — générer une lecture\n"
-        "👤 Profil — voir et modifier les données natales\n"
-        "📜 Historique — lectures passées\n\n"
-        "Commandes : /start /profile /blueprint\n"
+        "Je crée des lectures astrologiques personnelles à partir de tes données natales.\n\n"
+        "Menu :\n"
+        "❓ Demander à l'astrologue — question avec ton contexte natal\n"
+        "📖 Lectures — Blueprint, Transits, BaZi, Human Design, Tarot et plus\n"
+        "🔔 Horoscope quotidien — livraison quotidienne de ton horoscope\n"
+        "👤 Profil — date, heure et lieu de naissance\n"
+        "📜 Historique — toutes les lectures passées\n"
+        "💳 Acheter — packs et abonnements\n"
+        "🌐 Langue — changer la langue de l'interface\n"
+        "🎁 Inviter un ami — lien de parrainage\n"
+        "🎁 Cadeau — offrir des crédits à un ami\n\n"
         "Support : @quantuum_support"
     ),
     # -------------------------------------------------------------------------

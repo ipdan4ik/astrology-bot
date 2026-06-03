@@ -26,12 +26,17 @@ TRANSLATIONS = {
     # Help text
     # -------------------------------------------------------------------------
     "help.text": (
-        "Natal verilerinizden kişisel astrolojik yorum (Quantuum Blueprint) oluşturuyorum.\n\n"
-        "Alt menü:\n"
-        "🔮 Yorum — yorum oluştur\n"
-        "👤 Profil — natal verileri görüntüle ve düzenle\n"
-        "📜 Geçmiş — önceki yorumlar\n\n"
-        "Komutlar: /start /profile /blueprint\n"
+        "Doğum verilerinden kişisel astrolojik yorumlar oluşturuyorum.\n\n"
+        "Menü:\n"
+        "❓ Astrologa sor — doğum haritanla birlikte soru sor\n"
+        "📖 Yorumlar — Blueprint, Transitler, BaZi, Human Design, Tarot ve daha fazlası\n"
+        "🔔 Günlük burç yorumu — her gün otomatik teslim\n"
+        "👤 Profil — doğum tarihi, saati ve yeri\n"
+        "📜 Geçmiş — tüm önceki yorumlar\n"
+        "💳 Satın al — paketler ve abonelikler\n"
+        "🌐 Dil — arayüz dilini değiştir\n"
+        "🎁 Arkadaşını davet et — referans linki\n"
+        "🎁 Hediye — arkadaşına kredi hediye et\n\n"
         "Destek: @quantuum_support"
     ),
     # -------------------------------------------------------------------------
