@@ -33,6 +33,7 @@ class Tenant(SQLModel, table=True):
     )
     owner_tg_id: str | None = None
     owner_chat_id: str | None = None
+    invite_id: int | None = Field(default=None, foreign_key="tenant_invites.id", index=True)
     created_at: datetime = _dt_field(default_factory=utcnow)
 
 

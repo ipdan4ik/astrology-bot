@@ -105,3 +105,12 @@ async def test_validate_bot_token_rejects_garbage(monkeypatch):
     from quantuum.domain import provisioning
 
     assert await provisioning.validate_bot_token("not-a-token") is None
+
+
+async def test_tenant_has_invite_id_column(session, default_tenant):
+    from quantuum.db.models import Tenant
+
+    t = await session.get(Tenant, default_tenant.id)
+    # column exists and defaults to None
+    assert hasattr(t, "invite_id")
+    assert t.invite_id is None
