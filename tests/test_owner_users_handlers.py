@@ -156,15 +156,27 @@ async def test_grant_adds_credits(session, default_tenant, monkeypatch):
 
 
 async def test_grant_deduct_clamps(session, default_tenant, monkeypatch):
+    from sqlmodel import select
+
     from quantuum.bot.handlers import owner_users as ou
+    from quantuum.db.models import AccountPackage
 
     _patch_sessionmaker(monkeypatch, ou, session)
     await _owner(session, default_tenant)
     target = await find_or_create_account_by_tg(session, tenant_id=default_tenant.id, tg_user_id="1000")
-    # zero out welcome credits so deduct-clamp behaviour is unambiguous
+    # zero out welcome credits (both the balance counter and all ledger rows)
+    # so deduct-clamp behaviour is unambiguous with the ledger-backed implementation
     bal = await session.get(AccountBalance, target.id)
     bal.package_credits = 0
     session.add(bal)
+    pkgs = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == target.id)
+        )
+    ).scalars().all()
+    for pkg in pkgs:
+        pkg.requests_remaining = 0
+        session.add(pkg)
     await session.commit()
     i18n = await build_translator(session, default_tenant.id)
     state = _fsm()
