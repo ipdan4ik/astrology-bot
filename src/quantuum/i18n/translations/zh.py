@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "暂无解读记录。点击「🔮 解读」创建第一条。",
+    "history.empty": "暂无解读记录。点击「🔮 Blueprint」创建第一条。",
     "history.title": "📜 解读历史：",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 解读 #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "状态：{status}",
     "history.detail_created": "创建时间：{created_at}",
     "history.detail_ready": "完成时间：{completed_at}",
@@ -277,7 +277,7 @@ TRANSLATIONS = {
     "onb.prompt.birth_place": (
         "出生地点：发送位置（📎 → 位置，可在地图上标记）或输入城市/部分地址："
     ),
-    "onb.done": "完成！您的资料已保存。点击下方菜单中的「🔮 解读」。",
+    "onb.done": "完成！您的资料已保存。点击下方菜单中的「🔮 Blueprint」。",
     # Owner console — user management
     "owner.manage.kb.users": "👥 用户",
     "owner.users.header": "{display_name} 的用户：",

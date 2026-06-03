@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "Henüz yorum yok. İlk yorumu oluşturmak için «🔮 Yorum» düğmesine dokunun.",
+    "history.empty": "Henüz yorum yok. İlk yorumu oluşturmak için «🔮 Blueprint» düğmesine dokunun.",
     "history.title": "📜 Yorum geçmişi:",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 Yorum #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "Durum: {status}",
     "history.detail_created": "Oluşturuldu: {created_at}",
     "history.detail_ready": "Hazır: {completed_at}",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "Doğum yeri: konumunuzu gönderin (📎 → Konum, haritada pin bırakabilirsiniz) "
         "veya şehir / adresin bir bölümünü yazın:"
     ),
-    "onb.done": "Tamam! Profilin kaydedildi. Aşağıdaki menüde «🔮 Okuma» düğmesine dokun.",
+    "onb.done": "Tamam! Profilin kaydedildi. Aşağıdaki menüde «🔮 Blueprint» düğmesine dokun.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Kullanıcılar",
     "owner.users.header": "{display_name} kullanıcıları:",

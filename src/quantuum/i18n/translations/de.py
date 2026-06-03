@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "Noch keine Analysen. Tippe auf «🔮 Analyse», um deine erste zu erstellen.",
+    "history.empty": "Noch keine Analysen. Tippe auf «🔮 Blueprint», um deine erste zu erstellen.",
     "history.title": "📜 Analyseverlauf:",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 Analyse #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "Status: {status}",
     "history.detail_created": "Erstellt: {created_at}",
     "history.detail_ready": "Fertig: {completed_at}",
@@ -229,7 +229,7 @@ TRANSLATIONS = {
     "admin.tenants.title": "Alle Bots:",
     "admin.tenants.empty": "Noch keine Bots.",
     "admin.tenant.title": "Bot: {display_name} (/{slug}) — {status}",
-    "admin.tenant.kb.stats": "📊 Stats",
+    "admin.tenant.kb.stats": "📊 Statistik",
     "admin.tenant.kb.suspend": "⏸ Aussetzen",
     "admin.tenant.kb.resume": "▶️ Fortsetzen",
     "admin.tenant.kb.delete": "🗑 Löschen",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "Geburtsort: Sende deinen Standort (📎 → Standort, du kannst eine Markierung auf der "
         "Karte setzen) oder gib eine Stadt / Teil einer Adresse ein:"
     ),
-    "onb.done": "Fertig! Dein Profil ist gespeichert. Tippe auf «🔮 Lesung» im Menü unten.",
+    "onb.done": "Fertig! Dein Profil ist gespeichert. Tippe auf «🔮 Blueprint» im Menü unten.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Nutzer",
     "owner.users.header": "Nutzer von {display_name}:",

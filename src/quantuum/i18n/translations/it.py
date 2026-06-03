@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "Nessuna lettura ancora. Premi «🔮 Lettura» per crearne una.",
+    "history.empty": "Nessuna lettura ancora. Premi «🔮 Blueprint» per crearne una.",
     "history.title": "📜 Cronologia letture:",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 Lettura #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "Stato: {status}",
     "history.detail_created": "Creata: {created_at}",
     "history.detail_ready": "Pronta: {completed_at}",
@@ -229,7 +229,7 @@ TRANSLATIONS = {
     "admin.tenants.title": "Tutti i bot:",
     "admin.tenants.empty": "Nessun bot ancora.",
     "admin.tenant.title": "Bot: {display_name} (/{slug}) — {status}",
-    "admin.tenant.kb.stats": "📊 Stats",
+    "admin.tenant.kb.stats": "📊 Statistiche",
     "admin.tenant.kb.suspend": "⏸ Sospendi",
     "admin.tenant.kb.resume": "▶️ Riprendi",
     "admin.tenant.kb.delete": "🗑 Elimina",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "Luogo di nascita: invia la tua posizione (📎 → Posizione, puoi segnare un punto "
         "sulla mappa) oppure scrivi una città / parte dell'indirizzo:"
     ),
-    "onb.done": "Fatto! Il tuo profilo è salvato. Premi «🔮 Lettura» nel menu in basso.",
+    "onb.done": "Fatto! Il tuo profilo è salvato. Premi «🔮 Blueprint» nel menu in basso.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Utenti",
     "owner.users.header": "Utenti di {display_name}:",

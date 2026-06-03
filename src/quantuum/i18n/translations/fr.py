@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "Aucune lecture pour l'instant. Appuie sur «🔮 Lecture» pour en créer une.",
+    "history.empty": "Aucune lecture pour l'instant. Appuie sur «🔮 Blueprint» pour en créer une.",
     "history.title": "📜 Historique des lectures :",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 Lecture #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "Statut : {status}",
     "history.detail_created": "Créée : {created_at}",
     "history.detail_ready": "Prête : {completed_at}",
@@ -229,7 +229,7 @@ TRANSLATIONS = {
     "admin.tenants.title": "Tous les bots :",
     "admin.tenants.empty": "Aucun bot pour l'instant.",
     "admin.tenant.title": "Bot : {display_name} (/{slug}) — {status}",
-    "admin.tenant.kb.stats": "📊 Stats",
+    "admin.tenant.kb.stats": "📊 Statistiques",
     "admin.tenant.kb.suspend": "⏸ Suspendre",
     "admin.tenant.kb.resume": "▶️ Reprendre",
     "admin.tenant.kb.delete": "🗑 Supprimer",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "Lieu de naissance : envoie ta position (📎 → Localisation, tu peux placer un repère sur "
         "la carte) ou tape une ville / partie d'adresse :"
     ),
-    "onb.done": "Terminé ! Ton profil est enregistré. Appuie sur «🔮 Lecture» dans le menu ci-dessous.",
+    "onb.done": "Terminé ! Ton profil est enregistré. Appuie sur «🔮 Blueprint» dans le menu ci-dessous.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Utilisateurs",
     "owner.users.header": "Utilisateurs de {display_name} :",

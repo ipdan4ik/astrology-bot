@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "Aún no hay lecturas. Pulsa «🔮 Lectura» para crear la primera.",
+    "history.empty": "Aún no hay lecturas. Pulsa «🔮 Blueprint» para crear la primera.",
     "history.title": "📜 Historial de lecturas:",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 Lectura #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "Estado: {status}",
     "history.detail_created": "Creado: {created_at}",
     "history.detail_ready": "Lista: {completed_at}",
@@ -229,7 +229,7 @@ TRANSLATIONS = {
     "admin.tenants.title": "Todos los bots:",
     "admin.tenants.empty": "Aún no hay bots.",
     "admin.tenant.title": "Bot: {display_name} (/{slug}) — {status}",
-    "admin.tenant.kb.stats": "📊 Stats",
+    "admin.tenant.kb.stats": "📊 Estadísticas",
     "admin.tenant.kb.suspend": "⏸ Suspender",
     "admin.tenant.kb.resume": "▶️ Reanudar",
     "admin.tenant.kb.delete": "🗑 Eliminar",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "Lugar de nacimiento: envía tu ubicación (📎 → Ubicación, puedes marcar un punto "
         "en el mapa) o escribe una ciudad / parte de una dirección:"
     ),
-    "onb.done": "¡Listo! Tu perfil está guardado. Pulsa «🔮 Lectura» en el menú de abajo.",
+    "onb.done": "¡Listo! Tu perfil está guardado. Pulsa «🔮 Blueprint» en el menú de abajo.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Usuarios",
     "owner.users.header": "Usuarios de {display_name}:",

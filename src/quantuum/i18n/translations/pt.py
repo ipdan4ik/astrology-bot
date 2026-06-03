@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "Nenhuma leitura ainda. Toque em «🔮 Leitura» para criar a primeira.",
+    "history.empty": "Nenhuma leitura ainda. Toque em «🔮 Blueprint» para criar a primeira.",
     "history.title": "📜 Histórico de leituras:",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 Leitura #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "Status: {status}",
     "history.detail_created": "Criado: {created_at}",
     "history.detail_ready": "Pronto: {completed_at}",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "Local de nascimento: envie sua localização (📎 → Localização, você pode marcar um ponto "
         "no mapa) ou digite uma cidade / parte de um endereço:"
     ),
-    "onb.done": "Pronto! O seu perfil foi salvo. Toque em «🔮 Leitura» no menu abaixo.",
+    "onb.done": "Pronto! O seu perfil foi salvo. Toque em «🔮 Blueprint» no menu abaixo.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Usuários",
     "owner.users.header": "Usuários de {display_name}:",

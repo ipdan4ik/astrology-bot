@@ -127,10 +127,10 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # History
     # -------------------------------------------------------------------------
-    "history.empty": "अभी कोई विश्लेषण नहीं है। पहला बनाने के लिए «🔮 विश्लेषण» दबाएँ।",
+    "history.empty": "अभी कोई विश्लेषण नहीं है। पहला बनाने के लिए «🔮 Blueprint» दबाएँ।",
     "history.title": "📜 विश्लेषण इतिहास:",
     "history.label": "🔮 {date} · {status}",
-    "history.detail_header": "🔮 विश्लेषण #{id}",
+    "history.detail_header": "🔮 Blueprint #{id}",
     "history.detail_status": "स्थिति: {status}",
     "history.detail_created": "बनाया: {created_at}",
     "history.detail_ready": "तैयार: {completed_at}",
@@ -278,7 +278,7 @@ TRANSLATIONS = {
         "जन्म स्थान: लोकेशन भेजें (📎 → Location, मानचित्र पर पिन लगा सकते हैं) "
         "या शहर / पते का हिस्सा लिखें:"
     ),
-    "onb.done": "हो गया! आपका प्रोफ़ाइल सहेजा गया। नीचे मेनू में «🔮 रीडिंग» दबाएं।",
+    "onb.done": "हो गया! आपका प्रोफ़ाइल सहेजा गया। नीचे मेनू में «🔮 Blueprint» दबाएं।",
     # Owner console — user management
     "owner.manage.kb.users": "👥 उपयोगकर्ता",
     "owner.users.header": "{display_name} के उपयोगकर्ता:",
