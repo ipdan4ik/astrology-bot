@@ -7,7 +7,7 @@ from quantuum.i18n.translations import de, es, fr, hi, it, pt, tr, zh
 
 DIVINATION_KEYS = [
     "readings.kind.tarot", "readings.kind.iching",
-    "divination.question_prompt", "divination.question_hint",
+    "divination.question_prompt",
     "divination.skip_btn", "divination.no_question",
     "tarot.position.past", "tarot.position.present", "tarot.position.future",
     "tarot.orientation.upright", "tarot.orientation.reversed",
