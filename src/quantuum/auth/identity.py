@@ -94,7 +94,7 @@ async def find_superadmin_by_tg(session, tg_user_id: str) -> Account | None:
             Account.is_superadmin == True,  # noqa: E712
         )
     )
-    identity = result.scalar_one_or_none()
+    identity = result.scalars().first()
     if identity is None:
         return None
     return await session.get(Account, identity.account_id)

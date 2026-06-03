@@ -100,6 +100,25 @@ async def test_ensure_superadmin_tg_rotation_revokes_old(session, monkeypatch):
     get_settings.cache_clear()
 
 
+async def test_find_superadmin_by_tg_tolerates_duplicates(session):
+    """Two superadmin identities sharing the same tg id must not raise."""
+    from quantuum.auth.identity import find_superadmin_by_tg
+
+    for _ in range(2):
+        acc = Account(tenant_id=None, is_superadmin=True)
+        session.add(acc)
+        await session.flush()
+        session.add(
+            AccountIdentity(
+                account_id=acc.id, provider="tg_chat", provider_user_id="dup_sa"
+            )
+        )
+    await session.commit()
+
+    result = await find_superadmin_by_tg(session, "dup_sa")
+    assert result is not None and result.is_superadmin
+
+
 async def test_find_superadmin_by_tg_none_when_only_plain(session):
     from quantuum.auth.identity import find_superadmin_by_tg
 
