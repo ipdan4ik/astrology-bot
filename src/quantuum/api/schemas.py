@@ -31,8 +31,8 @@ class NatalProfileIn(BaseModel):
     birth_date: date
     birth_time: time
     birth_place: str
-    latitude: Decimal
-    longitude: Decimal
+    latitude: Decimal = Field(ge=-90, le=90)
+    longitude: Decimal = Field(ge=-180, le=180)
     timezone: str
     for_year: int | None = None
 
@@ -115,7 +115,7 @@ class DailyHoroscopeOut(BaseModel):
 
 class InviteCreateIn(BaseModel):
     tier: str = "basic"
-    max_uses: int = 1
+    max_uses: int = Field(default=1, ge=1, le=10_000)
     expires_at: datetime | None = None
     preset_slug: str | None = None
     preset_display_name: str | None = None
@@ -192,8 +192,8 @@ class PaymentOut(BaseModel):
 class SubscriptionPlanCreateIn(BaseModel):
     slug: str
     name: str
-    period_days: int
-    price_cents: int
+    period_days: int = Field(ge=1, le=3650)
+    price_cents: int = Field(ge=0, le=100_000_000)
     currency: str = "XTR"
     tenant_id: int | None = None
 
@@ -201,25 +201,25 @@ class SubscriptionPlanCreateIn(BaseModel):
 class PackagePlanCreateIn(BaseModel):
     slug: str
     name: str
-    request_count: int
-    price_cents: int
+    request_count: int = Field(ge=1, le=1_000_000)
+    price_cents: int = Field(ge=0, le=100_000_000)
     currency: str = "XTR"
-    expires_after_days: int | None = None
+    expires_after_days: int | None = Field(default=None, ge=1, le=3650)
     tenant_id: int | None = None
 
 
 class SubscriptionPlanPatchIn(BaseModel):
     name: str | None = None
-    period_days: int | None = None
-    price_cents: int | None = None
+    period_days: int | None = Field(default=None, ge=1, le=3650)
+    price_cents: int | None = Field(default=None, ge=0, le=100_000_000)
     active: bool | None = None
 
 
 class PackagePlanPatchIn(BaseModel):
     name: str | None = None
-    request_count: int | None = None
-    price_cents: int | None = None
-    expires_after_days: int | None = None
+    request_count: int | None = Field(default=None, ge=1, le=1_000_000)
+    price_cents: int | None = Field(default=None, ge=0, le=100_000_000)
+    expires_after_days: int | None = Field(default=None, ge=1, le=3650)
     active: bool | None = None
 
 
@@ -403,7 +403,7 @@ class AccountSummaryOut(BaseModel):
 
 
 class BalancePatchIn(BaseModel):
-    package_credits: int | None = None
+    package_credits: int | None = Field(default=None, ge=0, le=1_000_000)
     subscription_active_until: datetime | None = None
 
 

@@ -54,6 +54,15 @@ async def test_create_and_list_invite(client, sa_headers):
     assert any(i["code"] == body["code"] for i in lst.json())
 
 
+async def test_create_invite_rejects_zero_max_uses(client, sa_headers):
+    r = await client.post(
+        "/admin/platform/invites",
+        json={"tier": "basic", "max_uses": 0},
+        headers=sa_headers,
+    )
+    assert r.status_code == 422
+
+
 async def test_revoke_invite(client, sa_headers):
     created = await client.post("/admin/platform/invites", json={}, headers=sa_headers)
     invite_id = created.json()["id"]
