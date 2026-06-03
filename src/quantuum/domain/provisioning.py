@@ -86,6 +86,7 @@ async def create_tenant_from_onboarding(
             bot_token_enc=b"",
             transport=transport,
             webhook_secret_path=url_safe_token(16),
+            webhook_secret_token=url_safe_token(16),
             status="provisioning",
         )
     )

@@ -50,6 +50,7 @@ class TenantBot(SQLModel, table=True):
     bot_token_enc: bytes
     transport: str = "polling"  # polling|webhook
     webhook_secret_path: str = Field(unique=True, index=True)
+    webhook_secret_token: str | None = Field(default=None)
     status: str = "active"  # active|paused|error
     created_at: datetime = _dt_field(default_factory=utcnow)
     updated_at: datetime = _dt_field(default_factory=utcnow)
