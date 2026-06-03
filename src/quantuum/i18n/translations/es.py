@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Cancelar",
+    "errors.queue_failed": "No se pudo poner tu solicitud en cola. Se te devolvió el crédito; inténtalo de nuevo en un momento.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------

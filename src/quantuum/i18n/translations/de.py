@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Abbrechen",
+    "errors.queue_failed": "Anfrage konnte nicht eingereiht werden. Dein Guthaben wurde erstattet — bitte versuche es gleich noch einmal.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------

@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Annulla",
+    "errors.queue_failed": "Impossibile mettere in coda la richiesta. Il credito è stato rimborsato — riprova tra poco.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------

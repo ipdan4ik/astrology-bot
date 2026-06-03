@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Cancelar",
+    "errors.queue_failed": "Não foi possível colocar seu pedido na fila. Seu crédito foi devolvido — tente novamente em instantes.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------

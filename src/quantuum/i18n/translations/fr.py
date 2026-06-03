@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ Annuler",
+    "errors.queue_failed": "Impossible de mettre votre demande en file d'attente. Votre crédit a été remboursé — réessayez dans un instant.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------

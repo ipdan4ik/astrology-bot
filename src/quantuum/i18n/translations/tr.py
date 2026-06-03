@@ -161,6 +161,7 @@ TRANSLATIONS = {
     # Shared / generic
     # -------------------------------------------------------------------------
     "kb.cancel": "✖️ İptal",
+    "errors.queue_failed": "İsteğin kuyruğa alınamadı. Kredin iade edildi — lütfen birazdan tekrar dene.",
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding
     # -------------------------------------------------------------------------

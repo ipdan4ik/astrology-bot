@@ -510,6 +510,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "✖️ Отмена",
         "en": "✖️ Cancel",
     },
+    "errors.queue_failed": {
+        "ru": "Не удалось поставить запрос в очередь. Кредит возвращён — попробуй ещё раз чуть позже.",
+        "en": "Couldn't queue your request. Your credit was refunded — please try again shortly.",
+    },
     # -------------------------------------------------------------------------
     # Master bot — owner onboarding (master_onboarding.py)
     # -------------------------------------------------------------------------
