@@ -292,4 +292,4 @@ async def test_blueprint_generate_passes_stored_lang(session, default_tenant):
 
     ctx = {"sessionmaker": _Maker(), "llm_client": CaptureLLM()}
     await blueprint_generate(ctx, bp.id, chat_id=None, request_id=None)
-    assert "Answer in language: de." in capture["user"]
+    assert "German" in capture["user"] and "native" in capture["user"]

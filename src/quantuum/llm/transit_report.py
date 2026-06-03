@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from quantuum.llm.lang_instruction import lang_instruction
+
 PROMPT_PATH = Path(__file__).parent / "prompts" / "transit_astrologer.txt"
 
 
@@ -8,7 +10,7 @@ async def transit_report(client, natal_md, transit_md, *, lang, model, temperatu
     user = "\n".join(
         [
             "Write a transit reading for this person using ONLY the natal chart and the computed transit tables below.",
-            f"Answer in language: {lang}.",
+            lang_instruction(lang),
             "",
             "NATAL CHART:",
             natal_md,

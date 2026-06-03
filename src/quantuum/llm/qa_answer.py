@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from quantuum.llm.lang_instruction import lang_instruction
+
 PROMPT_PATH = Path(__file__).parent / "prompts" / "qa_astrologer.txt"
 
 
@@ -8,7 +10,7 @@ async def qa_answer(client, calc_md, question, *, lang, model, temperature, max_
     user = "\n".join(
         [
             "Answer the user's question using only the calculated chart below.",
-            f"Answer in language: {lang}.",
+            lang_instruction(lang),
             "",
             "CALCULATED CHART:",
             calc_md,

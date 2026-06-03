@@ -50,7 +50,7 @@ async def test_polish_blueprint_passes_language_to_all_readings():
     # Exactly 8 parallel polish_reading calls must have been made.
     assert len(client.calls) == 8
     for call in client.calls:
-        assert "Answer in language: es." in call["user"]
+        assert "Spanish" in call["user"] and "native" in call["user"]
     # Stitched result must be a valid composite document.
     assert "Test User" in result.text
     assert "## 🌌 FIELD OVERVIEW" in result.text

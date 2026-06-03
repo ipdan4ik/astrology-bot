@@ -218,4 +218,4 @@ async def test_qa_generate_passes_stored_lang(session, default_tenant):
 
     ctx = {"sessionmaker": _Maker(session), "llm_client": CaptureLLM()}
     await qa_generate(ctx, qa.id, chat_id=None, request_id=None)
-    assert "Answer in language: pt." in capture["user"]
+    assert "Portuguese" in capture["user"] and "native" in capture["user"]

@@ -25,7 +25,8 @@ async def test_polish_reading_uses_per_kind_prompt(kind):
     assert result.text == "POLISHED"
     call = client.calls[0]
     assert call["system"] == READING_PROMPTS[kind].read_text()
-    assert "Answer in language: en." in call["user"]
+    assert "English" in call["user"]
+    assert "native" in call["user"]
     assert calc in call["user"]
 
 

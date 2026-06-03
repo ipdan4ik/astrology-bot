@@ -39,7 +39,7 @@ async def test_polish_blueprint_composes_eight_reading_polishes():
     assert "## 🌌 FIELD OVERVIEW" in res.text
     # Language was forwarded to every call
     for call in fake.calls:
-        assert "Answer in language: en." in call["user"]
+        assert "English" in call["user"] and "native" in call["user"]
 
 
 async def test_openai_client_parses_and_strips_fence(monkeypatch):

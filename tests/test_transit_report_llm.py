@@ -28,4 +28,4 @@ async def test_transit_report_wraps_inputs():
     assert "NATAL_MD" in client.user
     assert "TRANSITS:" in client.user
     assert "TRANSIT_MD" in client.user
-    assert "Answer in language: ru." in client.user
+    assert "Russian" in client.user and "native" in client.user

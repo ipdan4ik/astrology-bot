@@ -19,4 +19,4 @@ async def test_daily_horoscope_wraps_inputs():
     assert client.system and "horoscope" in client.system.lower()
     assert "NATAL CHART:" in client.user and "NATAL_MD" in client.user
     assert "TRANSITS:" in client.user and "TRANSIT_MD" in client.user
-    assert "Answer in language: ru." in client.user
+    assert "Russian" in client.user and "native" in client.user

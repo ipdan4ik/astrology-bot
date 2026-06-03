@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from quantuum.llm.lang_instruction import lang_instruction
+
 _PROMPTS = Path(__file__).parent / "prompts"
 
 READING_PROMPTS: dict[str, Path] = {
@@ -38,7 +40,7 @@ async def polish_reading(client, kind: str, calc_md: str, *, lang: str,
     label = _KIND_LABEL[kind]
     user = "\n".join([
         f"Transform this calculated {label} chart slice into the polished Quantuum reading.",
-        f"Answer in language: {lang}.",
+        lang_instruction(lang),
         "",
         "CALCULATED MARKDOWN:",
         calc_md,

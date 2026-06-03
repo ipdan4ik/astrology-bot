@@ -58,4 +58,4 @@ async def test_qa_answer_passes_language():
     )
     assert result.text == "A"
     assert "What is my path?" in client.user
-    assert "Answer in language: it." in client.user
+    assert "Italian" in client.user and "native" in client.user
