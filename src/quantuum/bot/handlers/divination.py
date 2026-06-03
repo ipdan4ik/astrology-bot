@@ -12,6 +12,7 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from openai import AsyncOpenAI
 
+from quantuum.bot.handlers._guard import enqueue_or_refund
 from quantuum.bot.handlers.generate import _buy_offer_kb
 from quantuum.bot.ui.keyboards import main_menu_kb, profile_kb
 from quantuum.bot.ui.callbacks import DivinationCb, OnboardCb, ReadingCb
@@ -212,7 +213,12 @@ async def _perform_draw_and_enqueue(
             kind="reading", charged_against=charged,
         )
 
-    await enqueue_reading(reading.id, chat_id, request.id)
+    if not await enqueue_or_refund(
+        enqueue_reading(reading.id, chat_id, request.id), request_id=request.id
+    ):
+        await message_for_reply.answer(await i18n("errors.queue_failed"))
+        await state.clear()
+        return
     await message_for_reply.answer(await i18n("readings.queued"))
     await state.clear()
 
