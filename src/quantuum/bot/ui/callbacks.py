@@ -15,6 +15,7 @@ class HistoryCb(CallbackData, prefix="hist"):
 class BlueprintCb(CallbackData, prefix="bp"):
     action: str  # download | preview | back
     bp_id: int
+    page: int = 0
 
 
 class OnboardCb(CallbackData, prefix="onb"):

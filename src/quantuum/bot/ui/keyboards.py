@@ -186,21 +186,21 @@ async def history_list_kb(
 
 
 async def blueprint_detail_kb(
-    bp_id: int, can_download: bool, i18n: Translator | None = None
+    bp_id: int, can_download: bool, i18n: Translator | None = None, page: int = 0
 ) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     if can_download:
         b.button(
             text=await _label(i18n, "history.kb.download"),
-            callback_data=BlueprintCb(action="download", bp_id=bp_id),
+            callback_data=BlueprintCb(action="download", bp_id=bp_id, page=page),
         )
         b.button(
             text=await _label(i18n, "history.kb.preview"),
-            callback_data=BlueprintCb(action="preview", bp_id=bp_id),
+            callback_data=BlueprintCb(action="preview", bp_id=bp_id, page=page),
         )
     b.button(
         text=await _label(i18n, "history.kb.back"),
-        callback_data=BlueprintCb(action="back", bp_id=bp_id),
+        callback_data=BlueprintCb(action="back", bp_id=bp_id, page=page),
     )
     b.adjust(2, 1)
     return b.as_markup()

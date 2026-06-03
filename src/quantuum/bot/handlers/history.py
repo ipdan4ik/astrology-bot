@@ -50,30 +50,31 @@ async def _render_readings(target, account: Account, i18n: Translator) -> None:
         await target.answer(row_text, reply_markup=b.as_markup() if r.llm_md else None)
 
 
-async def _render_list(target, account: Account, i18n: Translator, page: int) -> None:
+async def _build_list_view(
+    account: Account, i18n: Translator, page: int
+) -> tuple[str, object]:
     async with get_sessionmaker()() as session:
         window = await fetch_history_window(session, account_id=account.id, page=page)
     rows, has_next = page_slice(window, PAGE_SIZE)
     if not rows and page == 0:
-        await target.answer(await i18n("history.empty"))
-    else:
-        entries = [(bp.id, await render_history_label(i18n, bp)) for bp in rows]
-        await target.answer(
-            await i18n("history.title"),
-            reply_markup=await history_list_kb(entries, page, has_next, i18n),
-        )
-    await _render_readings(target, account, i18n)
+        return await i18n("history.empty"), None
+    entries = [(bp.id, await render_history_label(i18n, bp)) for bp in rows]
+    kb = await history_list_kb(entries, page, has_next, i18n)
+    return await i18n("history.title"), kb
 
 
 async def show_history(message, account: Account, i18n: Translator, page: int = 0) -> None:
-    await _render_list(message, account, i18n, page)
+    text, kb = await _build_list_view(account, i18n, page)
+    await message.answer(text, reply_markup=kb)
+    await _render_readings(message, account, i18n)
 
 
 @router.callback_query(HistoryCb.filter(F.action == "page"))
 async def on_page(
     query: CallbackQuery, callback_data: HistoryCb, account: Account, i18n: Translator
 ) -> None:
-    await _render_list(query.message, account, i18n, callback_data.page)
+    text, kb = await _build_list_view(account, i18n, callback_data.page)
+    await query.message.edit_text(text, reply_markup=kb)
     await query.answer()
 
 
@@ -88,7 +89,9 @@ async def on_open(
         return
     await query.message.answer(
         await render_detail(i18n, bp),
-        reply_markup=await blueprint_detail_kb(bp.id, can_download=bool(bp.llm_md), i18n=i18n),
+        reply_markup=await blueprint_detail_kb(
+            bp.id, can_download=bool(bp.llm_md), i18n=i18n, page=callback_data.page
+        ),
     )
     await query.answer()
 
@@ -122,8 +125,11 @@ async def on_preview(
 
 
 @router.callback_query(BlueprintCb.filter(F.action == "back"))
-async def on_back(query: CallbackQuery, account: Account, i18n: Translator) -> None:
-    await _render_list(query.message, account, i18n, 0)
+async def on_back(
+    query: CallbackQuery, callback_data: BlueprintCb, account: Account, i18n: Translator
+) -> None:
+    text, kb = await _build_list_view(account, i18n, callback_data.page)
+    await query.message.answer(text, reply_markup=kb)
     await query.answer()
 
 

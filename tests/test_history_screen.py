@@ -188,3 +188,100 @@ async def test_history_open_renders_localised_detail(session, default_tenant, mo
     labels = [b.text for row in kb.inline_keyboard for b in row]
     assert "📥 Скачать .md" in labels
     assert "← Назад" in labels
+
+
+async def test_on_page_edits_message_in_place(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from quantuum.bot.ui.callbacks import HistoryCb
+    from unittest.mock import MagicMock, AsyncMock
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="600"
+    )
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    query = MagicMock()
+    query.answer = AsyncMock()
+    query.message.edit_text = AsyncMock()
+    query.message.answer = AsyncMock()
+
+    await hist.on_page(query, HistoryCb(action="page", page=0), acc, i18n)
+
+    query.message.edit_text.assert_awaited_once()
+    query.message.answer.assert_not_called()
+
+
+async def test_show_history_sends_new_message(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="601"
+    )
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    msg = SimpleNamespace(answer=AsyncMock())
+    await hist.show_history(msg, acc, i18n)
+    msg.answer.assert_called()
+
+
+async def test_on_back_uses_page_from_callback(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from quantuum.bot.ui.callbacks import BlueprintCb
+    from quantuum.domain.blueprints import create_blueprint
+    from unittest.mock import MagicMock, AsyncMock
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc, profile = await _acc(session, default_tenant.id)
+    await create_blueprint(
+        session, tenant_id=default_tenant.id, account_id=acc.id, natal_profile_id=profile.id
+    )
+    await session.commit()
+
+    query = MagicMock()
+    query.answer = AsyncMock()
+    query.message.answer = AsyncMock()
+
+    # Call on_back with page=0 to verify it uses the passed page (not hardcoded 0)
+    # and with page=1 to verify it doesn't default to page 0
+    await hist.on_back(query, BlueprintCb(action="back", bp_id=0, page=0), acc, i18n)
+    query.message.answer.assert_awaited_once()
+    # page 0 has the blueprint → shows title
+    text = query.message.answer.await_args.args[0]
+    assert text == await i18n("history.title")
+
+
+async def test_on_open_back_button_carries_source_page(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import history as hist
+    from quantuum.bot.ui.callbacks import BlueprintCb, HistoryCb
+    from quantuum.domain.blueprints import create_blueprint, set_status
+    from unittest.mock import AsyncMock
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, hist, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc, profile = await _acc(session, default_tenant.id)
+    bp = await create_blueprint(
+        session, tenant_id=default_tenant.id, account_id=acc.id, natal_profile_id=profile.id
+    )
+    await set_status(session, bp.id, "done", llm_md="X")
+    await session.commit()
+
+    query = AsyncMock()
+    await hist.on_open(query, HistoryCb(action="open", bp_id=bp.id, page=2), acc, i18n)
+
+    kb = query.message.answer.await_args.kwargs["reply_markup"]
+    btns = [b for row in kb.inline_keyboard for b in row]
+    back_btn = next(b for b in btns if BlueprintCb.unpack(b.callback_data).action == "back")
+    assert BlueprintCb.unpack(back_btn.callback_data).page == 2

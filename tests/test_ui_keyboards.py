@@ -87,3 +87,23 @@ async def test_cancel_kb_no_i18n_falls_back_to_ru():
     kb = await cancel_kb()
     btns = _inline(kb)
     assert [b.text for b in btns] == ["✖️ Отмена"]
+
+
+async def test_blueprint_detail_kb_back_button_carries_page():
+    from quantuum.bot.ui.keyboards import blueprint_detail_kb
+    from quantuum.bot.ui.callbacks import BlueprintCb
+
+    kb = await blueprint_detail_kb(5, can_download=False, i18n=None, page=3)
+    btns = [b for row in kb.inline_keyboard for b in row]
+    back_btn = next(b for b in btns if BlueprintCb.unpack(b.callback_data).action == "back")
+    assert BlueprintCb.unpack(back_btn.callback_data).page == 3
+
+
+async def test_blueprint_detail_kb_back_page_defaults_to_zero():
+    from quantuum.bot.ui.keyboards import blueprint_detail_kb
+    from quantuum.bot.ui.callbacks import BlueprintCb
+
+    kb = await blueprint_detail_kb(5, can_download=False, i18n=None)
+    btns = [b for row in kb.inline_keyboard for b in row]
+    back_btn = next(b for b in btns if BlueprintCb.unpack(b.callback_data).action == "back")
+    assert BlueprintCb.unpack(back_btn.callback_data).page == 0
