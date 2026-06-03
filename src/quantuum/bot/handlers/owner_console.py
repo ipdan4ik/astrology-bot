@@ -296,6 +296,30 @@ async def on_transfer_cmd(
     await message.answer(await i18n("owner.transfer.prompt"))
 
 
+@router.callback_query(OwnerManageCb.filter(F.action == "transfer"))
+async def on_manage_transfer(
+    query: CallbackQuery,
+    callback_data: OwnerManageCb,
+    state: FSMContext,
+    i18n: Translator,
+) -> None:
+    tg_user_id = str(query.from_user.id)
+    async with get_sessionmaker()() as session:
+        actor = await authorize_tenant_action(
+            session,
+            tg_user_id=tg_user_id,
+            tenant_id=callback_data.tenant_id,
+            roles=("owner",),
+        )
+    if actor is None:
+        await query.answer(await i18n("owner.no_rights"), show_alert=True)
+        return
+    await state.set_state(OwnerTransfer.awaiting_target)
+    await state.update_data(tenant_id=callback_data.tenant_id)
+    await query.message.answer(await i18n("owner.transfer.prompt"))
+    await query.answer()
+
+
 @router.message(Command("cancel"), OwnerTransfer.awaiting_target)
 async def on_transfer_cancel(message: Message, state: FSMContext, i18n: Translator) -> None:
     await state.clear()

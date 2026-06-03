@@ -254,6 +254,47 @@ async def test_pause_platform_tenant_blocked(session, monkeypatch):
     assert q.answers and q.answers[-1][1].get("show_alert") is True
 
 
+# ── Workstream F: Transfer button wires the FSM ─────────────────────────────────
+
+async def test_transfer_button_enters_fsm_for_owner(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    query = FakeCallbackQuery(from_user_id=OWNER_TG)
+    await oc.on_manage_transfer(
+        query, OwnerManageCb(action="transfer", tenant_id=t.id), state, i18n=i18n
+    )
+
+    assert state.state == oc.OwnerTransfer.awaiting_target
+    assert (await state.get_data())["tenant_id"] == t.id
+    assert query.message.answers, "transfer prompt should be sent"
+
+
+async def test_transfer_button_denied_for_admin(session, monkeypatch):
+    from quantuum.bot.handlers import owner_console as oc
+    from quantuum.bot.ui.callbacks import OwnerManageCb
+
+    _patch_sessionmaker(monkeypatch, oc, session)
+    t, _bot, _owner, _cust = await _seed_owner_tenant(session)
+    await _seed_account(session, tenant=t, tg=ADMIN_TG, role="admin")
+    i18n = await build_translator(session, t.id)
+    state = FakeState()
+
+    query = FakeCallbackQuery(from_user_id=ADMIN_TG)
+    await oc.on_manage_transfer(
+        query, OwnerManageCb(action="transfer", tenant_id=t.id), state, i18n=i18n
+    )
+
+    assert state.state is None  # no FSM entered
+    assert query.answers and query.answers[-1][0] == "Нет прав"
+    assert query.answers[-1][1].get("show_alert") is True
+
+
 # ── Task 5: /transfer FSM ───────────────────────────────────────────────────────
 
 async def test_transfer_success(session, monkeypatch):
