@@ -90,6 +90,19 @@ async def test_consume_decrements_oldest_package_row(session, default_tenant):
     assert bal.package_credits == 1
 
 
+async def test_signup_credits_are_ledger_backed(session, default_tenant):
+    from quantuum.db.models import AccountPackage
+    from sqlmodel import select
+
+    acc = await _make_account(session, default_tenant.id)
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == acc.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "welcome" and r.requests_remaining > 0 for r in rows)
+
+
 async def test_refund_package_restores_credit(session, default_tenant):
     from datetime import timedelta
 

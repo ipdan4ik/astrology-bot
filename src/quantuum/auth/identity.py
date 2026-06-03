@@ -12,20 +12,27 @@ SIGNUP_CREDITS = 10
 async def _ensure_balance(session, account_id: int) -> None:
     existing = await session.get(AccountBalance, account_id)
     if existing is None:
-        session.add(
-            AccountBalance(
-                account_id=account_id,
-                package_credits=SIGNUP_CREDITS,
-                free_trial_used=True,
-            )
-        )
+        # free_trial_used kept True for backward compatibility; welcome credits
+        # (not the legacy one-shot trial) are the live mechanism and are granted
+        # as a ledger row by the caller so recompute never erases them.
+        session.add(AccountBalance(account_id=account_id, free_trial_used=True))
+        await session.flush()
 
 
 async def _create_account(session, tenant_id: int) -> Account:
+    from quantuum.domain.billing import grant_credits
+
     account = Account(tenant_id=tenant_id)
     session.add(account)
     await session.flush()
     await _ensure_balance(session, account.id)
+    await grant_credits(
+        session,
+        account_id=account.id,
+        tenant_id=tenant_id,
+        amount=SIGNUP_CREDITS,
+        source="welcome",
+    )
     return account
 
 
