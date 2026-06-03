@@ -5,7 +5,7 @@ services:
     # are otherwise fsync-bound). NEVER use these flags for real data.
     command: >
       postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off
-      -c autovacuum=off
+      -c autovacuum=off -c max_locks_per_transaction=256
     environment:
       POSTGRES_USER: quantuum
       POSTGRES_PASSWORD: quantuum
@@ -23,6 +23,8 @@ services:
 
   redis-test:
     image: redis:7
+    # 32 databases so xdist workers (gw0-gw30) each get their own DB index.
+    command: redis-server --databases 32
     ports:
       - "6380:6379"
     networks:

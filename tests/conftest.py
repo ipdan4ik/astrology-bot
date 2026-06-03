@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import pytest_asyncio
@@ -31,9 +32,59 @@ _TRUNCATE_ALL = (
 )
 
 
+def pytest_configure(config):
+    """Give each xdist worker its own Postgres DB and Redis DB index.
+
+    Worker processes have config.workerinput set by xdist. The controller process
+    (which collects and distributes tests) does not — it does nothing here.
+    Each worker gets:
+      - Postgres: quantuum_test_gw0 / quantuum_test_gw1 / …
+      - Redis:    DB 1 / 2 / … (DB 0 kept for non-parallel runs)
+    The database is created synchronously before any async code runs.
+    """
+    worker_id = getattr(config, "workerinput", {}).get("workerid")
+    if not worker_id:
+        return
+
+    # Redis: use DB index 1+ so workers don't collide with each other or
+    # with a non-parallel run on DB 0.
+    try:
+        redis_idx = int(worker_id.replace("gw", "")) + 1
+    except ValueError:
+        redis_idx = 1
+    base_redis = os.environ.get("REDIS_URL", "redis://172.30.0.3:6379/0")
+    os.environ["REDIS_URL"] = base_redis.rsplit("/", 1)[0] + f"/{redis_idx}"
+
+    # Postgres: create a fresh DB per worker.
+    db_name = f"quantuum_test_{worker_id}"
+    base_db = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+asyncpg://quantuum:quantuum@172.30.0.2:5432/quantuum_test",
+    )
+    prefix = base_db.rsplit("/", 1)[0]
+    os.environ["DATABASE_URL"] = f"{prefix}/{db_name}"
+
+    async def _ensure_db() -> None:
+        import asyncpg  # available: asyncpg is a prod dependency
+
+        conn = await asyncpg.connect(
+            "postgresql://quantuum:quantuum@172.30.0.2:5432/postgres"
+        )
+        try:
+            exists = await conn.fetchval(
+                "SELECT 1 FROM pg_database WHERE datname = $1", db_name
+            )
+            if not exists:
+                await conn.execute(f'CREATE DATABASE "{db_name}"')
+        finally:
+            await conn.close()
+
+    asyncio.run(_ensure_db())
+
+
 @pytest_asyncio.fixture(scope="session")
 async def engine():
-    """One engine + schema for the whole test session, built once.
+    """One engine + schema for the whole test session (per xdist worker), built once.
 
     Per-test isolation is data-only — `_reset_state` TRUNCATEs every table before each
     test (fast DML, no per-test DDL). The whole suite runs on a single session-scoped

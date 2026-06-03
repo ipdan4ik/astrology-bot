@@ -30,14 +30,15 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.8",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-# Run the whole suite on one session-scoped event loop so the DB engine + connection
-# pool (and the app's lazy singletons) are reused across tests instead of rebuilt per
-# test. Per-test isolation is data-only (TRUNCATE + Redis flush). See conftest.py.
+# Parallel execution: each xdist worker gets its own Postgres DB + Redis DB index.
+# Use -n0 to disable parallelism (e.g. when debugging a single test).
+addopts = "-n 8"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
