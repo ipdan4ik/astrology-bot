@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import sqlmodel
 
 
 # revision identifiers, used by Alembic.
@@ -52,6 +51,7 @@ def upgrade() -> None:
             GROUP BY account_id
         ) led ON led.account_id = b.account_id
         WHERE b.package_credits > COALESCE(led.valid_sum, 0)
+          AND NOT EXISTS (SELECT 1 FROM account_packages ap WHERE ap.account_id = b.account_id AND ap.source = 'backfill')
         """
     )
 

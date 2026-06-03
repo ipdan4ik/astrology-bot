@@ -405,7 +405,7 @@ class AccountPackage(SQLModel, table=True):
     tenant_id: int = Field(foreign_key="tenants.id", index=True)
     account_id: int = Field(foreign_key="accounts.id", index=True)
     plan_id: int | None = Field(default=None, foreign_key="package_plans.id")
-    source: str = Field(default="purchase")  # purchase | gift | referral | welcome | manual | backfill
+    source: str = "purchase"  # purchase|gift|referral|welcome|manual|backfill
     requests_remaining: int
     purchased_at: datetime = _dt_field(default_factory=utcnow)
     expires_at: datetime | None = _dt_field(default=None)
