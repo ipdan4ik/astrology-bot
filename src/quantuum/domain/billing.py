@@ -70,6 +70,58 @@ async def _ensure_balance(session, account_id: int) -> AccountBalance:
     return balance
 
 
+async def _sum_valid_packages(session, account_id: int) -> int:
+    now = utcnow()
+    result = await session.execute(
+        select(AccountPackage.requests_remaining).where(
+            AccountPackage.account_id == account_id,
+            or_(AccountPackage.expires_at.is_(None), AccountPackage.expires_at > now),
+        )
+    )
+    return int(sum(result.scalars().all()))
+
+
+async def grant_credits(
+    session,
+    *,
+    account_id: int,
+    tenant_id: int,
+    amount: int,
+    source: str,
+    expires_at=None,
+    payment_id: int | None = None,
+    plan_id: int | None = None,
+) -> AccountPackage:
+    """Add a credit ledger row from any source and sync the cached counter.
+
+    The AccountPackage ledger is the single source of truth for package_credits;
+    every non-purchase grant (gift, referral, welcome, manual) must go through here
+    so a later recompute_account_balance does not erase the credits. Flush-only:
+    the caller commits.
+    """
+    if amount < 1:
+        raise ValueError(f"amount must be >= 1, got {amount}")
+    now = utcnow()
+    pkg = AccountPackage(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        plan_id=plan_id,
+        source=source,
+        requests_remaining=amount,
+        purchased_at=now,
+        expires_at=expires_at,
+        payment_id=payment_id,
+    )
+    session.add(pkg)
+    await session.flush()
+    balance = await _ensure_balance(session, account_id)
+    balance.package_credits = balance.package_credits + amount
+    balance.updated_at = now
+    session.add(balance)
+    await session.flush()
+    return pkg
+
+
 async def recompute_account_balance(session, account_id: int) -> AccountBalance:
     """Recompute package_credits (sum of valid package rows) and subscription_active_until
     (latest active/grace subscription end) from the ledger tables."""
@@ -147,19 +199,18 @@ async def apply_package_payment(
     expires_at = (
         now + timedelta(days=plan.expires_after_days) if plan.expires_after_days else None
     )
-    pkg = AccountPackage(
-        tenant_id=tenant_id,
+    pkg = await grant_credits(
+        session,
         account_id=account_id,
-        plan_id=plan.id,
-        requests_remaining=plan.request_count,
-        purchased_at=now,
+        tenant_id=tenant_id,
+        amount=plan.request_count,
+        source="purchase",
         expires_at=expires_at,
         payment_id=payment_id,
+        plan_id=plan.id,
     )
-    session.add(pkg)
     await session.commit()
     await session.refresh(pkg)
-    await recompute_account_balance(session, account_id)
     return pkg
 
 
