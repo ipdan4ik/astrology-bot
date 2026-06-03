@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.api.deps import get_session
 from quantuum.domain.tenants import get_tenant_bot_by_webhook_secret
-from quantuum.redis_client import push_update
+from quantuum.redis_client import mark_update_seen, push_update
 
 router = APIRouter(tags=["webhook"])
 
@@ -16,5 +16,7 @@ async def telegram_webhook(
     if tenant_bot is None or tenant_bot.bot_telegram_id is None:
         raise HTTPException(status_code=404, detail="not found")
     update = await request.json()
+    if not await mark_update_seen(tenant_bot.bot_telegram_id, update.get("update_id")):
+        return {"ok": True, "duplicate": True}
     await push_update(tenant_bot.bot_telegram_id, update)
     return {"ok": True}

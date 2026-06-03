@@ -32,3 +32,22 @@ async def test_webhook_pushes_update_with_bot_id(client):
     item = await redis_client.pop_update(timeout=2)
     assert item["bot_id"] == 4242
     assert item["update"]["update_id"] == 9
+
+
+async def test_webhook_dedupes_repeated_update(client, session, default_tenant):
+    from quantuum.db.models import TenantBot
+    from quantuum.redis_client import get_redis, UPDATE_QUEUE_KEY
+    bot = TenantBot(
+        tenant_id=default_tenant.id, bot_telegram_id=700001, bot_token_enc=b"x",
+        transport="webhook", webhook_secret_path="wh-dedupe", status="active",
+    )
+    session.add(bot)
+    await session.commit()
+
+    payload = {"update_id": 555, "message": {"text": "hi"}}
+    r1 = await client.post("/tg/wh-dedupe", json=payload)
+    r2 = await client.post("/tg/wh-dedupe", json=payload)
+    assert r1.status_code == 200 and r2.status_code == 200
+
+    qlen = await get_redis().llen(UPDATE_QUEUE_KEY)
+    assert qlen == 1  # second (duplicate) update was dropped
