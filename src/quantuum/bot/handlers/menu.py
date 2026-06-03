@@ -3,12 +3,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from quantuum.bot.handlers.buy import show_buy_menu
-from quantuum.bot.handlers.generate import run_generate
 from quantuum.bot.handlers.history import show_history
 from quantuum.bot.handlers.profile import show_profile
 from quantuum.bot.handlers.qa import start_ask
 from quantuum.bot.handlers.readings import show_readings_menu
-from quantuum.bot.handlers.transits import run_transits
 from quantuum.bot.handlers.daily import run_daily_settings
 from quantuum.bot.ui import text
 from quantuum.bot.ui.callbacks import OnboardCb
@@ -20,10 +18,8 @@ router = Router()
 
 # Reply-menu button labels across every enabled language, so a button pressed
 # in any language routes to the right handler.
-_GENERATE_LABELS = text.menu_button_labels("btn.generate")
 _ASK_LABELS = text.menu_button_labels("btn.ask")
 _READINGS_LABELS = text.menu_button_labels("btn.readings")
-_TRANSITS_LABELS = text.menu_button_labels("btn.transits")
 _DAILY_LABELS = text.menu_button_labels("btn.daily")
 _PROFILE_LABELS = text.menu_button_labels("btn.profile")
 _HISTORY_LABELS = text.menu_button_labels("btn.history")
@@ -40,13 +36,6 @@ async def show_main_menu(message: Message, tenant_id: int, i18n: Translator) -> 
     )
 
 
-@router.message(F.text.in_(_GENERATE_LABELS))
-async def on_generate_btn(
-    message: Message, account: Account, chat_id: int, i18n: Translator
-) -> None:
-    await run_generate(message, account, chat_id, i18n)
-
-
 @router.message(F.text.in_(_ASK_LABELS))
 async def on_ask_btn(message: Message, state: FSMContext, i18n: Translator) -> None:
     await start_ask(message, state, i18n)
@@ -55,11 +44,6 @@ async def on_ask_btn(message: Message, state: FSMContext, i18n: Translator) -> N
 @router.message(F.text.in_(_READINGS_LABELS))
 async def on_readings_btn(message: Message, account: Account, i18n: Translator) -> None:
     await show_readings_menu(message, account, i18n)
-
-
-@router.message(F.text.in_(_TRANSITS_LABELS))
-async def on_transits_btn(message: Message, account: Account, i18n: Translator) -> None:
-    await run_transits(message, None, account, i18n)
 
 
 @router.message(F.text.in_(_DAILY_LABELS))

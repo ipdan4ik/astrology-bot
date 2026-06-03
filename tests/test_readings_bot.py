@@ -44,6 +44,7 @@ def _patch_sessionmaker(monkeypatch, module, session):
 @pytest.mark.parametrize("kind", [
     "bazi", "numerology", "human_design", "astrology",
     "vedic", "gene_keys", "mayan", "aspects",
+    "blueprint", "transits",
 ])
 async def test_readings_menu_includes_all_eight_kinds(session, default_tenant, kind):
     from quantuum.bot.ui.keyboards import readings_menu_kb
@@ -211,3 +212,49 @@ async def test_reading_no_profile_shows_fill_button(session, default_tenant, mon
     assert any(
         OnboardCb.unpack(b.callback_data).action == "start" for b in btns
     ), "fill-profile button missing"
+
+
+async def test_on_reading_choice_blueprint_dispatches_to_run_generate(
+    session, default_tenant, monkeypatch
+):
+    from quantuum.bot.handlers import readings
+    from unittest.mock import AsyncMock
+
+    _patch_sessionmaker(monkeypatch, readings, session)
+    spy = AsyncMock()
+    monkeypatch.setattr(readings, "run_generate", spy)
+
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "rb1", credits=2)
+
+    query = FakeQuery(ReadingCb(action="generate", kind="blueprint").pack(), chat_id=777)
+    await readings.on_reading_choice(query, acc, i18n)
+
+    spy.assert_awaited_once()
+    call_args = spy.await_args
+    assert call_args.args[1] is acc
+    assert call_args.args[2] == 777  # chat_id
+    query.answer.assert_awaited()
+
+
+async def test_on_reading_choice_transits_dispatches_to_run_transits(
+    session, default_tenant, monkeypatch
+):
+    from quantuum.bot.handlers import readings
+    from unittest.mock import AsyncMock
+
+    _patch_sessionmaker(monkeypatch, readings, session)
+    spy = AsyncMock()
+    monkeypatch.setattr(readings, "run_transits", spy)
+
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "rb2", credits=2)
+
+    query = FakeQuery(ReadingCb(action="generate", kind="transits").pack(), chat_id=888)
+    await readings.on_reading_choice(query, acc, i18n)
+
+    spy.assert_awaited_once()
+    call_args = spy.await_args
+    assert call_args.args[1] is None  # raw_arg
+    assert call_args.args[2] is acc
+    query.answer.assert_awaited()

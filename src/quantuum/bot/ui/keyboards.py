@@ -47,8 +47,10 @@ async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
     async with get_sessionmaker()() as session:
         flags = await list_feature_states(session, tenant_id)
 
-    show_readings = any(
-        enabled for k, enabled in flags.items() if k.startswith("reading.")
+    show_readings = (
+        any(enabled for k, enabled in flags.items() if k.startswith("reading."))
+        or flags.get("blueprint", True)
+        or flags.get("transits", True)
     )
 
     b = ReplyKeyboardBuilder()
@@ -59,14 +61,10 @@ async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
         b.button(text=text)
         count += 1
 
-    if flags.get("blueprint", True):
-        _add(await i18n("btn.generate"))
     if flags.get("qa", True):
         _add(await i18n("btn.ask"))
     if show_readings:
         _add(await i18n("btn.readings"))
-    if flags.get("transits", True):
-        _add(await i18n("btn.transits"))
     if flags.get("daily", True):
         _add(await i18n("btn.daily"))
 
@@ -123,19 +121,24 @@ READING_KINDS: tuple[str, ...] = (
 
 
 async def readings_menu_kb(i18n: Translator, tenant_id: int) -> InlineKeyboardMarkup:
-    """Inline keyboard listing only the enabled reading kinds for this tenant."""
+    """Inline keyboard listing Blueprint, Transits, and specialty reading kinds."""
     async with get_sessionmaker()() as session:
         flags = await list_feature_states(session, tenant_id)
 
     b = InlineKeyboardBuilder()
+    if flags.get("blueprint", True):
+        b.button(text=await i18n("btn.generate"), callback_data=ReadingCb(action="generate", kind="blueprint"))
+    if flags.get("transits", True):
+        b.button(text=await i18n("btn.transits"), callback_data=ReadingCb(action="generate", kind="transits"))
     visible: list[str] = [k for k in READING_KINDS if flags.get(f"reading.{k}", True)]
     for kind in visible:
         label = await i18n(f"readings.kind.{kind}")
         b.button(text=label, callback_data=ReadingCb(action="generate", kind=kind))
 
-    if visible:
+    total = (1 if flags.get("blueprint", True) else 0) + (1 if flags.get("transits", True) else 0) + len(visible)
+    if total:
         layout: list[int] = []
-        remaining = len(visible)
+        remaining = total
         while remaining >= 2:
             layout.append(2)
             remaining -= 2

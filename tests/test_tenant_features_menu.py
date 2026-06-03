@@ -30,9 +30,8 @@ async def test_main_menu_full_when_all_enabled(session, default_tenant, build_tr
     kb = await main_menu_kb(i18n, default_tenant.id)
     texts = " ".join(_button_texts(kb))
     # Top-level surface buttons all present.
-    assert "Разбор" in texts  # blueprint
+    assert "Разборы" in texts  # readings hub (contains blueprint + transits + specialty)
     assert "Спросить" in texts or "Вопрос" in texts  # qa
-    assert "Транзит" in texts
     assert "Ежедневн" in texts
     # Always-on
     assert "Профиль" in texts
@@ -61,6 +60,7 @@ async def test_main_menu_hides_readings_button_when_all_readings_off(
     await _disable(
         session,
         default_tenant.id,
+        "blueprint", "transits",
         "reading.bazi", "reading.numerology", "reading.human_design",
         "reading.astrology", "reading.vedic", "reading.gene_keys",
         "reading.mayan", "reading.aspects",
@@ -84,7 +84,7 @@ async def test_readings_menu_full_when_all_enabled(session, default_tenant, buil
     i18n = await build_translator(session, default_tenant.id, lang="ru")
     kb = await readings_menu_kb(i18n, default_tenant.id)
     texts = _inline_button_texts(kb)
-    assert len(texts) == 10
+    assert len(texts) == 12  # blueprint + transits + 10 reading kinds
 
 
 async def test_readings_menu_hides_disabled_kinds(session, default_tenant, build_translator):
@@ -99,7 +99,7 @@ async def test_readings_menu_hides_disabled_kinds(session, default_tenant, build
     i18n = await build_translator(session, default_tenant.id, lang="ru")
     kb = await readings_menu_kb(i18n, default_tenant.id)
     texts = _inline_button_texts(kb)
-    assert len(texts) == 8
+    assert len(texts) == 10  # blueprint + transits + 8 remaining kinds
 
 
 @pytest.fixture

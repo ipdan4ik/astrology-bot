@@ -1,7 +1,8 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
-from quantuum.bot.handlers.generate import _buy_offer_kb
+from quantuum.bot.handlers.generate import _buy_offer_kb, run_generate
+from quantuum.bot.handlers.transits import run_transits
 from quantuum.bot.ui.callbacks import ReadingCb
 from quantuum.bot.ui.keyboards import profile_kb, readings_menu_kb
 from quantuum.common.exceptions import InsufficientFundsError
@@ -32,6 +33,16 @@ async def on_reading_choice(
     query: CallbackQuery, account: Account, i18n: Translator
 ) -> None:
     kind = ReadingCb.unpack(query.data).kind
+
+    if kind == "blueprint":
+        await run_generate(query.message, account, query.message.chat.id, i18n)
+        await query.answer()
+        return
+    if kind == "transits":
+        await run_transits(query.message, None, account, i18n)
+        await query.answer()
+        return
+
     flag_key = f"reading.{kind}"
 
     async with get_sessionmaker()() as session:

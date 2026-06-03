@@ -14,7 +14,7 @@ def test_create_dispatcher_uses_redis_storage_and_routers():
 def test_menu_button_labels_cover_all_langs():
     # Routing must match a button pressed in any enabled language, so the
     # label sets are derived from BASE_STRINGS (ru + en), not a single literal.
-    assert text.menu_button_labels("btn.generate") >= {"🔮 Разбор", "🔮 Reading"}
+    assert text.menu_button_labels("btn.ask") >= {"❓ Спросить астролога", "❓ Ask the astrologer"}
     assert text.menu_button_labels("btn.profile") >= {"👤 Профиль", "👤 Profile"}
     assert text.menu_button_labels("btn.history") >= {"📜 История", "📜 History"}
     assert text.menu_button_labels("btn.help") >= {"ℹ️ Помощь", "ℹ️ Help"}
@@ -23,7 +23,7 @@ def test_menu_button_labels_cover_all_langs():
 def test_menu_labels_routed_include_both_langs():
     from quantuum.bot.handlers import menu
 
-    assert "🔮 Разбор" in menu.LABELS and "🔮 Reading" in menu.LABELS
+    assert "📖 Разборы" in menu.LABELS and "📖 Readings" in menu.LABELS
     assert "👤 Профиль" in menu.LABELS and "👤 Profile" in menu.LABELS
 
 
