@@ -78,7 +78,7 @@ async def consume_quota(session, account_id: int, kind: str, *, cost_units: int 
 
 
 async def refund_quota(session, request_id: int) -> None:
-    request = await session.get(Request, request_id)
+    request = await session.get(Request, request_id, with_for_update=True)
     if request is None or request.charged_against in (None, "none"):
         return
 
