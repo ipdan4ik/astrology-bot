@@ -248,11 +248,11 @@ async def set_reading_status(session, reading_id: int, status: str, **fields) ->
 ```
 
 Apply the same pattern with the correct allowlist per model:
-- `qa.py` `_STATUS_FIELDS = {"answer_md", "lang", "error", "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out"}`
-- `transits.py` `_STATUS_FIELDS = {"transit_md", "report_md", "lang", "error", "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out"}`
+- `qa.py` `_STATUS_FIELDS = {"answer_md", "lang", "error", "blueprint_id", "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out"}`  (NOTE: the qa worker passes `blueprint_id`.)
+- `transits.py` `_STATUS_FIELDS = {"transit_md", "report_md", "lang", "error", "blueprint_id", "as_of", "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out"}`  (NOTE: the transit worker passes `blueprint_id` and `as_of`.)
 - `daily.py` `_STATUS_FIELDS = {"transit_md", "horoscope_md", "lang", "error", "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out"}`
 
-VERIFY each allowlist against the real model columns (grep `class Reading`/`class QaAnswer`/`class TransitReport`/`class DailyHoroscope`) — include every content column the workers actually set, or you'll break worker writes. Check the worker call sites (`grep -rn "set_reading_status\|set_qa_status\|set_transit_status\|set_horoscope_status" src/`) and ensure every field they pass is in the allowlist.
+These allowlists were derived from the ACTUAL worker call sites (`src/quantuum/tasks/{qa,transits,reading,daily}.py`): qa passes `blueprint_id`; transits passes `blueprint_id` + `as_of`; reading passes `calc_md/llm_md/llm_provider/llm_model/llm_tokens_*`; daily passes `transit_md/horoscope_md/llm_*`; all pass `error`. Before finalizing, re-grep `set_*_status` call sites in `src/quantuum/tasks/` and confirm every keyword each worker passes is in the corresponding allowlist — a missing one breaks a real worker write.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
