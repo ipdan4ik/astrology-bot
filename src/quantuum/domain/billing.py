@@ -231,14 +231,14 @@ async def fulfill_payment(session, *, payment_id: int, external_id: str) -> bool
     kind = meta.get("kind")
     plan_id = meta.get("plan_id")
     if kind == "subscription" and plan_id is not None:
-        plan = await get_subscription_plan(session, plan_id)
+        plan = await get_subscription_plan(session, plan_id, tenant_id=payment.tenant_id)
         if plan is not None:
             await apply_subscription_payment(
                 session, account_id=payment.account_id, tenant_id=payment.tenant_id,
                 plan=plan, payment_id=payment.id,
             )
     elif kind == "package" and plan_id is not None:
-        plan = await get_package_plan(session, plan_id)
+        plan = await get_package_plan(session, plan_id, tenant_id=payment.tenant_id)
         if plan is not None:
             await apply_package_payment(
                 session, account_id=payment.account_id, tenant_id=payment.tenant_id,

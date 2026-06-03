@@ -543,7 +543,7 @@ async def buy_subscription(
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ):
-    plan = await get_subscription_plan(session, body.plan_id)
+    plan = await get_subscription_plan(session, body.plan_id, tenant_id=account.tenant_id)
     if plan is None:
         raise HTTPException(status_code=404, detail="plan not found")
     await _create_invoice_via_provider(session, account, plan_kind="subscription", plan=plan)
@@ -556,7 +556,7 @@ async def buy_package(
     account: Account = Depends(current_account),
     session: AsyncSession = Depends(get_session),
 ):
-    plan = await get_package_plan(session, body.plan_id)
+    plan = await get_package_plan(session, body.plan_id, tenant_id=account.tenant_id)
     if plan is None:
         raise HTTPException(status_code=404, detail="plan not found")
     await _create_invoice_via_provider(session, account, plan_kind="package", plan=plan)

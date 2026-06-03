@@ -48,3 +48,45 @@ async def test_post_package_returns_501_or_404(client, auth_and_plan):
     r = await client.post("/v1/me/packages", headers=headers, json={"plan_id": 999999})
     # unknown plan resolves to 404 before the provider; verify the route exists (not 405)
     assert r.status_code in (404, 501)
+
+
+async def test_buy_subscription_rejects_other_tenant_plan(client, auth_and_plan, session):
+    from quantuum.db.models import SubscriptionPlan, Tenant
+
+    headers, _ = auth_and_plan
+    other = Tenant(slug="idor-other", display_name="Other")
+    session.add(other)
+    await session.flush()
+    foreign = SubscriptionPlan(
+        tenant_id=other.id, slug="idor-foreign-sub", name="Foreign",
+        period_days=30, price_cents=500, currency="XTR", active=True,
+    )
+    session.add(foreign)
+    await session.commit()
+    await session.refresh(foreign)
+
+    r = await client.post(
+        "/v1/me/subscriptions", headers=headers, json={"plan_id": foreign.id}
+    )
+    assert r.status_code == 404
+
+
+async def test_buy_package_rejects_other_tenant_plan(client, auth_and_plan, session):
+    from quantuum.db.models import PackagePlan, Tenant
+
+    headers, _ = auth_and_plan
+    other = Tenant(slug="idor-other-pkg", display_name="Other")
+    session.add(other)
+    await session.flush()
+    foreign = PackagePlan(
+        tenant_id=other.id, slug="idor-foreign-pkg", name="Foreign",
+        request_count=10, price_cents=500, currency="XTR", active=True,
+    )
+    session.add(foreign)
+    await session.commit()
+    await session.refresh(foreign)
+
+    r = await client.post(
+        "/v1/me/packages", headers=headers, json={"plan_id": foreign.id}
+    )
+    assert r.status_code == 404
