@@ -116,7 +116,7 @@ async def test_history_list_empty_localised(session, default_tenant, monkeypatch
     msg = SimpleNamespace(answer=AsyncMock())
     await hist.show_history(msg, acc, i18n)
     text = msg.answer.await_args.args[0]
-    assert text == "Пока нет генераций. Нажми «🔮 Разбор», чтобы создать первую."
+    assert text == "Пока нет генераций. Нажми «🔮 Blueprint», чтобы создать первую."
 
 
 async def test_history_list_shows_localised_title_and_labels(session, default_tenant, monkeypatch):
@@ -182,7 +182,7 @@ async def test_history_open_renders_localised_detail(session, default_tenant, mo
     query = AsyncMock()
     await hist.on_open(query, HistoryCb(action="open", bp_id=bp.id), acc, i18n)
     detail = query.message.answer.await_args.args[0]
-    assert f"🔮 Разбор #{bp.id}" in detail
+    assert f"🔮 Blueprint #{bp.id}" in detail
     assert "Статус: готов" in detail
     kb = query.message.answer.await_args.kwargs["reply_markup"]
     labels = [b.text for row in kb.inline_keyboard for b in row]

@@ -40,8 +40,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     # Main-menu button labels
     # -------------------------------------------------------------------------
     "btn.generate": {
-        "ru": "🔮 Разбор",
-        "en": "🔮 Reading",
+        "ru": "🔮 Blueprint",
+        "en": "🔮 Blueprint",
     },
     "btn.profile": {
         "ru": "👤 Профиль",
@@ -115,10 +115,9 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": (
             "Я строю персональные разборы по твоим натальным данным.\n\n"
             "Меню:\n"
-            "🔮 Разбор — астрологический разбор (Blueprint)\n"
+            "🔮 Blueprint — полный астрологический разбор\n"
             "❓ Спросить астролога — вопрос с натальным контекстом\n"
-            "📖 Разборы — BaZi, Нумерология, Human Design, Таро, И-Цзин и др.\n"
-            "🌌 Транзиты — текущие планетарные транзиты\n"
+            "📖 Разборы — Blueprint, Транзиты, BaZi, Human Design, Таро и др.\n"
             "🔔 Ежедневный гороскоп — подписка на ежедневную доставку\n"
             "👤 Профиль — натальные данные (дата, время, место рождения)\n"
             "📜 История — прошлые генерации\n"
@@ -384,8 +383,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     # History
     # -------------------------------------------------------------------------
     "history.empty": {
-        "ru": "Пока нет генераций. Нажми «🔮 Разбор», чтобы создать первую.",
-        "en": "No readings yet. Tap «🔮 Reading» to create your first one.",
+        "ru": "Пока нет генераций. Нажми «🔮 Blueprint», чтобы создать первую.",
+        "en": "No readings yet. Tap «🔮 Blueprint» to create your first one.",
     },
     "history.title": {
         "ru": "📜 История генераций:",
@@ -398,8 +397,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     },
     # Blueprint detail lines — {id}, {status}, {created_at}, {completed_at}
     "history.detail_header": {
-        "ru": "🔮 Разбор #{id}",
-        "en": "🔮 Reading #{id}",
+        "ru": "🔮 Blueprint #{id}",
+        "en": "🔮 Blueprint #{id}",
     },
     "history.detail_status": {
         "ru": "Статус: {status}",
@@ -897,8 +896,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         ),
     },
     "onb.done": {
-        "ru": "Готово! Профиль сохранён. Нажми «🔮 Разбор» в меню ниже.",
-        "en": "Done! Your profile is saved. Tap «🔮 Reading» in the menu below.",
+        "ru": "Готово! Профиль сохранён. Нажми «🔮 Blueprint» в меню ниже.",
+        "en": "Done! Your profile is saved. Tap «🔮 Blueprint» in the menu below.",
     },
     # -------------------------------------------------------------------------
     # Owner console — user management (list / credits / ban)
@@ -1050,7 +1049,7 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "en": "QA",
     },
     "owner.features.label.blueprint": {
-        "ru": "Разбор",
+        "ru": "Blueprint",
         "en": "Blueprint",
     },
     "owner.features.label.transits": {

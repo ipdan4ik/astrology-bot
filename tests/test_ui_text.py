@@ -72,7 +72,7 @@ async def test_render_detail_localised(session, default_tenant):
         completed_at = datetime(2026, 5, 20, 9, 5, tzinfo=timezone.utc)
 
     detail = await text.render_detail(i18n, BP())
-    assert "🔮 Разбор #7" in detail
+    assert "🔮 Blueprint #7" in detail
     assert "Статус: готов" in detail
     assert "Создан: 20.05.2026 09:00" in detail
     assert "Готов: 20.05.2026 09:05" in detail

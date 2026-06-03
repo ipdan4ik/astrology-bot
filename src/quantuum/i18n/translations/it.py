@@ -4,7 +4,7 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # Main-menu button labels
     # -------------------------------------------------------------------------
-    "btn.generate": "🔮 Lettura",
+    "btn.generate": "🔮 Blueprint",
     "btn.profile": "👤 Profilo",
     "btn.history": "📜 Cronologia",
     "btn.help": "ℹ️ Aiuto",
