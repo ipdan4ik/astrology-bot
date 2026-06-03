@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from quantuum.auth.identity import find_or_create_account_by_tg
 from quantuum.bot.ui.callbacks import OwnerUserCb
-from quantuum.db.models import Account, AccountBalance, AccountIdentity
+from quantuum.db.models import Account, AccountBalance, AccountIdentity, Tenant
 from quantuum.domain.accounts import set_account_ban
 from quantuum.domain.tenants import grant_role
 
@@ -335,3 +335,64 @@ async def test_admin_cannot_unban(session, default_tenant, monkeypatch):
     row = await session.get(Account, target.id)
     await session.refresh(row)
     assert row.status == "disabled" and row.ban_reason == "x"  # still banned
+
+
+# ── Task 4: cross-tenant ban/unban guard ─────────────────────────────────────────
+
+async def test_owner_cannot_ban_cross_tenant_account(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    other = Tenant(slug="d-other", display_name="Other")
+    session.add(other)
+    await session.flush()
+    victim = Account(tenant_id=other.id, status="active")
+    session.add(victim)
+    await session.commit()
+    await session.refresh(victim)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm()
+
+    query = FakeCallbackQuery()  # owner of default_tenant (TG=222)
+    await ou.on_user_ban_start(
+        query,
+        OwnerUserCb(action="ban", tenant_id=default_tenant.id, account_id=victim.id),
+        state,
+        i18n,
+    )
+
+    assert query.answers and query.answers[-1][1] is True  # denial alert
+    assert await state.get_state() is None  # FSM not entered
+    v = await session.get(Account, victim.id)
+    await session.refresh(v)
+    assert v.status == "active" and v.ban_reason is None  # not banned
+
+
+async def test_owner_cannot_unban_cross_tenant_account(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import owner_users as ou
+
+    _patch_sessionmaker(monkeypatch, ou, session)
+    await _owner(session, default_tenant)
+    other = Tenant(slug="d-other2", display_name="Other2")
+    session.add(other)
+    await session.flush()
+    victim = Account(tenant_id=other.id, status="active")
+    session.add(victim)
+    await session.commit()
+    await session.refresh(victim)
+    await set_account_ban(session, victim.id, reason="foreign")
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    query = FakeCallbackQuery()  # owner of default_tenant (TG=222)
+    await ou.on_user_unban(
+        query,
+        OwnerUserCb(action="unban", tenant_id=default_tenant.id, account_id=victim.id),
+        i18n,
+    )
+
+    assert query.answers and query.answers[-1][1] is True  # denial alert
+    v = await session.get(Account, victim.id)
+    await session.refresh(v)
+    assert v.status == "disabled" and v.ban_reason == "foreign"  # still banned
