@@ -285,8 +285,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "en": "Thinking about your answer… ⏳",
     },
     "qa.no_profile": {
-        "ru": "Сначала заполни натальный профиль (/profile).",
-        "en": "Fill in your natal profile first (/profile).",
+        "ru": "Сначала заполни натальный профиль.",
+        "en": "Fill in your natal profile first.",
     },
     "qa.no_quota": {
         "ru": "Закончились разборы. Купи пакет или подписку, чтобы спрашивать астролога:",
@@ -308,8 +308,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "en": "Calculating your transits… ⏳",
     },
     "transit.no_profile": {
-        "ru": "Сначала заполни натальный профиль (/profile).",
-        "en": "Fill in your natal profile first (/profile).",
+        "ru": "Сначала заполни натальный профиль.",
+        "en": "Fill in your natal profile first.",
     },
     "transit.no_quota": {
         "ru": "Закончились разборы. Купи пакет или подписку, чтобы посмотреть транзиты:",

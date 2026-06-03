@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
+from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.bot.ui.callbacks import DailyCb
 from quantuum.db.models import Account, DailySubscription
 from quantuum.db.session import get_sessionmaker
@@ -66,7 +67,10 @@ async def run_daily_settings(message: Message, account: Account, i18n: Translato
             return
         profile = await get_natal_profile(session, account.id)
         if profile is None:
-            await message.answer(await i18n("daily.no_profile"))
+            await message.answer(
+                await i18n("daily.no_profile"),
+                reply_markup=await profile_kb(has_profile=False, i18n=i18n),
+            )
             return
         settings = await get_settings(session, account.id)
     text, kb = await _daily_view(i18n, settings)

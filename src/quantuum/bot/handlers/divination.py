@@ -13,6 +13,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from openai import AsyncOpenAI
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
+from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.bot.ui.callbacks import DivinationCb, OnboardCb, ReadingCb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
@@ -81,7 +82,10 @@ async def on_divination_choice(
             return
         profile = await get_natal_profile(session, account.id)
     if profile is None:
-        await query.message.answer(await i18n("readings.no_profile"))
+        await query.message.answer(
+            await i18n("readings.no_profile"),
+            reply_markup=await profile_kb(has_profile=False, i18n=i18n),
+        )
         await query.answer()
         return
 

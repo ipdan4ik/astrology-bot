@@ -181,3 +181,33 @@ async def test_on_reading_choice_no_quota(session, default_tenant, monkeypatch):
     assert kb is not None
     btn = kb.inline_keyboard[0][0]
     assert BuyCb.unpack(btn.callback_data).action == "open"
+
+
+async def test_reading_no_profile_shows_fill_button(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import readings
+    from quantuum.bot.ui.callbacks import OnboardCb, ReadingCb
+    from unittest.mock import MagicMock, AsyncMock
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, readings, session)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="500"
+    )
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = MagicMock()
+    q.answer = AsyncMock()
+    q.message = MagicMock()
+    q.message.answer = AsyncMock()
+    q.data = ReadingCb(action="generate", kind="bazi").pack()
+
+    await readings.on_reading_choice(q, account=acc, i18n=i18n)
+
+    kb = q.message.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None, "no-profile response must include a keyboard"
+    btns = [b for row in kb.inline_keyboard for b in row]
+    assert any(
+        OnboardCb.unpack(b.callback_data).action == "start" for b in btns
+    ), "fill-profile button missing"

@@ -3,6 +3,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
+from quantuum.bot.ui.keyboards import profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
@@ -40,7 +41,10 @@ async def run_transits(
     async with get_sessionmaker()() as session:
         profile = await get_natal_profile(session, account.id)
         if profile is None:
-            await message.answer(await i18n("transit.no_profile"))
+            await message.answer(
+                await i18n("transit.no_profile"),
+                reply_markup=await profile_kb(has_profile=False, i18n=i18n),
+            )
             return
         try:
             charged = await consume_quota(session, account.id, "transit")

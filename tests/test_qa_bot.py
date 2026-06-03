@@ -154,7 +154,7 @@ async def test_ask_no_profile(session, default_tenant, monkeypatch):
     await qa.on_ask(msg, command, FakeFSM(), acc, i18n)
 
     text = msg.answer.await_args.args[0]
-    assert text == "Сначала заполни натальный профиль (/profile)."
+    assert "натальный профиль" in text
     spy.assert_not_awaited()
     # no quota consumed
     balance = await session.get(AccountBalance, acc.id)
@@ -246,3 +246,21 @@ async def test_start_ask_prompt_has_cancel_button(session, default_tenant):
     btns = [b for row in kb.inline_keyboard for b in row]
     actions = [OnboardCb.unpack(b.callback_data).action for b in btns]
     assert "cancel" in actions
+
+
+async def test_ask_no_profile_shows_fill_button(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import qa
+    from quantuum.bot.ui.callbacks import OnboardCb
+
+    _patch_sessionmaker(monkeypatch, qa, session)
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "510", profile=False, credits=2)
+
+    msg = FakeMessage(text="/ask hello?", chat_id=510)
+    command = SimpleNamespace(args="hello?")
+    await qa.on_ask(msg, command, FakeFSM(), acc, i18n)
+
+    kb = msg.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None, "no-profile response must include a keyboard"
+    btns = [b for row in kb.inline_keyboard for b in row]
+    assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)

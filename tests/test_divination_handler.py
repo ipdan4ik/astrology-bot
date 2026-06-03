@@ -267,3 +267,29 @@ async def test_divination_choice_keyboard_has_skip_and_cancel(session, default_t
                for d in cb_datas), "skip btn missing"
     assert any(_try(OnboardCb, d) and _try(OnboardCb, d).action == "cancel"
                for d in cb_datas), "cancel btn missing"
+
+
+async def test_divination_no_profile_shows_fill_button(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import divination
+    from quantuum.bot.ui.callbacks import OnboardCb, ReadingCb
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, divination, session)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="501"
+    )
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = _query(tg_id=42, kind="tarot")
+    state = _state(42)
+    await divination.on_divination_choice(
+        q, account=MagicMock(id=acc.id, tenant_id=default_tenant.id),
+        state=state, i18n=i18n,
+    )
+
+    kb = q.message.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None, "no-profile response must include a keyboard"
+    btns = [b for row in kb.inline_keyboard for b in row]
+    assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)

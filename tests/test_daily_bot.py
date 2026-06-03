@@ -100,7 +100,7 @@ async def test_daily_command_no_profile(session, default_tenant, monkeypatch):
 
     msg = FakeMessage(text="/daily", chat_id=102)
     await daily.on_daily(msg, acc, i18n)
-    assert msg.answer.await_args.args[0] == "Сначала заполни натальный профиль (/profile)."
+    assert "натальный профиль" in msg.answer.await_args.args[0]
 
 
 async def test_daily_toggle_enables(session, default_tenant, monkeypatch):
@@ -151,3 +151,21 @@ async def test_daily_set_hour_same_hour_swallows_not_modified(session, default_t
     # Must not raise, and the callback must still be answered (no stuck spinner).
     await daily.on_daily_set_hour(cb, DailyCb(action="set_hour", value=9), acc, i18n)
     cb.answer.assert_awaited_once()
+
+
+async def test_daily_no_profile_shows_fill_button(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import daily
+    from quantuum.bot.ui.callbacks import OnboardCb
+
+    _patch_sessionmaker(monkeypatch, daily, session)
+    i18n = await build_translator(session, default_tenant.id)
+    # subscriber=True so subscriber gate passes, profile=False so no-profile gate hits
+    acc = await _seed(session, default_tenant.id, "530", subscriber=True, profile=False)
+
+    msg = FakeMessage(text="/daily", chat_id=530)
+    await daily.on_daily(msg, acc, i18n)
+
+    kb = msg.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None, "no-profile response must include a keyboard"
+    btns = [b for row in kb.inline_keyboard for b in row]
+    assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)

@@ -131,8 +131,32 @@ async def test_transits_no_profile(session, default_tenant, monkeypatch):
     command = SimpleNamespace(args=None)
     await transits.on_transits(msg, command, acc, i18n)
 
-    assert msg.answer.await_args.args[0] == "Сначала заполни натальный профиль (/profile)."
+    assert "натальный профиль" in msg.answer.await_args.args[0]
     spy.assert_not_awaited()
     balance = await session.get(AccountBalance, acc.id)
     assert balance.package_credits == 2
     assert (await session.execute(select(TransitReport))).scalars().first() is None
+
+
+async def test_transits_no_profile_shows_fill_button(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import transits
+    from quantuum.bot.ui.callbacks import OnboardCb
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, transits, session)
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="520"
+    )
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    msg = SimpleNamespace(text="/transits", chat=SimpleNamespace(id=520), answer=AsyncMock())
+    await transits.run_transits(msg, None, acc, i18n)
+
+    kb = msg.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None, "no-profile response must include a keyboard"
+    btns = [b for row in kb.inline_keyboard for b in row]
+    assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)

@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery, Message
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
 from quantuum.bot.ui.callbacks import ReadingCb
-from quantuum.bot.ui.keyboards import readings_menu_kb
+from quantuum.bot.ui.keyboards import profile_kb, readings_menu_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
@@ -50,7 +50,10 @@ async def on_reading_choice(
     async with get_sessionmaker()() as session:
         profile = await get_natal_profile(session, account.id)
         if profile is None:
-            await query.message.answer(await i18n("readings.no_profile"))
+            await query.message.answer(
+                await i18n("readings.no_profile"),
+                reply_markup=await profile_kb(has_profile=False, i18n=i18n),
+            )
             await query.answer()
             return
         try:
