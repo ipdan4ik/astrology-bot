@@ -34,7 +34,7 @@ def _make_query(tg_user_id: str):
     return query
 
 
-async def test_features_open_renders_all_fourteen_toggles(session, default_tenant):
+async def test_features_open_renders_all_sixteen_toggles(session, default_tenant):
     await _make_owner(session, default_tenant.id, tg="100")
     i18n = await build_translator(session, default_tenant.id, lang="ru")
     query = _make_query("100")
@@ -45,13 +45,15 @@ async def test_features_open_renders_all_fourteen_toggles(session, default_tenan
     _, kwargs = query.message.edit_text.call_args
     markup = kwargs.get("reply_markup")
     assert markup is not None
-    button_data = [
+    toggle_cbs = [
         btn.callback_data for row in markup.inline_keyboard for btn in row
-        if btn.callback_data is not None
+        if btn.callback_data is not None and btn.callback_data.startswith("ofeat:toggle")
     ]
-    toggle_count = sum(1 for cd in button_data if cd.startswith("ofeat:toggle"))
-    # 4 top-level (qa/blueprint/transits/daily) + 10 reading kinds (8 chart + tarot/iching)
-    assert toggle_count == 14
+    # 4 top-level (qa/blueprint/transits/daily) + 10 reading kinds (8 chart +
+    # tarot/iching) + referrals + gifts
+    assert len(toggle_cbs) == 16
+    keys = [OwnerFeatureCb.unpack(cd).key for cd in toggle_cbs]
+    assert "referrals" in keys and "gifts" in keys
 
 
 async def test_features_toggle_persists_and_round_trips(session, default_tenant):

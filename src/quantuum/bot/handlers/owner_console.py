@@ -494,7 +494,19 @@ async def _features_keyboard(
             ).pack(),
         )
 
-    b.adjust(2, 2, 2, 2, 2, 2, 2)
+    for key, label_key in (
+        ("referrals", "owner.features.label.referrals"),
+        ("gifts", "owner.features.label.gifts"),
+    ):
+        text_label = f"{_mark(flags[key])} {await i18n(label_key)}"
+        b.button(
+            text=text_label,
+            callback_data=OwnerFeatureCb(
+                action="toggle", tenant_id=tenant_id, key=key
+            ).pack(),
+        )
+
+    b.adjust(2, 2, 2, 2, 2, 2, 2, 2)  # 16 toggles, 8 rows of 2
     return b.as_markup()
 
 
