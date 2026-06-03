@@ -6,21 +6,13 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
 )
 
+from quantuum.db.bootstrap import ensure_base_strings
 from quantuum.db.models import Tenant
 from quantuum.domain.provisioning import master_can_manage_bots
+from quantuum.i18n import Translator
 from quantuum.logging_setup import get_logger
 
 logger = get_logger("tasks.provision")
-
-_MANUAL_TOKEN_PROMPT = (
-    "Автосоздание бота недоступно. Создай нового бота через @BotFather "
-    "и пришли сюда его токен одним сообщением."
-)
-_MANAGED_PROMPT = (
-    "Нажми кнопку ниже — Telegram создаст бота, а я подхвачу его автоматически. "
-    "Имя пользователя можно поправить на экране создания."
-)
-_MANAGED_BUTTON = "🤖 Создать бота"
 
 
 def _suggest_username(slug: str) -> str:
@@ -29,12 +21,12 @@ def _suggest_username(slug: str) -> str:
     return base if base.endswith("bot") else f"{base}_bot"
 
 
-def _managed_bot_keyboard(tenant: Tenant) -> ReplyKeyboardMarkup:
+def _managed_bot_keyboard(tenant: Tenant, button_label: str) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [
                 KeyboardButton(
-                    text=_MANAGED_BUTTON,
+                    text=button_label,
                     request_managed_bot=KeyboardButtonRequestManagedBot(
                         request_id=tenant.id,
                         suggested_username=_suggest_username(tenant.slug),
@@ -57,6 +49,16 @@ async def provision_tenant(ctx, tenant_id: int) -> None:
             logger.warning("provision_unknown_tenant", tenant_id=tenant_id)
             return
 
+        # The arq task has no inbound Translator; build one for the tenant's
+        # default language (preferred_lang=None → tenant default).
+        await ensure_base_strings(session)
+        i18n = await Translator.build(
+            session,
+            tenant_id=tenant_id,
+            preferred_lang=None,
+            tg_language_code=None,
+        )
+
         can_manage = master_bot is not None and await master_can_manage_bots(master_bot)
         if can_manage:
             # Programmatic path (Bot API 9.6 Managed Bots): the owner taps one button,
@@ -65,10 +67,11 @@ async def provision_tenant(ctx, tenant_id: int) -> None:
             session.add(tenant)
             await session.commit()
             if tenant.owner_chat_id:
+                button_label = await i18n("master.provision.managed_button")
                 await master_bot.send_message(
                     int(tenant.owner_chat_id),
-                    _MANAGED_PROMPT,
-                    reply_markup=_managed_bot_keyboard(tenant),
+                    await i18n("master.provision.managed_prompt"),
+                    reply_markup=_managed_bot_keyboard(tenant, button_label),
                 )
             logger.info("provision_awaiting_managed_bot", tenant_id=tenant_id)
             return
@@ -78,5 +81,8 @@ async def provision_tenant(ctx, tenant_id: int) -> None:
         session.add(tenant)
         await session.commit()
         if master_bot is not None and tenant.owner_chat_id:
-            await master_bot.send_message(int(tenant.owner_chat_id), _MANUAL_TOKEN_PROMPT)
+            await master_bot.send_message(
+                int(tenant.owner_chat_id),
+                await i18n("master.provision.manual_prompt"),
+            )
         logger.info("provision_awaiting_manual_token", tenant_id=tenant_id)
