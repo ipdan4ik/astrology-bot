@@ -339,19 +339,19 @@ git commit -m "fix(referrals): lock account row to prevent double attribution"
 
 ---
 
-### Task 4: Tenant-scope subscription renewal dedup
+### Task 4: Tenant-scope subscription renewal dedup (lookup + unique index)
+
+**Context (revised after a blocker):** the partial unique index `uq_active_subscription_per_plan` is on `(account_id, plan_id) WHERE status IN ('active','grace')` — it does NOT include `tenant_id`. Adding `tenant_id` to the Python dedup lookup *alone* would diverge from the index: in the cross-tenant scenario the lookup would take the INSERT path and the index would then reject it with an IntegrityError. The two internally-consistent options are "tenant in neither" (status quo) or "tenant in both". The spec wants tenant in the dedup, so we make BOTH the lookup and the index tenant-scoped. This is a safe change: with valid data (`plan_id` pins exactly one tenant via `SubscriptionPlan.tenant_id`) the effective uniqueness guarantee is unchanged.
 
 **Files:**
-- Modify: `src/quantuum/domain/billing.py:157-164` (the existing-subscription lookup in `apply_subscription_payment`)
-- Test: `tests/test_billing_crediting.py` (add a test; or whichever billing test file drives `apply_subscription_payment` — grep first)
+- Create: `alembic/versions/b7c8d9e0f1a2_subscription_index_tenant_scope.py`
+- Modify: `src/quantuum/db/models.py:377-385` (the `__table_args__` Index on `AccountSubscription`)
+- Modify: `src/quantuum/domain/billing.py` (the existing-subscription lookup in `apply_subscription_payment`, ~line 157)
+- Test: whichever billing test file drives `apply_subscription_payment` — `grep -rln "apply_subscription_payment" tests/` (likely `tests/test_billing_crediting.py`)
 
-- [ ] **Step 1: Locate the right test file**
+- [ ] **Step 1: Write the failing test**
 
-Run: `grep -rln "apply_subscription_payment" tests/` and add the new test to the file that already drives subscription crediting (likely `tests/test_billing_crediting.py`). Mirror its setup helpers for tenant, account, and `SubscriptionPlan`.
-
-- [ ] **Step 2: Write the failing test**
-
-The test seeds an active `AccountSubscription` for the account that belongs to a DIFFERENT tenant but the same `plan_id`, then calls `apply_subscription_payment` for the account's real tenant. With the bug, the cross-tenant sub is renewed instead of a new one created.
+Add the test to the billing test file you located. It seeds an active `AccountSubscription` for the same `(account_id, plan_id)` but a DIFFERENT tenant, then calls `apply_subscription_payment` for the account's real tenant; with the bug the cross-tenant sub gets renewed instead of a new one created.
 
 ```python
 async def test_apply_subscription_payment_scopes_dedup_by_tenant(session, default_tenant):
@@ -367,7 +367,7 @@ async def test_apply_subscription_payment_scopes_dedup_by_tenant(session, defaul
     session.add(other)
     await session.flush()
 
-    acc = Account(tenant_id=default_tenant.id, tg_user_id=90001, role="user")
+    acc = Account(tenant_id=default_tenant.id)
     session.add(acc)
     plan = SubscriptionPlan(
         tenant_id=default_tenant.id, name="Pro", price_cents=500,
@@ -396,20 +396,91 @@ async def test_apply_subscription_payment_scopes_dedup_by_tenant(session, defaul
         )
     ).scalars().all()
     # A new sub for the correct tenant must exist; the stale one is untouched.
-    assert any(s.tenant_id == default_tenant.id for s in subs)
     assert len(subs) == 2
+    assert any(s.tenant_id == default_tenant.id for s in subs)
+    assert any(s.tenant_id == other.id for s in subs)
 ```
 
-NOTE for implementer: adapt `SubscriptionPlan(...)` and `Account(...)` field names to the actual model columns (grep `class SubscriptionPlan` / `class Account` in `src/quantuum/db/models.py`). The contract is: after the call there are TWO subscriptions (the stale cross-tenant one + a new correct-tenant one), not one renewed cross-tenant sub.
+NOTE: `Account` has columns `tenant_id`, `is_superadmin`, `status` (no `tg_user_id`/`role`). `SubscriptionPlan` columns: `tenant_id`, `name`, `period_days`, `price_cents`, `currency`. The contract: after the call there are TWO subscriptions (the stale cross-tenant one + a new correct-tenant one).
 
-- [ ] **Step 3: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest <billing test file> -k scopes_dedup_by_tenant -v`
-Expected: FAIL — current lookup matches the cross-tenant sub and renews it, so `len(subs) == 1`.
+Expected: FAIL — current lookup matches the cross-tenant sub and renews it, so `len(subs) == 1`. (It will NOT raise IntegrityError yet, because the lookup currently has no tenant filter and finds+renews the stale row.)
 
-- [ ] **Step 4: Implement**
+- [ ] **Step 3: Write the migration**
 
-In `src/quantuum/domain/billing.py`, in `apply_subscription_payment`, add the tenant filter to the lookup:
+Create `alembic/versions/b7c8d9e0f1a2_subscription_index_tenant_scope.py`:
+
+```python
+"""subscription active-sub unique index: include tenant_id
+
+Revision ID: b7c8d9e0f1a2
+Revises: 30bed95a2812
+Create Date: 2026-06-03 21:00:00.000000
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = "b7c8d9e0f1a2"
+down_revision: Union[str, Sequence[str], None] = "30bed95a2812"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.drop_index(
+        "uq_active_subscription_per_plan", table_name="account_subscriptions"
+    )
+    op.create_index(
+        "uq_active_subscription_per_plan",
+        "account_subscriptions",
+        ["tenant_id", "account_id", "plan_id"],
+        unique=True,
+        postgresql_where=sa.text("status IN ('active','grace')"),
+    )
+
+
+def downgrade() -> None:
+    op.drop_index(
+        "uq_active_subscription_per_plan", table_name="account_subscriptions"
+    )
+    op.create_index(
+        "uq_active_subscription_per_plan",
+        "account_subscriptions",
+        ["account_id", "plan_id"],
+        unique=True,
+        postgresql_where=sa.text("status IN ('active','grace')"),
+    )
+```
+
+- [ ] **Step 4: Update the model index**
+
+In `src/quantuum/db/models.py`, change the `AccountSubscription.__table_args__` Index to include `tenant_id` first:
+
+```python
+    __table_args__ = (
+        Index(
+            "uq_active_subscription_per_plan",
+            "tenant_id",
+            "account_id",
+            "plan_id",
+            unique=True,
+            postgresql_where=text("status IN ('active','grace')"),
+        ),
+    )
+```
+
+(The test harness builds the schema from the models via `SQLModel.metadata.create_all`, so this model change is what makes the test DB's index tenant-scoped. The migration keeps the real DB in sync.)
+
+- [ ] **Step 5: Update the lookup**
+
+In `src/quantuum/domain/billing.py`, in `apply_subscription_payment`, add the tenant filter:
 
 ```python
     result = await session.execute(
@@ -422,21 +493,21 @@ In `src/quantuum/domain/billing.py`, in `apply_subscription_payment`, add the te
     )
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **Step 6: Run test to verify it passes**
 
 Run: `uv run pytest <billing test file> -k scopes_dedup_by_tenant -v`
-Expected: PASS
+Expected: PASS — the lookup no longer matches the cross-tenant row, so a new correct-tenant sub is INSERTed, and the now-tenant-scoped index permits it to coexist with the stale row.
 
-- [ ] **Step 6: Run the rest of the billing suite**
+- [ ] **Step 7: Run the rest of the billing suite**
 
-Run: `uv run pytest tests/test_billing_crediting.py tests/test_billing_fulfill.py tests/test_billing_grace.py -v`
+Run: `uv run pytest tests/test_billing_crediting.py tests/test_billing_fulfill.py tests/test_billing_grace.py tests/test_billing_models.py -v`
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/quantuum/domain/billing.py <billing test file>
-git commit -m "fix(billing): scope subscription renewal dedup by tenant"
+git add src/quantuum/domain/billing.py src/quantuum/db/models.py alembic/versions/b7c8d9e0f1a2_subscription_index_tenant_scope.py <billing test file>
+git commit -m "fix(billing): tenant-scope subscription dedup lookup and unique index"
 ```
 
 ---
