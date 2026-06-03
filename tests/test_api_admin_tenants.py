@@ -593,3 +593,46 @@ async def test_patch_balance_reconciles_ledger(
         f"ledger sum {ledger_sum2} != target {target2} after PATCH down; "
         "recompute would revert the balance"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task 5: financial/pricing routes are owner-only (admin → 403)
+# ---------------------------------------------------------------------------
+
+
+async def test_admin_cannot_patch_balance(client, admin_headers, default_tenant, session):
+    customer = await _make_customer(session, default_tenant.id)
+    r = await client.patch(
+        f"/admin/tenants/{default_tenant.id}/accounts/{customer.id}/balance",
+        headers=admin_headers,
+        json={"package_credits": 50},
+    )
+    assert r.status_code == 403
+
+
+async def test_admin_cannot_ban_account(client, admin_headers, default_tenant, session):
+    target = await _make_customer(session, default_tenant.id)
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/accounts/{target.id}/ban",
+        headers=admin_headers,
+        json={"reason": "x"},
+    )
+    assert r.status_code == 403
+    row = await session.get(Account, target.id)
+    await session.refresh(row)
+    assert row.status == "active"  # unchanged
+
+
+async def test_admin_cannot_create_subscription_plan(client, admin_headers, default_tenant):
+    r = await client.post(
+        f"/admin/tenants/{default_tenant.id}/plans/subscription",
+        headers=admin_headers,
+        json={
+            "slug": "admin-denied-plan",
+            "name": "Nope",
+            "period_days": 30,
+            "price_cents": 500,
+            "currency": "XTR",
+        },
+    )
+    assert r.status_code == 403
