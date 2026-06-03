@@ -1,3 +1,7 @@
+import asyncio
+
+from aiogram import Bot
+from aiogram.utils.token import TokenValidationError, validate_token
 from sqlmodel import select
 
 from quantuum.auth.identity import find_or_create_account_by_tg
@@ -6,6 +10,8 @@ from quantuum.common.datetime import utcnow
 from quantuum.common.ids import url_safe_token
 from quantuum.db.models import Tenant, TenantBot, TenantInvite
 from quantuum.domain.tenants import grant_role
+
+GETME_TIMEOUT_S = 10.0
 
 
 async def master_can_manage_bots(bot) -> bool:
@@ -16,7 +22,10 @@ async def master_can_manage_bots(bot) -> bool:
     onboarding can mint a bot via the request_managed_bot button + getManagedBotToken
     instead of asking the owner to paste a BotFather token.
     """
-    me = await bot.get_me()
+    try:
+        me = await asyncio.wait_for(bot.get_me(), timeout=GETME_TIMEOUT_S)
+    except (asyncio.TimeoutError, Exception):
+        return False
     return bool(getattr(me, "can_manage_bots", False))
 
 
@@ -63,16 +72,13 @@ async def create_tenant_from_onboarding(
 
 async def validate_bot_token(token: str) -> tuple[int, str] | None:
     """Validate a Telegram bot token via get_me(). Returns (bot_id, username) or None."""
-    from aiogram import Bot
-    from aiogram.utils.token import TokenValidationError, validate_token
-
     try:
         validate_token(token)
     except TokenValidationError:
         return None
     bot = Bot(token=token)
     try:
-        me = await bot.get_me()
+        me = await asyncio.wait_for(bot.get_me(), timeout=GETME_TIMEOUT_S)
         return me.id, me.username
     except Exception:
         return None
