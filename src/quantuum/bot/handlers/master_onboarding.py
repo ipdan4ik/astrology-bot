@@ -111,26 +111,41 @@ async def on_plain_start(message: Message, i18n: Translator) -> None:
 async def on_slug(message: Message, state: FSMContext, i18n: Translator) -> None:
     slug = (message.text or "").strip().lower()
     if not slug or " " in slug:
-        await message.answer(await i18n("master.onboard.slug_invalid"))
+        await message.answer(
+            await i18n("master.onboard.slug_invalid"),
+            reply_markup=await master_cancel_kb(i18n),
+        )
         return
     async with get_sessionmaker()() as session:
         if not await slug_is_available(session, slug):
-            await message.answer(await i18n("master.onboard.slug_taken"))
+            await message.answer(
+                await i18n("master.onboard.slug_taken"),
+                reply_markup=await master_cancel_kb(i18n),
+            )
             return
     await state.update_data(slug=slug)
     await state.set_state(OwnerOnboarding.display_name)
-    await message.answer(await i18n("master.onboard.display_name_prompt"))
+    await message.answer(
+        await i18n("master.onboard.display_name_prompt"),
+        reply_markup=await master_cancel_kb(i18n),
+    )
 
 
 @router.message(OwnerOnboarding.display_name)
 async def on_display_name(message: Message, state: FSMContext, i18n: Translator) -> None:
     name = (message.text or "").strip()
     if not name:
-        await message.answer(await i18n("master.onboard.display_name_empty"))
+        await message.answer(
+            await i18n("master.onboard.display_name_empty"),
+            reply_markup=await master_cancel_kb(i18n),
+        )
         return
     await state.update_data(display_name=name)
     await state.set_state(OwnerOnboarding.default_lang)
-    await message.answer(await i18n("master.onboard.lang_prompt"))
+    await message.answer(
+        await i18n("master.onboard.lang_prompt"),
+        reply_markup=await master_cancel_kb(i18n),
+    )
 
 
 @router.message(OwnerOnboarding.default_lang)

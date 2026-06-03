@@ -206,6 +206,44 @@ async def test_managed_bot_created_finalizes(session, default_tenant, monkeypatc
     assert tb.status == "active"
 
 
+async def test_slug_prompt_carries_cancel_keyboard(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({})
+    message = SimpleNamespace(text="acmebot", answer=AsyncMock())
+
+    await mo.on_slug(message, state, i18n=i18n)
+
+    assert state.state == mo.OwnerOnboarding.display_name
+    _, kwargs = message.answer.await_args
+    markup = kwargs.get("reply_markup")
+    assert markup is not None
+    cb = markup.inline_keyboard[0][0].callback_data
+    assert OwnerOnboardCb.unpack(cb).action == "cancel"
+
+
+async def test_display_name_prompt_carries_cancel_keyboard(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import master_onboarding as mo
+    from quantuum.bot.ui.callbacks import OwnerOnboardCb
+
+    _patch_sessionmaker(monkeypatch, mo, session)
+    i18n = await build_translator(session, default_tenant.id)
+    state = _FakeState({"slug": "acme"})
+    message = SimpleNamespace(text="Acme Co", answer=AsyncMock())
+
+    await mo.on_display_name(message, state, i18n=i18n)
+
+    assert state.state == mo.OwnerOnboarding.default_lang
+    _, kwargs = message.answer.await_args
+    markup = kwargs.get("reply_markup")
+    assert markup is not None
+    cb = markup.inline_keyboard[0][0].callback_data
+    assert OwnerOnboardCb.unpack(cb).action == "cancel"
+
+
 async def test_default_lang_renders_confirm(session, default_tenant, monkeypatch):
     """Regression: the confirm summary must render. The template uses {language}, not
     {lang} — passing lang= as a format var collides with the Translator's reserved
