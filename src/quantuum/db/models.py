@@ -377,6 +377,7 @@ class AccountSubscription(SQLModel, table=True):
     __table_args__ = (
         Index(
             "uq_active_subscription_per_plan",
+            "tenant_id",
             "account_id",
             "plan_id",
             unique=True,

@@ -157,6 +157,7 @@ async def apply_subscription_payment(
     result = await session.execute(
         select(AccountSubscription).where(
             AccountSubscription.account_id == account_id,
+            AccountSubscription.tenant_id == tenant_id,
             AccountSubscription.plan_id == plan.id,
             AccountSubscription.status.in_(("active", "grace")),
         )
