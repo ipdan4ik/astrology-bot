@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.common.datetime import utcnow
-from quantuum.db.models import AccountBalance, StartToken, StartTokenUse
+from quantuum.db.models import StartToken, StartTokenUse
 from quantuum.domain.audit import record_audit
 from quantuum.domain.gifts import GIFT_KIND
 from quantuum.domain.referrals import REFERRAL_KIND
@@ -149,10 +149,15 @@ async def handle_gift_token(
         used_at=utcnow(),
         claimed_at=utcnow(),
     ))
-    bal = await session.get(AccountBalance, account_id)
-    if bal is None:
-        return None
-    bal.package_credits += amount
+    from quantuum.domain.billing import grant_credits
+
+    await grant_credits(
+        session,
+        account_id=account_id,
+        tenant_id=locked.tenant_id,
+        amount=amount,
+        source="gift",
+    )
     locked.status = "claimed"
     locked.used_count += 1
     await session.flush()

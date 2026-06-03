@@ -311,6 +311,36 @@ async def test_dispatch_gift_double_claim_aborts_second(session):
     assert bal_r2.package_credits == 0
 
 
+async def test_claimed_gift_is_ledger_backed(session, default_tenant):
+    """A redeemed gift must create a ledger row so it survives recompute."""
+    from sqlmodel import select
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.db.models import AccountPackage, StartToken
+    from quantuum.bot.handlers.start_tokens import handle_gift_token
+
+    recipient = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="giftee"
+    )
+    token = StartToken(
+        code="giftcode1", kind="gift", tenant_id=default_tenant.id,
+        owner_account_id=None, payload={"amount": 4}, status="active",
+    )
+    session.add(token)
+    await session.commit()
+
+    result = await handle_gift_token(session, token=token, account_id=recipient.id)
+    await session.commit()
+
+    assert result is not None and result.amount == 4
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == recipient.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "gift" and r.requests_remaining == 4 for r in rows)
+
+
 async def test_dispatch_gift_feature_flag_off_silent(session):
     from quantuum.domain.tenant_features import set_feature_enabled
 
