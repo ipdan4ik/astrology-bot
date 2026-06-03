@@ -15,6 +15,12 @@ from quantuum.db.models import (
 
 _TERMINAL = {"done", "failed"}
 
+# Content fields a worker may set alongside status; anything else is rejected.
+_STATUS_FIELDS = frozenset({
+    "transit_md", "horoscope_md", "lang", "error",
+    "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out",
+})
+
 
 async def is_subscriber(session, account_id: int) -> bool:
     bal = await session.get(AccountBalance, account_id)
@@ -73,6 +79,9 @@ async def claim_horoscope(
 
 
 async def set_horoscope_status(session, horoscope_id: int, status: str, **fields) -> None:
+    unknown = set(fields) - _STATUS_FIELDS
+    if unknown:
+        raise ValueError(f"set_horoscope_status: disallowed fields {sorted(unknown)}")
     row = await session.get(DailyHoroscope, horoscope_id)
     if row is None:
         return

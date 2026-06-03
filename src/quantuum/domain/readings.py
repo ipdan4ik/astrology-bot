@@ -6,6 +6,13 @@ from quantuum.db.models import Reading
 
 _TERMINAL = {"done", "failed"}
 
+# Content fields a worker may set alongside status. Anything else is rejected to
+# prevent arbitrary attribute writes via **fields.
+_STATUS_FIELDS = frozenset({
+    "calc_md", "llm_md", "llm_provider", "llm_model",
+    "llm_tokens_in", "llm_tokens_out", "error", "draw_jsonb",
+})
+
 
 async def create_reading(
     session, *, tenant_id: int, account_id: int, natal_profile_id: int,
@@ -33,6 +40,9 @@ async def get_reading(session, reading_id: int) -> Reading:
 
 
 async def set_reading_status(session, reading_id: int, status: str, **fields) -> None:
+    unknown = set(fields) - _STATUS_FIELDS
+    if unknown:
+        raise ValueError(f"set_reading_status: disallowed fields {sorted(unknown)}")
     reading = await get_reading(session, reading_id)
     reading.status = status
     for key, value in fields.items():

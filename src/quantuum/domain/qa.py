@@ -6,6 +6,12 @@ from quantuum.db.models import Blueprint, NatalProfile, QaAnswer
 
 _TERMINAL = {"done", "failed"}
 
+# Content fields a worker may set alongside status; anything else is rejected.
+_STATUS_FIELDS = frozenset({
+    "answer_md", "lang", "error", "blueprint_id",
+    "llm_provider", "llm_model", "llm_tokens_in", "llm_tokens_out",
+})
+
 
 async def create_qa(
     session,
@@ -51,6 +57,9 @@ async def list_qa(
 
 
 async def set_qa_status(session, qa_id: int, status: str, **fields) -> None:
+    unknown = set(fields) - _STATUS_FIELDS
+    if unknown:
+        raise ValueError(f"set_qa_status: disallowed fields {sorted(unknown)}")
     qa = await get_qa(session, qa_id)
     qa.status = status
     for key, value in fields.items():
