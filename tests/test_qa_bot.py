@@ -229,3 +229,20 @@ async def test_ask_empty(session, default_tenant, monkeypatch):
     assert text == "Вопрос пустой. Напиши вопрос:"
     spy.assert_not_awaited()
     assert (await session.execute(select(QaAnswer))).scalars().first() is None
+
+
+async def test_start_ask_prompt_has_cancel_button(session, default_tenant):
+    from quantuum.bot.handlers import qa
+    from quantuum.bot.ui.callbacks import OnboardCb
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = FakeFSM()
+    msg = FakeMessage(text="/ask", chat_id=200)
+    await qa.start_ask(msg, state, i18n)
+
+    assert await state.get_state() == qa.Ask.awaiting_question
+    kb = msg.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None, "start_ask must attach a keyboard"
+    btns = [b for row in kb.inline_keyboard for b in row]
+    actions = [OnboardCb.unpack(b.callback_data).action for b in btns]
+    assert "cancel" in actions

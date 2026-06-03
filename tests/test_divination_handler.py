@@ -221,3 +221,49 @@ async def test_moderation_hit_aborts_without_quota_charge(
     assert len(mod_rows) == 1
     assert mod_rows[0].category == "self_harm"
     assert await state.get_state() is None
+
+
+def _patch_sessionmaker(monkeypatch, module, session):
+    class _Maker:
+        def __call__(self):
+            return _Ctx()
+    class _Ctx:
+        async def __aenter__(self):
+            return session
+        async def __aexit__(self, *a):
+            return False
+    monkeypatch.setattr(module, "get_sessionmaker", lambda: _Maker())
+
+
+async def test_divination_choice_keyboard_has_skip_and_cancel(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import divination
+    from quantuum.bot.ui.callbacks import DivinationCb, OnboardCb
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, divination, session)
+    acc = await _seed_account_with_profile_and_credits(session, default_tenant)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = _query(tg_id=42, kind="tarot")
+    state = _state(42)
+    await divination.on_divination_choice(
+        q, account=MagicMock(id=acc.id, tenant_id=default_tenant.id),
+        state=state, i18n=i18n,
+    )
+
+    kb = q.message.answer.await_args.kwargs.get("reply_markup")
+    assert kb is not None
+    btns = [b for row in kb.inline_keyboard for b in row]
+    cb_datas = [b.callback_data for b in btns]
+
+    def _try(cls, d):
+        try:
+            return cls.unpack(d)
+        except Exception:
+            return None
+
+    assert any(_try(DivinationCb, d) and _try(DivinationCb, d).action == "skip"
+               for d in cb_datas), "skip btn missing"
+    assert any(_try(OnboardCb, d) and _try(OnboardCb, d).action == "cancel"
+               for d in cb_datas), "cancel btn missing"

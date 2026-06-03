@@ -6,6 +6,7 @@ from aiogram.types import Message
 from openai import AsyncOpenAI
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
+from quantuum.bot.ui.keyboards import cancel_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
@@ -36,7 +37,7 @@ class Ask(StatesGroup):
 async def start_ask(message: Message, state: FSMContext, i18n: Translator) -> None:
     """Begin the ask flow: wait for the user's free-text question."""
     await state.set_state(Ask.awaiting_question)
-    await message.answer(await i18n("qa.ask_prompt"))
+    await message.answer(await i18n("qa.ask_prompt"), reply_markup=await cancel_kb(i18n))
 
 
 async def _submit(message: Message, raw: str, account: Account, i18n: Translator) -> None:

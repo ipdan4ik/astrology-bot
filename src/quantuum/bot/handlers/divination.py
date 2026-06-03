@@ -6,14 +6,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
     CallbackQuery,
-    InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
 )
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from openai import AsyncOpenAI
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
-from quantuum.bot.ui.callbacks import DivinationCb, ReadingCb
+from quantuum.bot.ui.callbacks import DivinationCb, OnboardCb, ReadingCb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
@@ -42,6 +42,20 @@ class Divination(StatesGroup):
 
 
 _DIVINATION_KINDS = {"tarot", "iching"}
+
+
+async def _divination_question_kb(i18n: Translator) -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.button(
+        text=await i18n("divination.skip_btn"),
+        callback_data=DivinationCb(action="skip"),
+    )
+    b.button(
+        text=await i18n("kb.cancel"),
+        callback_data=OnboardCb(action="cancel"),
+    )
+    b.adjust(1)
+    return b.as_markup()
 
 
 @router.callback_query(
@@ -74,19 +88,11 @@ async def on_divination_choice(
     await state.set_state(Divination.awaiting_question)
     await state.update_data(kind=kind)
 
-    skip_btn = InlineKeyboardMarkup(
-        inline_keyboard=[[
-            InlineKeyboardButton(
-                text=await i18n("divination.skip_btn"),
-                callback_data=DivinationCb(action="skip").pack(),
-            )
-        ]]
-    )
     await query.message.answer(
         await i18n("divination.question_prompt")
         + "\n"
         + await i18n("divination.question_hint"),
-        reply_markup=skip_btn,
+        reply_markup=await _divination_question_kb(i18n),
     )
     await query.answer()
 

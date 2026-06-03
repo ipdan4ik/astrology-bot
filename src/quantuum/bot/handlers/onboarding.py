@@ -118,33 +118,33 @@ async def start_onboarding(query: CallbackQuery, state: FSMContext, i18n: Transl
 async def on_full_name(message: Message, state: FSMContext, i18n: Translator) -> None:
     name = parse_required_text(message.text)
     if name is None:
-        await message.answer(await i18n("onb.error.full_name"))
+        await message.answer(await i18n("onb.error.full_name"), reply_markup=await cancel_kb(i18n))
         return
     await state.update_data(full_name=name)
     await state.set_state(Onboarding.birth_date)
-    await message.answer(await i18n("onb.prompt.birth_date"))
+    await message.answer(await i18n("onb.prompt.birth_date"), reply_markup=await cancel_kb(i18n))
 
 
 @router.message(Onboarding.birth_date)
 async def on_birth_date(message: Message, state: FSMContext, i18n: Translator) -> None:
     parsed = parse_birth_date(message.text)
     if parsed is None:
-        await message.answer(await i18n("onb.error.birth_date"))
+        await message.answer(await i18n("onb.error.birth_date"), reply_markup=await cancel_kb(i18n))
         return
     await state.update_data(birth_date=parsed.isoformat())
     await state.set_state(Onboarding.birth_time)
-    await message.answer(await i18n("onb.prompt.birth_time"))
+    await message.answer(await i18n("onb.prompt.birth_time"), reply_markup=await cancel_kb(i18n))
 
 
 @router.message(Onboarding.birth_time)
 async def on_birth_time(message: Message, state: FSMContext, i18n: Translator) -> None:
     parsed = parse_birth_time(message.text)
     if parsed is None:
-        await message.answer(await i18n("onb.error.birth_time"))
+        await message.answer(await i18n("onb.error.birth_time"), reply_markup=await cancel_kb(i18n))
         return
     await state.update_data(birth_time=parsed.isoformat())
     await state.set_state(Onboarding.birth_place)
-    await message.answer(await i18n("onb.prompt.birth_place"))
+    await message.answer(await i18n("onb.prompt.birth_place"), reply_markup=await cancel_kb(i18n))
 
 
 @router.message(Onboarding.birth_place, F.location)

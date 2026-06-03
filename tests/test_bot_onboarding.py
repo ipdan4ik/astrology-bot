@@ -294,3 +294,112 @@ async def test_on_birth_date_prompt_localised_en(session, default_tenant):
     # advancing to birth_date prompts the EN string
     assert message.answer.await_args.args[0] == BASE_STRINGS["onb.prompt.birth_date"]["en"]
     assert state.state == ob.Onboarding.birth_date
+
+
+# ---------------------------------------------------------------------------
+# Cancel-kb persistence tests (PR1 fix/fsm-cancel)
+# ---------------------------------------------------------------------------
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import StorageKey
+from aiogram.fsm.storage.memory import MemoryStorage
+
+from quantuum.bot.ui.callbacks import OnboardCb
+
+
+def _fsm_ctx(chat_id: int) -> FSMContext:
+    return FSMContext(
+        storage=MemoryStorage(),
+        key=StorageKey(bot_id=1, chat_id=chat_id, user_id=chat_id),
+    )
+
+
+class _FakeMsg:
+    def __init__(self, text="", chat_id=1):
+        self.text = text
+        self.chat = SimpleNamespace(id=chat_id)
+        self.answer = AsyncMock()
+
+
+def _has_cancel(msg) -> bool:
+    if not msg.answer.called:
+        return False
+    kb = msg.answer.call_args_list[-1].kwargs.get("reply_markup")
+    if kb is None:
+        return False
+    btns = [b for row in kb.inline_keyboard for b in row]
+    return any(OnboardCb.unpack(b.callback_data).action == "cancel" for b in btns)
+
+
+async def test_onboarding_birth_date_prompt_carries_cancel_kb(session, default_tenant):
+    from quantuum.bot.handlers import onboarding
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm_ctx(301)
+    await state.set_state(onboarding.Onboarding.full_name)
+    msg = _FakeMsg(text="Иван Петров", chat_id=301)
+    await onboarding.on_full_name(msg, state, i18n)
+
+    assert await state.get_state() == onboarding.Onboarding.birth_date.state
+    assert _has_cancel(msg), "birth_date prompt must carry cancel_kb"
+
+
+async def test_onboarding_birth_date_error_carries_cancel_kb(session, default_tenant):
+    from quantuum.bot.handlers import onboarding
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm_ctx(302)
+    await state.set_state(onboarding.Onboarding.birth_date)
+    msg = _FakeMsg(text="not-a-date", chat_id=302)
+    await onboarding.on_birth_date(msg, state, i18n)
+
+    assert await state.get_state() == onboarding.Onboarding.birth_date.state
+    assert _has_cancel(msg), "birth_date error must carry cancel_kb"
+
+
+async def test_onboarding_birth_time_prompt_carries_cancel_kb(session, default_tenant):
+    from quantuum.bot.handlers import onboarding
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm_ctx(303)
+    await state.set_state(onboarding.Onboarding.birth_date)
+    await state.update_data(full_name="Иван")
+    msg = _FakeMsg(text="1990-06-24", chat_id=303)
+    await onboarding.on_birth_date(msg, state, i18n)
+
+    assert await state.get_state() == onboarding.Onboarding.birth_time.state
+    assert _has_cancel(msg), "birth_time prompt must carry cancel_kb"
+
+
+async def test_onboarding_birth_time_error_carries_cancel_kb(session, default_tenant):
+    from quantuum.bot.handlers import onboarding
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm_ctx(304)
+    await state.set_state(onboarding.Onboarding.birth_time)
+    msg = _FakeMsg(text="not-a-time", chat_id=304)
+    await onboarding.on_birth_time(msg, state, i18n)
+
+    assert await state.get_state() == onboarding.Onboarding.birth_time.state
+    assert _has_cancel(msg), "birth_time error must carry cancel_kb"
+
+
+async def test_onboarding_birth_place_prompt_carries_cancel_kb(session, default_tenant):
+    from quantuum.bot.handlers import onboarding
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = _fsm_ctx(305)
+    await state.set_state(onboarding.Onboarding.birth_time)
+    await state.update_data(full_name="Иван", birth_date="1990-06-24")
+    msg = _FakeMsg(text="10:00", chat_id=305)
+    await onboarding.on_birth_time(msg, state, i18n)
+
+    assert await state.get_state() == onboarding.Onboarding.birth_place.state
+    assert _has_cancel(msg), "birth_place prompt must carry cancel_kb"
