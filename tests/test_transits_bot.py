@@ -160,3 +160,32 @@ async def test_transits_no_profile_shows_fill_button(session, default_tenant, mo
     assert kb is not None, "no-profile response must include a keyboard"
     btns = [b for row in kb.inline_keyboard for b in row]
     assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)
+
+
+async def test_transits_enqueue_failure_refunds_credit(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import transits
+
+    _patch_sessionmaker(monkeypatch, transits, session)
+    monkeypatch.setattr(
+        transits, "enqueue_transit",
+        AsyncMock(side_effect=RuntimeError("redis down")),
+    )
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "199", credits=2)
+
+    msg = FakeMessage(text="/transits", chat_id=199)
+    command = SimpleNamespace(args=None)
+    await transits.on_transits(msg, command, acc, i18n)
+
+    expected = await i18n("errors.queue_failed")
+    answers = [c.args[0] for c in msg.answer.await_args_list]
+    assert expected in answers
+
+    balance = await session.get(AccountBalance, acc.id)
+    await session.refresh(balance)
+    assert balance.package_credits == 2  # refunded back to starting value
+
+    reqs = (await session.execute(select(Request).where(Request.kind == "transit"))).scalars().all()
+    assert len(reqs) == 1
+    await session.refresh(reqs[0])
+    assert reqs[0].charged_against == "none"
