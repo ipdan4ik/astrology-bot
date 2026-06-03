@@ -1,5 +1,5 @@
 from quantuum.auth.identity import find_or_create_account_by_tg
-from quantuum.db.models import TenantBot
+from quantuum.db.models import Tenant, TenantBot
 from quantuum.domain.tenants import (
     account_has_role,
     grant_role,
@@ -55,3 +55,19 @@ async def test_resolve_large_bot_id_no_int4_overflow(session, default_tenant):
     big = 7123456789  # exceeds int4 max (2,147,483,647) — must be BigInteger
     await _bot(session, default_tenant.id, bot_id=big, secret="big-bot")
     assert await resolve_tenant_id_by_bot(session, big) == default_tenant.id
+
+
+async def test_webhook_secret_ignores_suspended_tenant(session):
+    t = Tenant(slug="susp", display_name="S", status="suspended")
+    session.add(t)
+    await session.flush()
+    await _bot(session, t.id, bot_id=999001, secret="susp-secret")
+    assert await get_tenant_bot_by_webhook_secret(session, "susp-secret") is None
+
+
+async def test_resolve_bot_ignores_suspended_tenant(session):
+    t = Tenant(slug="susp2", display_name="S2", status="suspended")
+    session.add(t)
+    await session.flush()
+    await _bot(session, t.id, bot_id=999002, secret="susp2-secret")
+    assert await resolve_tenant_id_by_bot(session, 999002) is None
