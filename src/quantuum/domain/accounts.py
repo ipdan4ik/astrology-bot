@@ -56,17 +56,44 @@ async def get_tg_chat_id(session, account_id: int) -> str | None:
 
 
 async def adjust_package_credits(session, account_id: int, delta: int) -> int:
-    """Add (or, for negative delta, deduct) package credits, clamped at zero.
+    """Add (positive) or deduct (negative) package credits via the ledger.
 
-    Creates the AccountBalance row if missing. Flushes; caller commits.
+    Positive delta inserts a 'manual' ledger row. Negative delta drains valid
+    ledger rows oldest-expiring first, clamped at zero. The package_credits
+    counter is kept equal to the valid ledger sum. Flushes; caller commits.
     Returns the new package_credits balance.
     """
+    from quantuum.domain.billing import _sum_valid_packages, grant_credits
+    from quantuum.domain.quota import _oldest_valid_package
+
     bal = await session.get(AccountBalance, account_id)
     if bal is None:
         bal = AccountBalance(account_id=account_id)
         session.add(bal)
         await session.flush()
-    bal.package_credits = max(0, bal.package_credits + delta)
+
+    if delta > 0:
+        acc = await session.get(Account, account_id)
+        await grant_credits(
+            session,
+            account_id=account_id,
+            tenant_id=acc.tenant_id,
+            amount=delta,
+            source="manual",
+        )
+        await session.refresh(bal)
+        return bal.package_credits
+
+    remaining = -delta
+    while remaining > 0:
+        pkg = await _oldest_valid_package(session, account_id)
+        if pkg is None:
+            break
+        take = min(remaining, pkg.requests_remaining)
+        pkg.requests_remaining -= take
+        session.add(pkg)
+        remaining -= take
+    bal.package_credits = await _sum_valid_packages(session, account_id)
     bal.updated_at = utcnow()
     session.add(bal)
     await session.flush()

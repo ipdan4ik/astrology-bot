@@ -57,3 +57,31 @@ async def test_grant_credits_rejects_non_positive(session, default_tenant):
         await grant_credits(
             session, account_id=acc.id, tenant_id=default_tenant.id, amount=0, source="gift"
         )
+
+
+async def test_manual_grant_is_ledger_backed_and_deduct_drains(session, default_tenant):
+    from sqlmodel import select
+
+    from quantuum.db.models import AccountBalance, AccountPackage
+    from quantuum.domain.accounts import adjust_package_credits
+
+    acc = await _account(session, default_tenant)
+    start = (await session.get(AccountBalance, acc.id)).package_credits
+
+    after_grant = await adjust_package_credits(session, acc.id, 5)
+    await session.commit()
+    assert after_grant == start + 5
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(
+                AccountPackage.account_id == acc.id, AccountPackage.source == "manual"
+            )
+        )
+    ).scalars().all()
+    assert any(r.requests_remaining == 5 for r in rows)
+
+    after_deduct = await adjust_package_credits(session, acc.id, -3)
+    await session.commit()
+    assert after_deduct == after_grant - 3
+    from quantuum.domain.billing import _sum_valid_packages
+    assert after_deduct == await _sum_valid_packages(session, acc.id)
