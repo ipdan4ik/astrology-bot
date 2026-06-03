@@ -23,7 +23,14 @@ async def _make_plan(session):
 
 
 async def _setup_package_balance(session, acc, tenant_id, credits: int, requests_remaining: int):
-    """Mark trial used and set package credits; update the auto-created balance row."""
+    """Mark trial used and set package credits; update the auto-created balance row.
+
+    Removes the welcome ledger row so the account's only package is the one under
+    test, keeping the counter and the ledger sum consistent.
+    """
+    from sqlmodel import delete
+
+    await session.execute(delete(AccountPackage).where(AccountPackage.account_id == acc.id))
     bal = await session.get(AccountBalance, acc.id)
     bal.free_trial_used = True
     bal.package_credits = credits
