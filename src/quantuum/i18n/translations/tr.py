@@ -439,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "İmge",
     "iching.changing_line_label": "Değişen çizgi {n}",
     "iching.transformed_label": "Şuna dönüşür",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ Menüye dön",
+    "owner.features.label.referrals": "Davetler",
+    "owner.features.label.gifts": "Hediyeler",
+    "master.provision.manual_prompt": (
+        "Otomatik bot oluşturma kullanılamıyor. @BotFather üzerinden yeni bir bot oluştur "
+        "ve token'ını buraya tek bir mesajda gönder."
+    ),
+    "master.provision.managed_prompt": (
+        "Aşağıdaki düğmeye dokun — Telegram botu oluşturacak ve ben onu otomatik olarak "
+        "alacağım. Kullanıcı adını oluşturma ekranında ayarlayabilirsin."
+    ),
+    "master.provision.managed_button": "🤖 Bot oluştur",
 }

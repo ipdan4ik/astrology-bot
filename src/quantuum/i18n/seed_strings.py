@@ -606,6 +606,31 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "Создать бота",
         "en": "Create bot",
     },
+    # Provisioning prompts (tasks/provision.py)
+    "master.provision.manual_prompt": {
+        "ru": (
+            "Автосоздание бота недоступно. Создай нового бота через @BotFather "
+            "и пришли сюда его токен одним сообщением."
+        ),
+        "en": (
+            "Automatic bot creation is unavailable. Create a new bot via @BotFather "
+            "and send its token here in one message."
+        ),
+    },
+    "master.provision.managed_prompt": {
+        "ru": (
+            "Нажми кнопку ниже — Telegram создаст бота, а я подхвачу его автоматически. "
+            "Имя пользователя можно поправить на экране создания."
+        ),
+        "en": (
+            "Tap the button below — Telegram will create the bot and I'll pick it up "
+            "automatically. You can adjust the username on the creation screen."
+        ),
+    },
+    "master.provision.managed_button": {
+        "ru": "🤖 Создать бота",
+        "en": "🤖 Create bot",
+    },
     # -------------------------------------------------------------------------
     # Master bot — owner console (owner_console.py)
     # -------------------------------------------------------------------------
@@ -657,6 +682,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "owner.manage.kb.transfer": {
         "ru": "🔁 Передать владение",
         "en": "🔁 Transfer ownership",
+    },
+    "owner.manage.kb.back": {
+        "ru": "⬅️ Назад в меню",
+        "en": "⬅️ Back to menu",
     },
     # Stats text — see module docstring for placeholders
     "owner.stats.text": {
@@ -1066,6 +1095,14 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "owner.features.label.daily": {
         "ru": "Ежедневное",
         "en": "Daily",
+    },
+    "owner.features.label.referrals": {
+        "ru": "Рефералы",
+        "en": "Referrals",
+    },
+    "owner.features.label.gifts": {
+        "ru": "Подарки",
+        "en": "Gifts",
     },
     # -------------------------------------------------------------------------
     # White-label branding (SP3)

@@ -439,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "Imagem",
     "iching.changing_line_label": "Linha mutante {n}",
     "iching.transformed_label": "Torna-se",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ Voltar ao menu",
+    "owner.features.label.referrals": "Indicações",
+    "owner.features.label.gifts": "Presentes",
+    "master.provision.manual_prompt": (
+        "A criação automática do bot não está disponível. Crie um novo bot pelo "
+        "@BotFather e envie o token dele aqui em uma única mensagem."
+    ),
+    "master.provision.managed_prompt": (
+        "Toque no botão abaixo — o Telegram criará o bot e eu o assumirei automaticamente. "
+        "Você pode ajustar o nome de usuário na tela de criação."
+    ),
+    "master.provision.managed_button": "🤖 Criar bot",
 }

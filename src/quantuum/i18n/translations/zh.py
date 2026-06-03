@@ -438,4 +438,17 @@ TRANSLATIONS = {
     "iching.image_label": "象",
     "iching.changing_line_label": "变爻 {n}",
     "iching.transformed_label": "变为",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ 返回菜单",
+    "owner.features.label.referrals": "推荐",
+    "owner.features.label.gifts": "礼物",
+    "master.provision.manual_prompt": (
+        "无法自动创建机器人。请通过 @BotFather 创建一个新机器人，"
+        "并将其令牌在一条消息中发送到这里。"
+    ),
+    "master.provision.managed_prompt": (
+        "点击下方按钮——Telegram 将创建机器人，我会自动接管。"
+        "你可以在创建界面调整用户名。"
+    ),
+    "master.provision.managed_button": "🤖 创建机器人",
 }

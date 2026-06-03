@@ -439,4 +439,17 @@ TRANSLATIONS = {
     "iching.image_label": "छवि",
     "iching.changing_line_label": "बदलती रेखा {n}",
     "iching.transformed_label": "बदलता है",
+    # Console UX nav + provisioning
+    "owner.manage.kb.back": "⬅️ मेनू पर वापस",
+    "owner.features.label.referrals": "रेफ़रल",
+    "owner.features.label.gifts": "उपहार",
+    "master.provision.manual_prompt": (
+        "स्वचालित बॉट निर्माण उपलब्ध नहीं है। @BotFather के ज़रिए एक नया बॉट बनाएँ "
+        "और उसका टोकन यहाँ एक ही संदेश में भेजें।"
+    ),
+    "master.provision.managed_prompt": (
+        "नीचे दिए बटन पर टैप करें — Telegram बॉट बना देगा और मैं उसे अपने आप उठा लूँगा। "
+        "उपयोगकर्ता नाम को निर्माण स्क्रीन पर समायोजित किया जा सकता है।"
+    ),
+    "master.provision.managed_button": "🤖 बॉट बनाएँ",
 }
