@@ -25,7 +25,7 @@ async def test_main_menu_has_localised_buttons(session, default_tenant):
     assert set(_reply_texts(kb)) == {
         "🔮 Разбор", "❓ Спросить астролога", "📖 Разборы", "🌌 Транзиты", "🔔 Ежедневный гороскоп",
         "👤 Профиль", "📜 История", "ℹ️ Помощь", "🌐 Язык", "🎁 Пригласить друга",
-        "Подарок",
+        "🎁 Подарок",
     }
 
 
@@ -36,7 +36,7 @@ async def test_main_menu_respects_lang(session, default_tenant):
     assert set(_reply_texts(kb)) == {
         "🔮 Reading", "❓ Ask the astrologer", "📖 Readings", "🌌 Transits", "🔔 Daily horoscope",
         "👤 Profile", "📜 History", "ℹ️ Help", "🌐 Language", "🎁 Invite a friend",
-        "Gift",
+        "🎁 Gift",
     }
 
 
@@ -107,3 +107,9 @@ async def test_blueprint_detail_kb_back_page_defaults_to_zero():
     btns = [b for row in kb.inline_keyboard for b in row]
     back_btn = next(b for b in btns if BlueprintCb.unpack(b.callback_data).action == "back")
     assert BlueprintCb.unpack(back_btn.callback_data).page == 0
+
+
+def test_btn_gift_has_emoji():
+    from quantuum.i18n.seed_strings import BASE_STRINGS
+    assert BASE_STRINGS["btn.gift"]["ru"].startswith("🎁"), "ru btn.gift must start with 🎁"
+    assert BASE_STRINGS["btn.gift"]["en"].startswith("🎁"), "en btn.gift must start with 🎁"

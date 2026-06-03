@@ -93,9 +93,7 @@ async def on_divination_choice(
     await state.update_data(kind=kind)
 
     await query.message.answer(
-        await i18n("divination.question_prompt")
-        + "\n"
-        + await i18n("divination.question_hint"),
+        await i18n("divination.question_prompt"),
         reply_markup=await _divination_question_kb(i18n),
     )
     await query.answer()

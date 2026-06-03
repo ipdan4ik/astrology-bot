@@ -129,3 +129,27 @@ async def test_create_flow_emits_link(session, default_tenant):
     body = msg.answer.await_args.args[0]
     assert "gift.created" in body
     assert "https://t.me/t_bot?start=" in body
+
+
+async def test_gift_cancel_responds_with_cancelled_not_hint(session, default_tenant):
+    from quantuum.bot.handlers import gift
+    from aiogram.fsm.context import FSMContext
+    from aiogram.fsm.storage.base import StorageKey
+    from aiogram.fsm.storage.memory import MemoryStorage
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    state = FSMContext(
+        storage=MemoryStorage(),
+        key=StorageKey(bot_id=1, chat_id=700, user_id=700),
+    )
+    await state.set_state(gift.Gift.awaiting_amount)
+
+    msg = SimpleNamespace(text="/cancel", chat=SimpleNamespace(id=700), answer=AsyncMock())
+    await gift.on_gift_cancel(msg, state, i18n)
+
+    text = msg.answer.await_args.args[0]
+    assert text == "Отменено.", f"Expected 'Отменено.' got {text!r}"
+    assert await state.get_state() is None

@@ -270,7 +270,7 @@ TRANSLATIONS = {
     "onb.prompt.birth_place": (
         "出生地点：发送位置（📎 → 位置，可在地图上标记）或输入城市/部分地址："
     ),
-    "onb.done": "完成！档案已保存。使用 /blueprint 命令生成您的解读。",
+    "onb.done": "完成！您的资料已保存。点击下方菜单中的「🔮 解读」。",
     # Owner console — user management
     "owner.manage.kb.users": "👥 用户",
     "owner.users.header": "{display_name} 的用户：",
@@ -382,10 +382,11 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # Gift-a-friend (SP5)
     # -------------------------------------------------------------------------
-    "btn.gift": "礼物",
+    "btn.gift": "🎁 礼物",
     "gift.title": "送给朋友",
     "gift.balance_line": "可用：{balance}",
     "gift.amount_prompt": "输入礼物金额（1–{max}）：",
+    "gift.cancelled": "已取消。",
     "gift.cancel_hint": "发送 /cancel 取消。",
     "gift.too_small": "最少 1 个积分。",
     "gift.too_large": "最多 {max} 个积分。",
@@ -417,7 +418,6 @@ TRANSLATIONS = {
     "readings.kind.tarot": "🔮 塔罗",
     "readings.kind.iching": "☯ 易经",
     "divination.question_prompt": "请提出你的问题或发送 /skip：",
-    "divination.question_hint": "或点击下方的跳过。",
     "divination.skip_btn": "跳过",
     "divination.no_question": "（无问题）",
     "tarot.position.past": "过去",

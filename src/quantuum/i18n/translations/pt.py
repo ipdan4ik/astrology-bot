@@ -272,7 +272,7 @@ TRANSLATIONS = {
         "Local de nascimento: envie sua localização (📎 → Localização, você pode marcar um ponto "
         "no mapa) ou digite uma cidade / parte de um endereço:"
     ),
-    "onb.done": "Pronto! Seu perfil foi salvo. O comando /blueprint vai gerar sua leitura.",
+    "onb.done": "Pronto! O seu perfil foi salvo. Toque em «🔮 Leitura» no menu abaixo.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Usuários",
     "owner.users.header": "Usuários de {display_name}:",
@@ -384,10 +384,11 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # Gift-a-friend (SP5)
     # -------------------------------------------------------------------------
-    "btn.gift": "Presente",
+    "btn.gift": "🎁 Presente",
     "gift.title": "Presenteie um amigo",
     "gift.balance_line": "Disponível: {balance}",
     "gift.amount_prompt": "Digite o valor do presente (1–{max}):",
+    "gift.cancelled": "Cancelado.",
     "gift.cancel_hint": "Envie /cancel para cancelar.",
     "gift.too_small": "Mínimo 1 crédito.",
     "gift.too_large": "Máximo {max} créditos.",
@@ -419,7 +420,6 @@ TRANSLATIONS = {
     "readings.kind.tarot": "🔮 Tarot",
     "readings.kind.iching": "☯ I Ching",
     "divination.question_prompt": "Formule sua pergunta ou envie /skip:",
-    "divination.question_hint": "Ou toque em Pular abaixo.",
     "divination.skip_btn": "Pular",
     "divination.no_question": "(sem pergunta)",
     "tarot.position.past": "Passado",

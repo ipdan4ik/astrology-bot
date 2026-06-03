@@ -271,7 +271,7 @@ TRANSLATIONS = {
         "जन्म स्थान: लोकेशन भेजें (📎 → Location, मानचित्र पर पिन लगा सकते हैं) "
         "या शहर / पते का हिस्सा लिखें:"
     ),
-    "onb.done": "हो गया! आपकी प्रोफ़ाइल सहेजी गई। /blueprint कमांड से आपका विश्लेषण तैयार होगा।",
+    "onb.done": "हो गया! आपका प्रोफ़ाइल सहेजा गया। नीचे मेनू में «🔮 रीडिंग» दबाएं।",
     # Owner console — user management
     "owner.manage.kb.users": "👥 उपयोगकर्ता",
     "owner.users.header": "{display_name} के उपयोगकर्ता:",
@@ -383,10 +383,11 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # Gift-a-friend (SP5)
     # -------------------------------------------------------------------------
-    "btn.gift": "उपहार",
+    "btn.gift": "🎁 उपहार",
     "gift.title": "मित्र को उपहार दें",
     "gift.balance_line": "उपलब्ध: {balance}",
     "gift.amount_prompt": "उपहार राशि दर्ज करें (1–{max}):",
+    "gift.cancelled": "रद्द किया गया।",
     "gift.cancel_hint": "रद्द करने के लिए /cancel भेजें।",
     "gift.too_small": "न्यूनतम 1 क्रेडिट।",
     "gift.too_large": "अधिकतम {max} क्रेडिट।",
@@ -418,7 +419,6 @@ TRANSLATIONS = {
     "readings.kind.tarot": "🔮 टैरो",
     "readings.kind.iching": "☯ आई चिंग",
     "divination.question_prompt": "अपना प्रश्न पूछें या /skip भेजें:",
-    "divination.question_hint": "या नीचे छोड़ें बटन दबाएं।",
     "divination.skip_btn": "छोड़ें",
     "divination.no_question": "(कोई प्रश्न नहीं)",
     "tarot.position.past": "अतीत",

@@ -148,7 +148,7 @@ async def on_gift_cancel(
     message: Message, state: FSMContext, i18n: Translator
 ) -> None:
     await state.clear()
-    await message.answer(await i18n("gift.cancel_hint"))
+    await message.answer(await i18n("gift.cancelled"))
 
 
 @router.message(Gift.awaiting_amount)

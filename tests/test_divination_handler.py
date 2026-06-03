@@ -293,3 +293,24 @@ async def test_divination_no_profile_shows_fill_button(session, default_tenant, 
     assert kb is not None, "no-profile response must include a keyboard"
     btns = [b for row in kb.inline_keyboard for b in row]
     assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)
+
+
+async def test_divination_question_prompt_has_no_hint_text(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import divination
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, divination, session)
+    acc = await _seed_account_with_profile_and_credits(session, default_tenant)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    q = _query(tg_id=42, kind="tarot")
+    state = _state(42)
+    await divination.on_divination_choice(
+        q, account=MagicMock(id=acc.id, tenant_id=default_tenant.id),
+        state=state, i18n=i18n,
+    )
+
+    text = q.message.answer.await_args.args[0]
+    assert "Или нажмите кнопку" not in text
+    assert "Or tap Skip" not in text

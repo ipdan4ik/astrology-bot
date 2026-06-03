@@ -109,23 +109,33 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     # -------------------------------------------------------------------------
     "help.text": {
         "ru": (
-            "Я строю персональный астрологический разбор (Quantuum Blueprint) по твоим "
-            "натальным данным.\n\n"
-            "Меню снизу:\n"
-            "🔮 Разбор — сгенерировать разбор\n"
-            "👤 Профиль — посмотреть и изменить натальные данные\n"
-            "📜 История — прошлые генерации\n\n"
-            "Команды: /start /profile /blueprint\n"
+            "Я строю персональные разборы по твоим натальным данным.\n\n"
+            "Меню:\n"
+            "🔮 Разбор — астрологический разбор (Blueprint)\n"
+            "❓ Спросить астролога — вопрос с натальным контекстом\n"
+            "📖 Разборы — BaZi, Нумерология, Human Design, Таро, И-Цзин и др.\n"
+            "🌌 Транзиты — текущие планетарные транзиты\n"
+            "🔔 Ежедневный гороскоп — подписка на ежедневную доставку\n"
+            "👤 Профиль — натальные данные (дата, время, место рождения)\n"
+            "📜 История — прошлые генерации\n"
+            "🌐 Язык — сменить язык\n"
+            "🎁 Пригласить друга — реферальная ссылка\n"
+            "🎁 Подарок — подарить кредиты другу\n\n"
             "Поддержка: @quantuum_support"
         ),
         "en": (
-            "I build a personal astrological reading (Quantuum Blueprint) from your "
-            "natal data.\n\n"
-            "Bottom menu:\n"
-            "🔮 Reading — generate a reading\n"
-            "👤 Profile — view and edit natal data\n"
-            "📜 History — past generations\n\n"
-            "Commands: /start /profile /blueprint\n"
+            "I build personal readings from your natal data.\n\n"
+            "Menu:\n"
+            "🔮 Reading — astrological blueprint\n"
+            "❓ Ask the astrologer — question with natal context\n"
+            "📖 Readings — BaZi, Numerology, Human Design, Tarot, I-Ching and more\n"
+            "🌌 Transits — current planetary transits\n"
+            "🔔 Daily horoscope — subscribe for daily delivery\n"
+            "👤 Profile — natal data (birth date, time, place)\n"
+            "📜 History — past readings\n"
+            "🌐 Language — change language\n"
+            "🎁 Invite a friend — referral link\n"
+            "🎁 Gift — gift credits to a friend\n\n"
             "Support: @quantuum_support"
         ),
     },
@@ -879,8 +889,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         ),
     },
     "onb.done": {
-        "ru": "Готово! Профиль сохранён. Команда /blueprint сгенерирует твой разбор.",
-        "en": "Done! Your profile is saved. The /blueprint command will generate your reading.",
+        "ru": "Готово! Профиль сохранён. Нажми «🔮 Разбор» в меню ниже.",
+        "en": "Done! Your profile is saved. Tap «🔮 Reading» in the menu below.",
     },
     # -------------------------------------------------------------------------
     # Owner console — user management (list / credits / ban)
@@ -1183,8 +1193,8 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     # Gift-a-friend (SP5)
     # -------------------------------------------------------------------------
     "btn.gift": {
-        "ru": "Подарок",
-        "en": "Gift",
+        "ru": "🎁 Подарок",
+        "en": "🎁 Gift",
     },
     "gift.title": {
         "ru": "Подарок другу",
@@ -1201,6 +1211,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "gift.cancel_hint": {
         "ru": "Отправьте /cancel чтобы отменить.",
         "en": "Send /cancel to abort.",
+    },
+    "gift.cancelled": {
+        "ru": "Отменено.",
+        "en": "Cancelled.",
     },
     "gift.too_small": {
         "ru": "Минимум — 1 кредит.",
@@ -1321,10 +1335,6 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "divination.question_prompt": {
         "ru": "Сформулируйте вопрос или отправьте /skip:",
         "en": "Type your question or send /skip:",
-    },
-    "divination.question_hint": {
-        "ru": "Или нажмите кнопку «Пропустить» ниже.",
-        "en": "Or tap Skip below.",
     },
     "divination.skip_btn": {
         "ru": "Пропустить",

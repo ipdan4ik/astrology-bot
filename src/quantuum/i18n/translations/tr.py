@@ -271,7 +271,7 @@ TRANSLATIONS = {
         "Doğum yeri: konumunuzu gönderin (📎 → Konum, haritada pin bırakabilirsiniz) "
         "veya şehir / adresin bir bölümünü yazın:"
     ),
-    "onb.done": "Hazır! Profiliniz kaydedildi. /blueprint komutu yorumunuzu oluşturacak.",
+    "onb.done": "Tamam! Profilin kaydedildi. Aşağıdaki menüde «🔮 Okuma» düğmesine dokun.",
     # Owner console — user management
     "owner.manage.kb.users": "👥 Kullanıcılar",
     "owner.users.header": "{display_name} kullanıcıları:",
@@ -383,10 +383,11 @@ TRANSLATIONS = {
     # -------------------------------------------------------------------------
     # Gift-a-friend (SP5)
     # -------------------------------------------------------------------------
-    "btn.gift": "Hediye",
+    "btn.gift": "🎁 Hediye",
     "gift.title": "Bir arkadaşa hediye et",
     "gift.balance_line": "Mevcut: {balance}",
     "gift.amount_prompt": "Hediye miktarını girin (1–{max}):",
+    "gift.cancelled": "İptal edildi.",
     "gift.cancel_hint": "İptal etmek için /cancel gönderin.",
     "gift.too_small": "En az 1 kredi.",
     "gift.too_large": "En fazla {max} kredi.",
@@ -418,7 +419,6 @@ TRANSLATIONS = {
     "readings.kind.tarot": "🔮 Tarot",
     "readings.kind.iching": "☯ I Ching",
     "divination.question_prompt": "Sorunu yaz veya /skip gönder:",
-    "divination.question_hint": "Veya aşağıdaki Atla'ya dokun.",
     "divination.skip_btn": "Atla",
     "divination.no_question": "(soru yok)",
     "tarot.position.past": "Geçmiş",
