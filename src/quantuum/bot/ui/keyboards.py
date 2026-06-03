@@ -74,6 +74,7 @@ async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
     _add(await i18n("btn.history"))
     _add(await i18n("btn.help"))
     _add(await i18n("btn.language"))
+    _add(await i18n("btn.buy"))
     if flags.get("referrals", True):
         _add(await i18n("btn.invite"))
     if flags.get("gifts", True):

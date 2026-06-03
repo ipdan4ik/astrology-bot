@@ -41,7 +41,8 @@ async def _daily_view(
     for h in range(24):
         label = f"·{h}·" if h == hour else str(h)
         b.button(text=label, callback_data=DailyCb(action="set_hour", value=h))
-    b.adjust(1, 6, 6, 6, 6)
+    b.button(text=await i18n("daily.kb.close"), callback_data=DailyCb(action="close"))
+    b.adjust(1, 6, 6, 6, 6, 1)
     return text, b.as_markup()
 
 
@@ -117,3 +118,9 @@ async def on_daily_set_hour(
     text, kb = await _daily_view(i18n, settings)
     await _safe_edit(query, text, kb)
     await query.answer(await i18n("daily.hour_set", hour=callback_data.value))
+
+
+@router.callback_query(DailyCb.filter(F.action == "close"))
+async def on_daily_close(query: CallbackQuery, i18n: Translator) -> None:
+    await query.message.delete()
+    await query.answer()

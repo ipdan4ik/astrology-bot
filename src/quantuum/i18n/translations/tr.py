@@ -11,6 +11,7 @@ TRANSLATIONS = {
     "btn.ask": "❓ Astrologa sor",
     "btn.transits": "🌌 Transitler",
     "btn.daily": "🔔 Günlük yorum",
+    "btn.buy": "💳 Satın al",
     "btn.language": "🌐 Dil",
     # -------------------------------------------------------------------------
     # Blueprint status words
@@ -116,6 +117,7 @@ TRANSLATIONS = {
     "daily.disabled": "Günlük burç devre dışı bırakıldı.",
     "daily.hour_set": "Gönderim saati: {hour}:00 ✅",
     "daily.kb.turn_on": "🔔 Etkinleştir",
+    "daily.kb.close": "✅ Tamam",
     "daily.kb.turn_off": "🔕 Devre dışı bırak",
     # -------------------------------------------------------------------------
     # History

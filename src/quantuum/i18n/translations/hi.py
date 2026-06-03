@@ -11,6 +11,7 @@ TRANSLATIONS = {
     "btn.ask": "❓ ज्योतिषी से पूछें",
     "btn.transits": "🌌 गोचर",
     "btn.daily": "🔔 दैनिक राशिफल",
+    "btn.buy": "💳 खरीदें",
     "btn.language": "🌐 भाषा",
     # -------------------------------------------------------------------------
     # Blueprint status words
@@ -116,6 +117,7 @@ TRANSLATIONS = {
     "daily.disabled": "दैनिक राशिफल बंद किया।",
     "daily.hour_set": "प्रेषण समय: {hour}:00 ✅",
     "daily.kb.turn_on": "🔔 चालू करें",
+    "daily.kb.close": "✅ हो गया",
     "daily.kb.turn_off": "🔕 बंद करें",
     # -------------------------------------------------------------------------
     # History

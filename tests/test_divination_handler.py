@@ -314,3 +314,49 @@ async def test_divination_question_prompt_has_no_hint_text(session, default_tena
     text = q.message.answer.await_args.args[0]
     assert "Или нажмите кнопку" not in text
     assert "Or tap Skip" not in text
+
+
+async def test_divination_moderation_block_attaches_menu_kb(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import divination
+    from quantuum.moderation.policy import Category, Tier1Hit
+    from aiogram.types import ReplyKeyboardMarkup
+    from aiogram.fsm.context import FSMContext
+    from aiogram.fsm.storage.base import StorageKey
+    from aiogram.fsm.storage.memory import MemoryStorage
+    from unittest.mock import AsyncMock, MagicMock
+    from types import SimpleNamespace
+    from tests.conftest import build_translator
+    import quantuum.bot.ui.keyboards as kbs
+
+    _patch_sessionmaker(monkeypatch, divination, session)
+    _patch_sessionmaker(monkeypatch, kbs, session)
+
+    acc = await _seed_account_with_profile_and_credits(session, default_tenant)
+    await session.commit()
+    i18n = await build_translator(session, default_tenant.id)
+
+    fake_verdict = Tier1Hit(category=Category.VIOLENCE)
+    monkeypatch.setattr(divination, "_moderate_question", AsyncMock(return_value=fake_verdict))
+    monkeypatch.setattr(divination, "_record_moderation_hit", AsyncMock())
+
+    state = FSMContext(
+        storage=MemoryStorage(),
+        key=StorageKey(bot_id=1, chat_id=42, user_id=42),
+    )
+    await state.set_state(divination.Divination.awaiting_question)
+    await state.update_data(kind="tarot")
+
+    msg = SimpleNamespace(
+        text="violent question",
+        chat=SimpleNamespace(id=42),
+        answer=AsyncMock(),
+    )
+    await divination.on_divination_question(
+        msg,
+        account=MagicMock(id=acc.id, tenant_id=default_tenant.id),
+        state=state,
+        i18n=i18n,
+    )
+
+    last_kb = msg.answer.call_args_list[-1].kwargs.get("reply_markup")
+    assert isinstance(last_kb, ReplyKeyboardMarkup), "moderation block must attach menu kb"

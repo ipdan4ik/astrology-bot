@@ -13,7 +13,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from openai import AsyncOpenAI
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
-from quantuum.bot.ui.keyboards import profile_kb
+from quantuum.bot.ui.keyboards import main_menu_kb, profile_kb
 from quantuum.bot.ui.callbacks import DivinationCb, OnboardCb, ReadingCb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
@@ -266,7 +266,10 @@ async def on_divination_question(
             text_kwargs["helpline_url"] = await i18n("moderation.helpline_url")
         response_text = await i18n(entry["i18n_key"], **text_kwargs)
         await _record_moderation_hit(message, account, verdict, i18n.lang)
-        await message.answer(response_text)
+        await message.answer(
+            response_text,
+            reply_markup=await main_menu_kb(i18n, account.tenant_id),
+        )
         await state.clear()
         return
 

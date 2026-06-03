@@ -6,7 +6,7 @@ from aiogram.types import Message
 from openai import AsyncOpenAI
 
 from quantuum.bot.handlers.generate import _buy_offer_kb
-from quantuum.bot.ui.keyboards import cancel_kb, profile_kb
+from quantuum.bot.ui.keyboards import cancel_kb, main_menu_kb, profile_kb
 from quantuum.common.exceptions import InsufficientFundsError
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
@@ -108,7 +108,10 @@ async def _submit(message: Message, raw: str, account: Account, i18n: Translator
                 source=source,
                 lang=i18n.lang,
             )
-            await message.answer(response_text)
+            await message.answer(
+                response_text,
+                reply_markup=await main_menu_kb(i18n, account.tenant_id),
+            )
             return
 
     # Existing flow: profile → quota → request → qa → enqueue.

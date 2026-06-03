@@ -2,6 +2,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from quantuum.bot.handlers.buy import show_buy_menu
 from quantuum.bot.handlers.generate import run_generate
 from quantuum.bot.handlers.history import show_history
 from quantuum.bot.handlers.profile import show_profile
@@ -28,6 +29,7 @@ _PROFILE_LABELS = text.menu_button_labels("btn.profile")
 _HISTORY_LABELS = text.menu_button_labels("btn.history")
 _HELP_LABELS = text.menu_button_labels("btn.help")
 _LANGUAGE_LABELS = text.menu_button_labels("btn.language")
+_BUY_LABELS = text.menu_button_labels("btn.buy")
 LABELS = text.all_menu_labels()
 
 
@@ -89,6 +91,11 @@ async def on_language_btn(message: Message, tenant_id: int, i18n: Translator) ->
         await i18n("lang.prompt"),
         reply_markup=await language_picker_kb(tenant_id, action="set"),
     )
+
+
+@router.message(F.text.in_(_BUY_LABELS))
+async def on_buy_btn(message: Message, account: Account, i18n: Translator) -> None:
+    await show_buy_menu(message, account.tenant_id, i18n)
 
 
 @router.callback_query(OnboardCb.filter(F.action == "cancel"))

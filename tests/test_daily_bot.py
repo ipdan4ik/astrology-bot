@@ -169,3 +169,31 @@ async def test_daily_no_profile_shows_fill_button(session, default_tenant, monke
     assert kb is not None, "no-profile response must include a keyboard"
     btns = [b for row in kb.inline_keyboard for b in row]
     assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)
+
+
+async def test_daily_view_has_close_button(session, default_tenant):
+    from quantuum.bot.handlers.daily import _daily_view
+    from quantuum.bot.ui.callbacks import DailyCb
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    _text, kb = await _daily_view(i18n, settings=None)
+    btns = [b for row in kb.inline_keyboard for b in row]
+    assert any(
+        DailyCb.unpack(b.callback_data).action == "close" for b in btns
+    ), "daily view must have a close button"
+
+
+async def test_daily_close_deletes_message(session, default_tenant):
+    from quantuum.bot.handlers.daily import on_daily_close
+    from unittest.mock import AsyncMock, MagicMock
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    query = MagicMock()
+    query.answer = AsyncMock()
+    query.message.delete = AsyncMock()
+
+    await on_daily_close(query, i18n)
+    query.message.delete.assert_awaited_once()
+    query.answer.assert_awaited_once()

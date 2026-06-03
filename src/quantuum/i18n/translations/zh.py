@@ -11,6 +11,7 @@ TRANSLATIONS = {
     "btn.ask": "❓ 咨询占星师",
     "btn.transits": "🌌 行运",
     "btn.daily": "🔔 每日星座运势",
+    "btn.buy": "💳 购买",
     "btn.language": "🌐 语言",
     # -------------------------------------------------------------------------
     # Blueprint status words
@@ -116,6 +117,7 @@ TRANSLATIONS = {
     "daily.disabled": "每日星座运势已关闭。",
     "daily.hour_set": "推送时间：{hour}:00 ✅",
     "daily.kb.turn_on": "🔔 开启",
+    "daily.kb.close": "✅ 完成",
     "daily.kb.turn_off": "🔕 关闭",
     # -------------------------------------------------------------------------
     # History

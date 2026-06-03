@@ -11,6 +11,7 @@ TRANSLATIONS = {
     "btn.ask": "❓ Chiedi all'astrologo",
     "btn.transits": "🌌 Transiti",
     "btn.daily": "🔔 Oroscopo quotidiano",
+    "btn.buy": "💳 Acquista",
     "btn.language": "🌐 Lingua",
     # -------------------------------------------------------------------------
     # Blueprint status words
@@ -117,6 +118,7 @@ TRANSLATIONS = {
     "daily.disabled": "Oroscopo quotidiano disattivato.",
     "daily.hour_set": "Orario di consegna: {hour}:00 ✅",
     "daily.kb.turn_on": "🔔 Attiva",
+    "daily.kb.close": "✅ Fatto",
     "daily.kb.turn_off": "🔕 Disattiva",
     # -------------------------------------------------------------------------
     # History

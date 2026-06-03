@@ -264,3 +264,33 @@ async def test_ask_no_profile_shows_fill_button(session, default_tenant, monkeyp
     assert kb is not None, "no-profile response must include a keyboard"
     btns = [b for row in kb.inline_keyboard for b in row]
     assert any(OnboardCb.unpack(b.callback_data).action == "start" for b in btns)
+
+
+async def test_qa_moderation_block_attaches_menu_kb(session, default_tenant, monkeypatch):
+    from quantuum.bot.handlers import qa
+    from quantuum.moderation.policy import Category, Tier1Hit
+    from aiogram.types import ReplyKeyboardMarkup
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    import quantuum.bot.ui.keyboards as kbs
+    from tests.conftest import build_translator
+
+    _patch_sessionmaker(monkeypatch, qa, session)
+    _patch_sessionmaker(monkeypatch, kbs, session)
+
+    monkeypatch.setattr(qa, "get_settings", lambda: SimpleNamespace(
+        moderation_enabled=True, moderation_fail_open=True, llm_api_key="test", llm_provider="openai"
+    ))
+
+    i18n = await build_translator(session, default_tenant.id)
+    acc = await _seed_account(session, default_tenant.id, "600", credits=2)
+
+    fake_verdict = Tier1Hit(category=Category.VIOLENCE)
+    monkeypatch.setattr(qa, "moderate", AsyncMock(return_value=fake_verdict))
+
+    msg = FakeMessage(text="/ask violent content", chat_id=600)
+    command = SimpleNamespace(args="violent content")
+    await qa.on_ask(msg, command, FakeFSM(), acc, i18n)
+
+    last_kb = msg.answer.call_args_list[-1].kwargs.get("reply_markup")
+    assert isinstance(last_kb, ReplyKeyboardMarkup), "moderation block must attach menu kb"

@@ -72,6 +72,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
         "ru": "📖 Разборы",
         "en": "📖 Readings",
     },
+    "btn.buy": {
+        "ru": "💳 Купить",
+        "en": "💳 Buy",
+    },
     # Language selection (picker + menu button)
     "btn.language": {
         "ru": "🌐 Язык",
@@ -371,6 +375,10 @@ BASE_STRINGS: dict[str, dict[str, str]] = {
     "daily.kb.turn_off": {
         "ru": "🔕 Выключить",
         "en": "🔕 Turn off",
+    },
+    "daily.kb.close": {
+        "ru": "✅ Готово",
+        "en": "✅ Done",
     },
     # -------------------------------------------------------------------------
     # History

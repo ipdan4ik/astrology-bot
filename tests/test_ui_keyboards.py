@@ -25,7 +25,7 @@ async def test_main_menu_has_localised_buttons(session, default_tenant):
     assert set(_reply_texts(kb)) == {
         "🔮 Разбор", "❓ Спросить астролога", "📖 Разборы", "🌌 Транзиты", "🔔 Ежедневный гороскоп",
         "👤 Профиль", "📜 История", "ℹ️ Помощь", "🌐 Язык", "🎁 Пригласить друга",
-        "🎁 Подарок",
+        "🎁 Подарок", "💳 Купить",
     }
 
 
@@ -36,7 +36,7 @@ async def test_main_menu_respects_lang(session, default_tenant):
     assert set(_reply_texts(kb)) == {
         "🔮 Reading", "❓ Ask the astrologer", "📖 Readings", "🌌 Transits", "🔔 Daily horoscope",
         "👤 Profile", "📜 History", "ℹ️ Help", "🌐 Language", "🎁 Invite a friend",
-        "🎁 Gift",
+        "🎁 Gift", "💳 Buy",
     }
 
 
@@ -113,3 +113,13 @@ def test_btn_gift_has_emoji():
     from quantuum.i18n.seed_strings import BASE_STRINGS
     assert BASE_STRINGS["btn.gift"]["ru"].startswith("🎁"), "ru btn.gift must start with 🎁"
     assert BASE_STRINGS["btn.gift"]["en"].startswith("🎁"), "en btn.gift must start with 🎁"
+
+
+async def test_main_menu_has_buy_button(session, default_tenant):
+    from tests.conftest import build_translator
+
+    i18n = await build_translator(session, default_tenant.id)
+    await session.commit()
+    kb = await main_menu_kb(i18n, default_tenant.id)
+    texts = [b.text for row in kb.keyboard for b in row]
+    assert "💳 Купить" in texts
