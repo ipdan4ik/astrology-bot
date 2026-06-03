@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from quantuum.common.datetime import utcnow
-from quantuum.db.models import StartToken, StartTokenUse
+from quantuum.db.models import Account, StartToken, StartTokenUse
 from quantuum.domain.audit import record_audit
 from quantuum.domain.gifts import GIFT_KIND
 from quantuum.domain.referrals import REFERRAL_KIND
@@ -77,6 +77,11 @@ async def handle_referral_token(
     accounts already attributed (UNIQUE constraint).
     """
     if token.owner_account_id == account_id:
+        return None
+    # Serialize concurrent attributions for this referee: lock the account row
+    # so the read-then-insert below cannot interleave with a second click.
+    locked_acc = await session.get(Account, account_id, with_for_update=True)
+    if locked_acc is None:
         return None
     existing = await session.execute(
         select(StartTokenUse).where(StartTokenUse.account_id == account_id)
