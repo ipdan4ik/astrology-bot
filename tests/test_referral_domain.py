@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from sqlalchemy import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -268,6 +270,40 @@ async def test_maybe_payout_referral_zero_reward_closes_loop(session: AsyncSessi
         .one()
     )
     assert use.claimed_at is not None
+
+
+async def test_maybe_payout_referral_concurrent_pays_once(session, default_tenant):
+    from quantuum.db.session import get_sessionmaker
+
+    referrer = await _make_account(session, default_tenant.id, 71001)
+    referee = await _make_account(session, default_tenant.id, 72001)
+    code = await generate_referral_code(
+        session, account_id=referrer, tenant_id=default_tenant.id
+    )
+    session.add(StartTokenUse(token_code=code, account_id=referee))
+    await _zero_balance(session, referrer)
+    await _mark_paid(session, tenant_id=default_tenant.id, account_id=referee)
+    await session.commit()  # make setup visible to independent sessions
+
+    async def _payout():
+        async with get_sessionmaker()() as s:
+            fired = await maybe_payout_referral(s, referee_account_id=referee)
+            await s.commit()
+            return fired
+
+    results = await asyncio.gather(_payout(), _payout())
+
+    assert sorted(results) == [False, True]  # exactly one payout fired
+    bal = await session.get(AccountBalance, referrer)
+    await session.refresh(bal)
+    assert bal.package_credits == DEFAULT_REWARD_CREDITS  # bumped exactly once
+
+    uses = (
+        await session.execute(
+            select(StartTokenUse).where(StartTokenUse.account_id == referee)
+        )
+    ).scalars().all()
+    assert len(uses) == 1 and uses[0].claimed_at is not None
 
 
 async def test_referral_payout_is_ledger_backed(session, default_tenant):
