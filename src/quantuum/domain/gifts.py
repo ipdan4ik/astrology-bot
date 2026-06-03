@@ -241,7 +241,6 @@ async def sweep_expired_gifts(
     if not candidates:
         return 0
 
-    bal = await session.get(AccountBalance, sender_account_id)
     refunded = 0
     for tok in candidates:
         amount = int(tok.payload.get("amount", 0))
@@ -254,7 +253,15 @@ async def sweep_expired_gifts(
             )
             tok.status = "refunded"
             continue
-        bal.package_credits += amount
+        from quantuum.domain.billing import grant_credits
+
+        await grant_credits(
+            session,
+            account_id=sender_account_id,
+            tenant_id=tok.tenant_id,
+            amount=amount,
+            source="gift",
+        )
         tok.status = "refunded"
         await record_audit(
             session,

@@ -221,6 +221,38 @@ async def test_sweep_idempotent(session: AsyncSession):
     assert n2 == 0
 
 
+async def test_sweep_refund_is_ledger_backed(session, default_tenant):
+    from datetime import timedelta
+    from sqlmodel import select
+
+    from quantuum.auth.identity import find_or_create_account_by_tg
+    from quantuum.common.datetime import utcnow
+    from quantuum.db.models import AccountPackage, StartToken
+    from quantuum.domain.gifts import sweep_expired_gifts
+
+    sender = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="giftsender"
+    )
+    token = StartToken(
+        code="expgift1", kind="gift", tenant_id=default_tenant.id,
+        owner_account_id=sender.id, payload={"amount": 3}, status="active",
+        expires_at=utcnow() - timedelta(days=1),
+    )
+    session.add(token)
+    await session.commit()
+
+    refunded = await sweep_expired_gifts(session, sender_account_id=sender.id)
+    await session.commit()
+
+    assert refunded == 1
+    rows = (
+        await session.execute(
+            select(AccountPackage).where(AccountPackage.account_id == sender.id)
+        )
+    ).scalars().all()
+    assert any(r.source == "gift" and r.requests_remaining == 3 for r in rows)
+
+
 async def test_expiry_days_get_default(session: AsyncSession):
     t = await _tenant(session)
     assert await get_expiry_days(session, tenant_id=t.id) == DEFAULT_EXPIRY_DAYS
