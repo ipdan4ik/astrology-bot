@@ -44,7 +44,7 @@ def _patch_sessionmaker(monkeypatch, module, session):
 @pytest.mark.parametrize("kind", [
     "bazi", "numerology", "human_design", "astrology",
     "vedic", "gene_keys", "mayan", "aspects",
-    "blueprint", "transits",
+    "transits",
 ])
 async def test_readings_menu_includes_all_eight_kinds(session, default_tenant, kind):
     from quantuum.bot.ui.keyboards import readings_menu_kb

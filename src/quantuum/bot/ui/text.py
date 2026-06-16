@@ -3,10 +3,11 @@ from quantuum.i18n.seed_strings import BASE_STRINGS
 
 # Reply-menu button keys, in display order. Routing matches the rendered label
 # in any enabled language, so callers derive label sets from BASE_STRINGS.
+# Gifts are reached from the Buy menu, not a top-level button, so btn.gift is
+# absent here (its handler still matches the label for backward compatibility).
 MENU_BUTTON_KEYS = (
-    "btn.ask", "btn.readings", "btn.daily",
-    "btn.profile", "btn.history", "btn.help", "btn.language", "btn.buy", "btn.invite",
-    "btn.gift",
+    "btn.generate", "btn.readings", "btn.daily", "btn.ask",
+    "btn.buy", "btn.history", "btn.profile", "btn.invite", "btn.language", "btn.help",
 )
 
 

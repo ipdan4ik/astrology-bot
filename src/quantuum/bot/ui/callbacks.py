@@ -92,7 +92,7 @@ class OwnerGiftsCb(CallbackData, prefix="ogft"):
 
 
 class GiftCreateCb(CallbackData, prefix="gcre"):
-    action: str  # "start"
+    action: str  # "open" (show gift screen) | "start" (begin creating a gift)
 
 
 class DivinationCb(CallbackData, prefix="div"):

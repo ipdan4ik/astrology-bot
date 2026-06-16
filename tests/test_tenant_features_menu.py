@@ -30,11 +30,27 @@ async def test_main_menu_full_when_all_enabled(session, default_tenant, build_tr
     kb = await main_menu_kb(i18n, default_tenant.id)
     texts = " ".join(_button_texts(kb))
     # Top-level surface buttons all present.
-    assert "Разборы" in texts  # readings hub (contains blueprint + transits + specialty)
+    assert "Blueprint" in texts  # blueprint is its own top-level button
+    assert "Разборы" in texts  # readings hub (contains transits + specialty)
     assert "Спросить" in texts or "Вопрос" in texts  # qa
     assert "Ежедневн" in texts
     # Always-on
     assert "Профиль" in texts
+
+
+async def test_main_menu_hides_blueprint_button_when_disabled(
+    session, default_tenant, build_translator
+):
+    acc = await find_or_create_account_by_tg(
+        session, tenant_id=default_tenant.id, tg_user_id="actor_no_blueprint"
+    )
+    await _disable(session, default_tenant.id, "blueprint", by_account_id=acc.id)
+    i18n = await build_translator(session, default_tenant.id, lang="ru")
+    kb = await main_menu_kb(i18n, default_tenant.id)
+    texts = " ".join(_button_texts(kb))
+    assert "Blueprint" not in texts
+    # The readings hub stays (transits + specialty kinds still enabled).
+    assert "Разборы" in texts
 
 
 async def test_main_menu_hides_disabled_surfaces(session, default_tenant, build_translator):
@@ -84,7 +100,7 @@ async def test_readings_menu_full_when_all_enabled(session, default_tenant, buil
     i18n = await build_translator(session, default_tenant.id, lang="ru")
     kb = await readings_menu_kb(i18n, default_tenant.id)
     texts = _inline_button_texts(kb)
-    assert len(texts) == 12  # blueprint + transits + 10 reading kinds
+    assert len(texts) == 11  # transits + 10 reading kinds (blueprint is a main-menu button)
 
 
 async def test_readings_menu_hides_disabled_kinds(session, default_tenant, build_translator):
@@ -99,7 +115,7 @@ async def test_readings_menu_hides_disabled_kinds(session, default_tenant, build
     i18n = await build_translator(session, default_tenant.id, lang="ru")
     kb = await readings_menu_kb(i18n, default_tenant.id)
     texts = _inline_button_texts(kb)
-    assert len(texts) == 10  # blueprint + transits + 8 remaining kinds
+    assert len(texts) == 9  # transits + 8 remaining kinds (blueprint is a main-menu button)
 
 
 @pytest.fixture

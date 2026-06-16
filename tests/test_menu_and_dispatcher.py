@@ -27,6 +27,31 @@ def test_menu_labels_routed_include_both_langs():
     assert "👤 Профиль" in menu.LABELS and "👤 Profile" in menu.LABELS
 
 
+def test_blueprint_button_is_routed_from_main_menu():
+    from quantuum.bot.handlers import menu
+
+    # The Blueprint button is now a top-level main-menu button (label is the same
+    # in ru/en), so its label must be in the routed set.
+    assert "🔮 Blueprint" in menu.LABELS
+    assert "🔮 Blueprint" in menu._GENERATE_LABELS
+
+
+async def test_on_generate_btn_dispatches_to_run_generate(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from quantuum.bot.handlers import menu
+
+    spy = AsyncMock()
+    monkeypatch.setattr(menu, "run_generate", spy)
+
+    message = MagicMock()
+    account = object()
+    i18n = object()
+    await menu.on_generate_btn(message, account=account, chat_id=42, i18n=i18n)
+
+    spy.assert_awaited_once_with(message, account, 42, i18n)
+
+
 def test_tenant_middleware_registered_before_account():
     import sys
 

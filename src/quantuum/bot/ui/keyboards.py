@@ -47,9 +47,10 @@ async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
     async with get_sessionmaker()() as session:
         flags = await list_feature_states(session, tenant_id)
 
+    # Blueprint is a top-level button (not inside the readings hub); the hub holds
+    # transits + specialty reading kinds only.
     show_readings = (
         any(enabled for k, enabled in flags.items() if k.startswith("reading."))
-        or flags.get("blueprint", True)
         or flags.get("transits", True)
     )
 
@@ -61,22 +62,29 @@ async def main_menu_kb(i18n: Translator, tenant_id: int) -> ReplyKeyboardMarkup:
         b.button(text=text)
         count += 1
 
-    if flags.get("qa", True):
-        _add(await i18n("btn.ask"))
+    # Display order (paired 2-per-row when all enabled):
+    #   1. Blueprint   | Readings
+    #   2. Daily       | Ask
+    #   3. Buy         | History
+    #   4. Profile     | Invite
+    #   5. Language    | Help
+    # Gifts moved into the Buy menu (no longer a top-level button).
+    if flags.get("blueprint", True):
+        _add(await i18n("btn.generate"))
     if show_readings:
         _add(await i18n("btn.readings"))
     if flags.get("daily", True):
         _add(await i18n("btn.daily"))
+    if flags.get("qa", True):
+        _add(await i18n("btn.ask"))
 
-    _add(await i18n("btn.profile"))
-    _add(await i18n("btn.history"))
-    _add(await i18n("btn.help"))
-    _add(await i18n("btn.language"))
     _add(await i18n("btn.buy"))
+    _add(await i18n("btn.history"))
+    _add(await i18n("btn.profile"))
     if flags.get("referrals", True):
         _add(await i18n("btn.invite"))
-    if flags.get("gifts", True):
-        _add(await i18n("btn.gift"))
+    _add(await i18n("btn.language"))
+    _add(await i18n("btn.help"))
 
     layout: list[int] = []
     remaining = count
@@ -121,13 +129,14 @@ READING_KINDS: tuple[str, ...] = (
 
 
 async def readings_menu_kb(i18n: Translator, tenant_id: int) -> InlineKeyboardMarkup:
-    """Inline keyboard listing Blueprint, Transits, and specialty reading kinds."""
+    """Inline keyboard listing Transits and specialty reading kinds.
+
+    Blueprint lives in the main menu as its own top-level button, not here.
+    """
     async with get_sessionmaker()() as session:
         flags = await list_feature_states(session, tenant_id)
 
     b = InlineKeyboardBuilder()
-    if flags.get("blueprint", True):
-        b.button(text=await i18n("btn.generate"), callback_data=ReadingCb(action="generate", kind="blueprint"))
     if flags.get("transits", True):
         b.button(text=await i18n("btn.transits"), callback_data=ReadingCb(action="generate", kind="transits"))
     visible: list[str] = [k for k in READING_KINDS if flags.get(f"reading.{k}", True)]
@@ -135,7 +144,7 @@ async def readings_menu_kb(i18n: Translator, tenant_id: int) -> InlineKeyboardMa
         label = await i18n(f"readings.kind.{kind}")
         b.button(text=label, callback_data=ReadingCb(action="generate", kind=kind))
 
-    total = (1 if flags.get("blueprint", True) else 0) + (1 if flags.get("transits", True) else 0) + len(visible)
+    total = (1 if flags.get("transits", True) else 0) + len(visible)
     if total:
         layout: list[int] = []
         remaining = total

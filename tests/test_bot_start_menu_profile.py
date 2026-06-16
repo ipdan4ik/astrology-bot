@@ -66,9 +66,9 @@ async def test_on_start_with_lang_set_sends_welcome_and_menu(session, default_te
     menu_text, menu_markup = msg.answers[1]
     assert menu_text == "Главное меню:"
     assert set(_reply_texts(menu_markup)) == {
-        "❓ Спросить астролога", "📖 Разборы", "🔔 Ежедневный гороскоп",
+        "❓ Спросить астролога", "🔮 Blueprint", "📖 Разборы", "🔔 Ежедневный гороскоп",
         "👤 Профиль", "📜 История", "ℹ️ Помощь", "🌐 Язык", "🎁 Пригласить друга",
-        "🎁 Подарок", "💳 Купить",
+        "💳 Купить",
     }
 
 
@@ -102,9 +102,9 @@ async def test_on_help_btn_sends_help_text(session, default_tenant):
     help_text, markup = msg.answers[0]
     assert "@quantuum_support" in help_text
     assert set(_reply_texts(markup)) == {
-        "❓ Спросить астролога", "📖 Разборы", "🔔 Ежедневный гороскоп",
+        "❓ Спросить астролога", "🔮 Blueprint", "📖 Разборы", "🔔 Ежедневный гороскоп",
         "👤 Профиль", "📜 История", "ℹ️ Помощь", "🌐 Язык", "🎁 Пригласить друга",
-        "🎁 Подарок", "💳 Купить",
+        "💳 Купить",
     }
 
 

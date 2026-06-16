@@ -9,10 +9,11 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from quantuum.bot.ui.callbacks import BuyCb
+from quantuum.bot.ui.callbacks import BuyCb, GiftCreateCb
 from quantuum.db.models import Account
 from quantuum.db.session import get_sessionmaker
 from quantuum.domain.billing import fulfill_payment, record_pending_payment
+from quantuum.domain.tenant_features import is_feature_enabled
 from quantuum.domain.plans import (
     get_package_plan,
     get_subscription_plan,
@@ -42,6 +43,12 @@ async def build_buy_menu(
                 "buy.plan_package", name=p.name, count=p.request_count, price=p.price_cents
             ),
             callback_data=BuyCb(action="pick", kind="package", plan_id=p.id),
+        )
+    # Gifting lives inside the Buy menu (its own row at the bottom).
+    if await is_feature_enabled(session, tenant_id, "gifts"):
+        builder.button(
+            text=await i18n("btn.gift"),
+            callback_data=GiftCreateCb(action="open"),
         )
     builder.adjust(1)
     text = await i18n("buy.menu_title")

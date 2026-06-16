@@ -111,6 +111,16 @@ async def on_gift_btn(
     )
 
 
+@router.callback_query(GiftCreateCb.filter(F.action == "open"))
+async def on_gift_open(
+    query: CallbackQuery, account: Account, tenant_id: int, i18n: Translator
+) -> None:
+    await show_gift_screen(
+        query.message, account_id=account.id, tenant_id=tenant_id, i18n=i18n
+    )
+    await query.answer()
+
+
 @router.callback_query(GiftCreateCb.filter(F.action == "start"))
 async def on_gift_create(
     query: CallbackQuery,

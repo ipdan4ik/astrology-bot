@@ -6,8 +6,9 @@ from quantuum.bot.ui.text import MENU_BUTTON_KEYS
 from quantuum.db.models import AccountBalance
 
 
-def test_btn_gift_in_menu_button_keys():
-    assert "btn.gift" in MENU_BUTTON_KEYS
+def test_btn_gift_not_a_top_level_menu_button():
+    # Gifting is reached from the Buy menu now, not a top-level reply button.
+    assert "btn.gift" not in MENU_BUTTON_KEYS
 
 
 async def _seed_sender(session, t_id, tg="1001", credits=50):
